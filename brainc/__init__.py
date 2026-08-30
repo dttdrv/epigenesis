@@ -6,7 +6,7 @@ from .sequence import SequenceArtifact, SequenceCompiler, SequenceCompilerError,
 from .sequence_collection import SequenceCollectionArtifact, SequenceCollectionCompiler, SequenceCollectionError, load_sequence_collection
 from .validator import validate_chain
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "CompilerError", "ProviderError", "SequenceArtifact", "SequenceCollectionArtifact",

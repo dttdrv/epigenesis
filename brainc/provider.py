@@ -59,7 +59,7 @@ def _output_contract(value: Any, label: str) -> dict[str, Any]:
     item = keys(value, {"id", "type", "unit"}, label)
     output_id = text(item["id"], f"{label}.id")
     output_type = item["type"]
-    if output_type not in VALUE_TYPES:
+    if type(output_type) is not str or output_type not in VALUE_TYPES:
         raise ProviderError(f"{label}.type is unsupported")
     unit = item["unit"]
     if unit is not None:
@@ -104,12 +104,12 @@ def make_request(source_path: str | Path, manifest_path: str | Path, output_ids:
         raise ProviderError(f"provider does not declare support for {source_tag}")
     if not output_ids:
         raise ProviderError("at least one requested output id is required")
-    if len(set(output_ids)) != len(output_ids):
+    normalized_ids = [text(output_id, "requested output id") for output_id in output_ids]
+    if len(set(normalized_ids)) != len(normalized_ids):
         raise ProviderError("requested output ids must be unique")
     available = {item["id"]: item for item in manifest["outputs"]}
     requested: list[dict[str, Any]] = []
-    for output_id in output_ids:
-        text(output_id, "requested output id")
+    for output_id in normalized_ids:
         if output_id not in available:
             raise ProviderError(f"provider does not declare output {output_id!r}")
         requested.append(dict(available[output_id]))
@@ -128,7 +128,8 @@ def load_request(path: str | Path) -> dict[str, Any]:
     if payload["format"] != "brainc.prediction-request" or type(payload["version"]) is not int or payload["version"] != 1:
         raise ProviderError("unsupported prediction request format or version")
     source = keys(payload["source"], {"format", "version", "artifact_sha256", "ir_sha256"}, "request source")
-    if (source["format"], source["version"]) not in SOURCE_FORMATS:
+    identity = (source["format"], source["version"])
+    if type(source["format"]) is not str or type(source["version"]) is not int or identity not in SOURCE_FORMATS:
         raise ProviderError("request source format/version is unsupported")
     sha256(source["artifact_sha256"], "request.source.artifact_sha256")
     sha256(source["ir_sha256"], "request.source.ir_sha256")
@@ -149,6 +150,7 @@ def _typed_value(value: Any, kind: str, label: str) -> int | float | bool:
     elif kind == "integer":
         if type(value) is not int:
             raise ProviderError(f"{label} must be an integer")
+        number(value, label)
     else:
         number(value, label)
     return value
@@ -184,6 +186,12 @@ def validate_binding(source_path: str | Path, manifest_path: str | Path, request
     request = load_request(request_path); response = load_response(response_path)
     if request["source"] != _source_binding(source): raise ProviderError("request is not bound to the supplied sequence source")
     if request["provider_manifest_sha256"] != manifest["artifact_sha256"]: raise ProviderError("request is not bound to the supplied provider manifest")
+    source_tag = f'{source["format"]}/v{source["version"]}'
+    if source_tag not in manifest["accepts"]: raise ProviderError(f"provider does not declare support for {source_tag}")
+    declared = {item["id"]: item for item in manifest["outputs"]}
+    for item in request["requested_outputs"]:
+        if item["id"] not in declared or item != declared[item["id"]]:
+            raise ProviderError(f"request output {item['id']!r} is not declared by the provider manifest")
     if response["request_artifact_sha256"] != request["artifact_sha256"]: raise ProviderError("response is not bound to the supplied request")
     if response["provider"] != manifest["provider"] or response["model_identity"] != manifest["model_identity"]:
         raise ProviderError("response provider/model identity differs from the manifest")

@@ -11,6 +11,7 @@ from typing import Any
 
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+SAFE_INTEGER = 2**53 - 1
 
 
 class ContractError(ValueError):
@@ -55,12 +56,69 @@ def load(path: str | Path, label: str) -> tuple[dict[str, Any], bytes]:
 
 
 def canonical_bytes(value: Any) -> bytes:
+    """Serialize an I-JSON value with RFC 8785 JSON canonicalization."""
     try:
-        return json.dumps(
-            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-        ).encode("utf-8")
-    except (TypeError, ValueError) as failure:
-        raise ContractError(f"value is not deterministic JSON: {failure}") from failure
+        return _jcs(value).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError) as failure:
+        raise ContractError(f"value is not RFC 8785 canonical JSON: {failure}") from failure
+
+
+def _jcs_string(value: str) -> str:
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+        raise ValueError("lone Unicode surrogate is not allowed")
+    return json.dumps(value, ensure_ascii=False, allow_nan=False)
+
+
+def _jcs_number(value: float) -> str:
+    if not math.isfinite(value):
+        raise ValueError("non-finite number is not allowed")
+    if value == 0:
+        return "0"
+    sign = "-" if value < 0 else ""
+    mantissa, separator, exponent_text = repr(abs(value)).lower().partition("e")
+    exponent = int(exponent_text) if separator else 0
+    digits = mantissa.replace(".", "")
+    point = (mantissa.find(".") if "." in mantissa else len(mantissa)) + exponent
+    while len(digits) > 1 and digits[0] == "0":
+        digits = digits[1:]
+        point -= 1
+    if 1e-6 <= abs(value) < 1e21:
+        if point <= 0:
+            rendered = "0." + "0" * -point + digits
+        elif point >= len(digits):
+            rendered = digits + "0" * (point - len(digits))
+        else:
+            rendered = digits[:point] + "." + digits[point:]
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        return sign + rendered
+    digits = digits.rstrip("0")
+    normalized_exponent = point - 1
+    rendered = digits[0] + (("." + digits[1:]) if len(digits) > 1 else "")
+    return sign + rendered + ("e+" if normalized_exponent >= 0 else "e") + str(normalized_exponent)
+
+
+def _jcs(value: Any) -> str:
+    if value is None:
+        return "null"
+    if type(value) is bool:
+        return "true" if value else "false"
+    if type(value) is str:
+        return _jcs_string(value)
+    if type(value) is int:
+        if not -SAFE_INTEGER <= value <= SAFE_INTEGER:
+            raise ValueError(f"integer exceeds I-JSON safe range: {value}")
+        return str(value)
+    if type(value) is float:
+        return _jcs_number(value)
+    if type(value) is list:
+        return "[" + ",".join(_jcs(item) for item in value) + "]"
+    if type(value) is dict:
+        if any(type(key) is not str for key in value):
+            raise TypeError("JSON object keys must be strings")
+        ordered = sorted(value, key=lambda key: key.encode("utf-16be"))
+        return "{" + ",".join(_jcs_string(key) + ":" + _jcs(value[key]) for key in ordered) + "}"
+    raise TypeError(f"unsupported JSON value type: {type(value).__name__}")
 
 
 def digest(value: Any) -> str:
@@ -94,7 +152,11 @@ def sha256(value: Any, label: str) -> str:
 
 
 def number(value: Any, label: str) -> int | float:
-    if type(value) not in (int, float) or not math.isfinite(value):
+    if type(value) is int:
+        if not -SAFE_INTEGER <= value <= SAFE_INTEGER:
+            raise ContractError(f"{label} exceeds the I-JSON safe integer range")
+        return value
+    if type(value) is not float or not math.isfinite(value):
         raise ContractError(f"{label} must be a finite number")
     return value
 

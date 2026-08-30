@@ -1,0 +1,8 @@
+{
+  "accession": "J02482.1",
+  "bases": 5386,
+  "retrieved": "2026-08-30",
+  "source": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=J02482.1&rettype=fasta&retmode=text",
+  "fasta_sha256": "2826ee08e3506154cdeb7ab734ec6f9ebbea6e5d16d0bec488030192faf492a7",
+  "normalized_sequence_sha256": "97038c7e1edea2297667d7f0426ba942b322c74cb30e072ec66ba47f9c0448d0"
+}

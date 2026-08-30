@@ -15,8 +15,10 @@ from pathlib import Path
 import re
 from typing import Any
 
+from ._canonical import ContractError, canonical_bytes
 
-SEQUENCE_COMPILER_VERSION = "0.2.0"
+
+SEQUENCE_COMPILER_VERSION = "0.3.0"
 SEQUENCE_PASSES = (
     "parse-fasta",
     "parse-context",
@@ -39,7 +41,10 @@ def _sha256_bytes(value: bytes) -> str:
 
 
 def _canonical_bytes(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    try:
+        return canonical_bytes(value)
+    except ContractError as failure:
+        raise SequenceCompilerError(f"DNA037: {failure}") from failure
 
 
 def _canonical_digest(value: Any) -> str:
@@ -83,8 +88,8 @@ def _require_keys(value: dict[str, Any], required: set[str], optional: set[str],
 
 
 def _require_text(value: Any, label: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise SequenceCompilerError(f"DNA023: {label} must be a non-empty string")
+    if type(value) is not str or not value or value != value.strip():
+        raise SequenceCompilerError(f"DNA023: {label} must be a non-empty trimmed string")
     return value
 
 
@@ -317,9 +322,9 @@ def _parse_context(raw: bytes) -> SequenceContext:
             raise SequenceCompilerError("DNA028: orientation must be 'forward' or 'reverse'")
         aliases_value = reference_value["aliases"]
         if not isinstance(aliases_value, list) or any(
-            not isinstance(alias, str) or not alias.strip() for alias in aliases_value
+            not isinstance(alias, str) or not alias or alias != alias.strip() for alias in aliases_value
         ):
-            raise SequenceCompilerError("DNA029: reference aliases must be non-empty strings")
+            raise SequenceCompilerError("DNA029: reference aliases must be non-empty trimmed strings")
         if len(set(aliases_value)) != len(aliases_value):
             raise SequenceCompilerError("DNA029: reference aliases must be unique")
         reference = ReferenceInterval(assembly, contig, start, end, COORDINATE_SYSTEM, orientation, tuple(aliases_value))
@@ -340,7 +345,7 @@ def _parse_context(raw: bytes) -> SequenceContext:
             raise SequenceCompilerError(f"DNA033: duplicate provenance id: {source_id}")
         seen_ids.add(source_id)
         sha256 = item.get("sha256")
-        if sha256 is not None and (not isinstance(sha256, str) or SHA256_PATTERN.fullmatch(sha256) is None):
+        if "sha256" in item and (not isinstance(sha256, str) or SHA256_PATTERN.fullmatch(sha256) is None):
             raise SequenceCompilerError(f"DNA034: provenance[{index}].sha256 must be lowercase SHA-256")
         provenance.append(
             ProvenanceSource(
@@ -498,4 +503,3 @@ def load_sequence_artifact(path: str | Path) -> SequenceArtifact:
     raw = Path(path).read_bytes()
     payload = _load_json_bytes(raw, "sequence artifact")
     return _as_artifact(payload)
-

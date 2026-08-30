@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 import gzip
 import hashlib
@@ -11,6 +12,7 @@ import re
 from typing import Any
 import zlib
 
+from ._canonical import ContractError, canonical_bytes
 from .sequence import (
     SequenceArtifact,
     SequenceCompiler,
@@ -22,7 +24,7 @@ from .sequence import (
 
 FORMAT = "brain01.sequence-collection-ir"
 VERSION = 1
-COMPILER = {"name": "brainc-dna-collection", "version": "0.1.0"}
+COMPILER = {"name": "brainc-dna-collection", "version": "0.2.0"}
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -36,19 +38,17 @@ def _sha256(value: bytes) -> str:
 
 def _canonical_bytes(value: Any) -> bytes:
     try:
-        return json.dumps(
-            value,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-            allow_nan=False,
-        ).encode("utf-8")
-    except (TypeError, ValueError) as failure:
+        return canonical_bytes(value)
+    except ContractError as failure:
         raise SequenceCollectionError(f"DNAC001: value is not canonical JSON: {failure}") from failure
 
 
 def _digest(value: Any) -> str:
     return _sha256(_canonical_bytes(value))
+
+
+def _sha512t24u(value: bytes) -> str:
+    return base64.urlsafe_b64encode(hashlib.sha512(value).digest()[:24]).decode("ascii")
 
 
 def _reject_constant(value: str) -> None:
@@ -174,6 +174,21 @@ class SequenceCollectionArtifact:
             ]
         }
 
+    def _refget_seqcol(self) -> dict[str, Any]:
+        level_2 = {
+            "lengths": [len(member.artifact.sequence) for member in self.members],
+            "names": [member.artifact.record_id for member in self.members],
+            "sequences": [member.artifact.refget_id for member in self.members],
+        }
+        level_1 = {name: _sha512t24u(_canonical_bytes(value)) for name, value in level_2.items()}
+        inherent = {name: level_1[name] for name in ("names", "sequences")}
+        return {
+            "version": "1.0.0",
+            "digest": _sha512t24u(_canonical_bytes(inherent)),
+            "level_1": level_1,
+            "level_2": level_2,
+        }
+
     def _core_dict(self) -> dict[str, Any]:
         collection_ir = self._collection_ir()
         return {
@@ -189,6 +204,7 @@ class SequenceCollectionArtifact:
             },
             "collection_ir": collection_ir,
             "collection_ir_sha256": _digest(collection_ir),
+            "refget_seqcol": self._refget_seqcol(),
             "members": [member.to_dict() for member in self.members],
         }
 
@@ -288,17 +304,7 @@ class SequenceCollectionCompiler:
                 SequenceSegment(segment.line + start, segment.normalized_start, segment.length)
                 for segment in local.source_map
             )
-            artifact = SequenceArtifact(
-                local.fasta_sha256,
-                local.context_sha256,
-                local.record_id,
-                local.description,
-                local.sequence,
-                local.reference,
-                local.provenance,
-                shifted,
-            )
-            members.append(SequenceCollectionMember(artifact, shifted))
+            members.append(SequenceCollectionMember(local, shifted))
         return _collection("fasta", raw, logical, compressed_sha256, tuple(members))
 
     def compile_file(self, path: str | Path) -> SequenceCollectionArtifact:
@@ -336,8 +342,16 @@ def _validate_artifact(artifact: SequenceCollectionArtifact) -> None:
                 SequenceSegment(1, 0, len(member.artifact.sequence)),
             ):
                 raise SequenceCollectionError("DNAC027: raw input must map one member to source line 1")
-        elif segments != member.artifact.source_map:
-            raise SequenceCollectionError("DNAC028: FASTA input source map must match its member artifact")
+        else:
+            local = member.artifact.source_map
+            if len(segments) != len(local) or any(
+                (outer.normalized_start, outer.length) != (inner.normalized_start, inner.length)
+                for outer, inner in zip(segments, local)
+            ):
+                raise SequenceCollectionError("DNAC028: FASTA local/global source maps differ")
+            shifts = {outer.line - inner.line for outer, inner in zip(segments, local)}
+            if len(shifts) != 1 or next(iter(shifts), -1) < 0:
+                raise SequenceCollectionError("DNAC028: FASTA local/global source maps are inconsistent")
 
 
 def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
@@ -345,7 +359,7 @@ def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
         payload,
         {
             "format", "version", "compiler", "inputs", "collection_ir",
-            "collection_ir_sha256", "members", "artifact_sha256",
+            "collection_ir_sha256", "refget_seqcol", "members", "artifact_sha256",
         },
         "collection artifact",
     )
@@ -410,6 +424,8 @@ def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
         raise SequenceCollectionError("DNAC036: collection IR does not match its members")
     if _valid_digest(payload["collection_ir_sha256"], "collection_ir_sha256") != _digest(expected_ir):
         raise SequenceCollectionError("DNAC037: collection IR digest mismatch")
+    if _canonical_bytes(payload["refget_seqcol"]) != _canonical_bytes(artifact._refget_seqcol()):
+        raise SequenceCollectionError("DNAC039: refget sequence collection identity mismatch")
     if _valid_digest(payload["artifact_sha256"], "artifact_sha256") != artifact.digest:
         raise SequenceCollectionError("DNAC038: collection artifact digest mismatch")
     return artifact
@@ -417,4 +433,3 @@ def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
 
 def load_sequence_collection(path: str | Path) -> SequenceCollectionArtifact:
     return _as_collection(_load_json(Path(path).read_bytes()))
-

@@ -32,8 +32,10 @@ def _parser() -> argparse.ArgumentParser:
     compile_cmd.add_argument("--response", required=True); compile_cmd.add_argument("--policy", required=True); compile_cmd.add_argument("-o", "--output", required=True)
     check = sub.add_parser("check", help="check one compiler artifact's closed schema and digest")
     check.add_argument("kind", choices=["sequence", "collection", "manifest", "request", "response", "policy", "program"]); check.add_argument("artifact")
-    validate = sub.add_parser("validate", help="independently replay a complete single-record compiler chain")
-    validate.add_argument("--fasta", required=True); validate.add_argument("--context"); validate.add_argument("--sequence", required=True)
+    validate = sub.add_parser("validate", help="independently replay a complete compiler chain")
+    validate.add_argument("--source-input", "--fasta", dest="fasta", required=True)
+    validate.add_argument("--context"); validate.add_argument("--record-id")
+    validate.add_argument("--source-artifact", "--sequence", dest="sequence", required=True)
     validate.add_argument("--manifest", required=True); validate.add_argument("--request", required=True); validate.add_argument("--response", required=True)
     validate.add_argument("--policy", required=True); validate.add_argument("--program", required=True); validate.add_argument("--report")
     return parser
@@ -70,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validate":
             report = validate_chain(fasta=args.fasta, context=args.context, sequence=args.sequence,
                                     manifest=args.manifest, request=args.request, response=args.response,
-                                    policy=args.policy, program=args.program)
+                                    policy=args.policy, program=args.program, record_id=args.record_id)
             if args.report: save_report(report, args.report)
             print(json.dumps(report, indent=2, sort_keys=True))
             return 0 if report["valid"] else 3
