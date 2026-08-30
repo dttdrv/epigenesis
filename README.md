@@ -48,4 +48,4 @@ The current provider ABI supports scalar number, integer, and boolean outputs. T
 - Independent standard-library validator
 - Reproducible, dependency-free wheel
 
-No software license has been selected.
+Licensed under Apache-2.0.
