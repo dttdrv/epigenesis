@@ -1,0 +1,3 @@
+tests/data/J02482.1.fasta -text -diff
+tests/data/J02482.1.gff3 -text -diff
+tests/data/*.gb -text -diff

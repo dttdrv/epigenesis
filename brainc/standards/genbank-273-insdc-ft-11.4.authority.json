@@ -1,0 +1,35 @@
+{
+  "artifact_sha256": "6dc3658a5f7d6a774ce9cd08ff6dc5327cbef8a9951c7679fd9a34650f912bf9",
+  "format": "brainc.bio.authority-manifest",
+  "profile": "genbank-273-traditional-dna-physical-structural/v2",
+  "sources": {
+    "genbank_flatfile": {
+      "authority": "NCBI",
+      "bytes": 1235842,
+      "declared_date": "2026-08-15",
+      "declared_version": "273.0",
+      "media_type": "text/plain; charset=utf-8",
+      "sha256": "9e26f1821a1846aba58d9b8bee167e89355c0711995cd2f21b716a6123e5bda0",
+      "url": "https://ftp.ncbi.nlm.nih.gov/genbank/gbrel.txt"
+    },
+    "insdc_feature_table": {
+      "authority": "INSDC",
+      "declared_date": "2026-04",
+      "declared_version": "11.4",
+      "media_type": "application/json; charset=utf-8",
+      "modified_gmt": "2026-05-07T09:27:18",
+      "page_id": 21,
+      "response_bytes": 206717,
+      "response_sha256": "724b3ca19099eb060830b05566f9c619dcd4d1da4abdeccdf24bae5a1b88a1a0",
+      "selection": {
+        "bytes": 196690,
+        "encoding": "utf-8",
+        "kind": "json-pointer",
+        "pointer": "/content/rendered",
+        "sha256": "40f7fbe1f778f5a2a45ede9567b5df97fd5eb5beb2cf2984c560527ae78940c3"
+      },
+      "url": "https://www.insdc.org/wp-json/wp/v2/pages/21?context=view&_fields=id,modified_gmt,link,title,content"
+    }
+  },
+  "version": 1
+}

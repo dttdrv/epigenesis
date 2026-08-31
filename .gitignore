@@ -5,3 +5,6 @@ __pycache__/
 .venv/
 build/
 dist/
+tests/data/CP032762.1.gb
+tests/data/CP032762.1.brainc.json
+tests/data/CP032762.1.validation.json

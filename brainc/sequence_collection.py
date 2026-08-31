@@ -4,15 +4,28 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-import gzip
 import hashlib
-import json
 from pathlib import Path
 import re
 from typing import Any
-import zlib
 
 from ._canonical import ContractError, canonical_bytes
+from ._io import (
+    BoundedIOError,
+    MAX_DECOMPRESSED_BYTES,
+    MAX_IDENTIFIER_BYTES,
+    MAX_INPUT_BYTES,
+    MAX_JSON_BYTES,
+    MAX_JSON_DEPTH,
+    MAX_JSON_MEMBERS,
+    MAX_SOURCE_RECORDS,
+    MAX_STRING_BYTES,
+    atomic_write_file,
+    load_json_object,
+    pretty_json_bytes,
+    read_regular_file,
+    unwrap_gzip,
+)
 from .sequence import (
     SequenceArtifact,
     SequenceCompiler,
@@ -26,6 +39,7 @@ FORMAT = "brain01.sequence-collection-ir"
 VERSION = 1
 COMPILER = {"name": "brainc-dna-collection", "version": "0.2.0"}
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
+MAX_SOURCE_LINE_BREAKS = MAX_JSON_MEMBERS
 
 
 class SequenceCollectionError(SequenceCompilerError):
@@ -51,33 +65,34 @@ def _sha512t24u(value: bytes) -> str:
     return base64.urlsafe_b64encode(hashlib.sha512(value).digest()[:24]).decode("ascii")
 
 
-def _reject_constant(value: str) -> None:
-    raise SequenceCollectionError(f"DNAC002: non-finite JSON number is not allowed: {value}")
-
-
-def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
-            raise SequenceCollectionError(f"DNAC003: duplicate JSON key: {key}")
-        result[key] = value
-    return result
-
-
 def _load_json(raw: bytes) -> dict[str, Any]:
     try:
-        value = json.loads(
-            raw.decode("utf-8"),
-            object_pairs_hook=_reject_duplicates,
-            parse_constant=_reject_constant,
+        return load_json_object(
+            raw,
+            "collection artifact",
+            maximum_bytes=MAX_JSON_BYTES,
+            maximum_depth=MAX_JSON_DEPTH,
+            maximum_members=MAX_JSON_MEMBERS,
+            maximum_string_bytes=MAX_STRING_BYTES,
         )
-    except SequenceCollectionError:
-        raise
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as failure:
+    except BoundedIOError as failure:
         raise SequenceCollectionError(f"DNAC004: invalid collection JSON: {failure}") from failure
-    if not isinstance(value, dict):
-        raise SequenceCollectionError("DNAC004: collection artifact must be an object")
-    return value
+
+
+def _artifact_bytes(payload: dict[str, Any]) -> bytes:
+    try:
+        return pretty_json_bytes(
+            payload,
+            ensure_ascii=False,
+            maximum_bytes=MAX_JSON_BYTES,
+            maximum_depth=MAX_JSON_DEPTH,
+            maximum_members=MAX_JSON_MEMBERS,
+            maximum_string_bytes=MAX_STRING_BYTES,
+        )
+    except BoundedIOError as failure:
+        raise SequenceCollectionError(
+            f"DNAC040: collection artifact is outside compiler limits: {failure}"
+        ) from failure
 
 
 def _keys(value: dict[str, Any], expected: set[str], label: str) -> None:
@@ -105,14 +120,15 @@ def _valid_digest(value: Any, label: str) -> str:
 
 
 def _unwrap(raw: bytes) -> tuple[bytes, str | None]:
-    if not isinstance(raw, bytes):
-        raise SequenceCollectionError("DNAC008: source must be bytes")
-    if not raw.startswith(b"\x1f\x8b"):
-        return raw, None
     try:
-        return gzip.decompress(raw), _sha256(raw)
-    except (gzip.BadGzipFile, EOFError, OSError, zlib.error) as failure:
-        raise SequenceCollectionError(f"DNAC009: malformed gzip source: {failure}") from failure
+        logical, compressed = unwrap_gzip(
+            raw,
+            maximum_input_bytes=MAX_INPUT_BYTES,
+            maximum_decompressed_bytes=MAX_DECOMPRESSED_BYTES,
+        )
+    except BoundedIOError as failure:
+        raise SequenceCollectionError(f"DNAC009: invalid or oversized source: {failure}") from failure
+    return logical, _sha256(raw) if compressed else None
 
 
 def _source_segments(value: Any, sequence_length: int, label: str) -> tuple[SequenceSegment, ...]:
@@ -130,7 +146,12 @@ def _source_segments(value: Any, sequence_length: int, label: str) -> tuple[Sequ
         line, start, length = item["line"], item["normalized_start"], item["length"]
         if any(type(number) is not int for number in (line, start, length)):
             raise SequenceCollectionError(f"DNAC011: {label} segment values must be integers")
-        if line <= last_line or start != offset or length <= 0:
+        if (
+            line <= last_line
+            or line > MAX_SOURCE_LINE_BREAKS + 1
+            or start != offset
+            or length <= 0
+        ):
             raise SequenceCollectionError(f"DNAC012: {label} segments are discontinuous")
         result.append(SequenceSegment(line, start, length))
         offset += length
@@ -218,14 +239,18 @@ class SequenceCollectionArtifact:
         return value
 
     def save(self, path: str | Path) -> None:
-        destination = Path(path)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(
-            (
-                json.dumps(self.to_dict(), indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False)
-                + "\n"
-            ).encode("utf-8")
-        )
+        raw = _artifact_bytes(self.to_dict())
+        try:
+            atomic_write_file(
+                path,
+                raw,
+                maximum_bytes=MAX_JSON_BYTES,
+                label="collection artifact output",
+            )
+        except BoundedIOError as failure:
+            raise SequenceCollectionError(
+                f"DNAC040: cannot save collection artifact: {failure}"
+            ) from failure
 
 
 def _collection(
@@ -243,6 +268,7 @@ def _collection(
         members=members,
     )
     _validate_artifact(artifact)
+    _artifact_bytes(artifact.to_dict())
     return artifact
 
 
@@ -252,6 +278,19 @@ class SequenceCollectionCompiler:
     def compile_raw(self, sequence: str | bytes, record_id: str) -> SequenceCollectionArtifact:
         if not isinstance(record_id, str) or not record_id or any(character.isspace() for character in record_id):
             raise SequenceCollectionError("DNAC014: raw input record_id must be a non-empty whitespace-free string")
+        if any(
+            ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F
+            for character in record_id
+        ):
+            raise SequenceCollectionError("DNAC014: raw input record_id contains a control character")
+        try:
+            identifier_bytes = len(record_id.encode("utf-8"))
+        except UnicodeEncodeError as failure:
+            raise SequenceCollectionError("DNAC014: raw input record_id must be valid UTF-8 text") from failure
+        if identifier_bytes > MAX_IDENTIFIER_BYTES:
+            raise SequenceCollectionError(
+                f"DNAC014: raw input record_id exceeds {MAX_IDENTIFIER_BYTES} UTF-8 bytes"
+            )
         if isinstance(sequence, str):
             try:
                 raw = sequence.encode("utf-8")
@@ -262,6 +301,10 @@ class SequenceCollectionCompiler:
         else:
             raise SequenceCollectionError("DNAC015: raw sequence must be text or bytes")
         logical, compressed_sha256 = _unwrap(raw)
+        if len(logical) > MAX_STRING_BYTES:
+            raise SequenceCollectionError(
+                f"DNAC017: raw sequence exceeds emitted JSON string limit {MAX_STRING_BYTES}"
+            )
         try:
             text = logical.decode("ascii")
         except UnicodeDecodeError as failure:
@@ -282,10 +325,23 @@ class SequenceCollectionCompiler:
 
     def compile_fasta_bytes(self, raw: bytes) -> SequenceCollectionArtifact:
         logical, compressed_sha256 = _unwrap(raw)
+        line_breaks = logical.count(b"\n") + logical.count(b"\r") - logical.count(b"\r\n")
+        line_breaks += sum(
+            logical.count(separator)
+            for separator in (b"\v", b"\f", b"\x1c", b"\x1d", b"\x1e", b"\x85")
+        )
+        if line_breaks > MAX_SOURCE_LINE_BREAKS:
+            raise SequenceCollectionError(
+                f"DNAC019: FASTA collection exceeds {MAX_SOURCE_LINE_BREAKS} physical line breaks"
+            )
         lines = logical.splitlines(keepends=True)
         if not lines or not lines[0].startswith(b">"):
             raise SequenceCollectionError("DNAC019: FASTA collection must begin with a '>' defline")
         starts = [index for index, line in enumerate(lines) if line.startswith(b">")]
+        if len(starts) > MAX_SOURCE_RECORDS:
+            raise SequenceCollectionError(
+                f"DNAC019: FASTA collection exceeds {MAX_SOURCE_RECORDS} records"
+            )
         members: list[SequenceCollectionMember] = []
         seen: set[str] = set()
         for position, start in enumerate(starts):
@@ -308,7 +364,20 @@ class SequenceCollectionCompiler:
         return _collection("fasta", raw, logical, compressed_sha256, tuple(members))
 
     def compile_file(self, path: str | Path) -> SequenceCollectionArtifact:
-        return self.compile_fasta_bytes(Path(path).read_bytes())
+        try:
+            raw = read_regular_file(path, maximum_bytes=MAX_INPUT_BYTES, label="FASTA collection source")
+        except BoundedIOError as failure:
+            raise SequenceCollectionError(f"DNAC041: unsafe or oversized input file: {failure}") from failure
+        return self.compile_fasta_bytes(raw)
+
+    def compile_raw_file(self, path: str | Path, record_id: str) -> SequenceCollectionArtifact:
+        """Compile raw IUPAC bytes from the same safe file boundary as FASTA."""
+
+        try:
+            raw = read_regular_file(path, maximum_bytes=MAX_INPUT_BYTES, label="raw DNA source")
+        except BoundedIOError as failure:
+            raise SequenceCollectionError(f"DNAC041: unsafe or oversized input file: {failure}") from failure
+        return self.compile_raw(raw, record_id)
 
 
 def _validate_artifact(artifact: SequenceCollectionArtifact) -> None:
@@ -325,13 +394,32 @@ def _validate_artifact(artifact: SequenceCollectionArtifact) -> None:
             raise SequenceCollectionError("DNAC024: compressed and raw digests must match")
     if not artifact.members:
         raise SequenceCollectionError("DNAC025: collection must contain at least one member")
+    if len(artifact.members) > MAX_SOURCE_RECORDS:
+        raise SequenceCollectionError(
+            f"DNAC025: collection exceeds {MAX_SOURCE_RECORDS} members"
+        )
     ids: set[str] = set()
+    total_bases = 0
+    previous_outer_line = 0
     for index, member in enumerate(artifact.members):
         record_id = member.artifact.record_id
         if record_id in ids:
             raise SequenceCollectionError(f"DNAC026: duplicate member record_id: {record_id}")
         ids.add(record_id)
         _as_sequence_artifact(member.artifact.to_dict())
+        if (
+            member.artifact.context_sha256 is not None
+            or member.artifact.reference is not None
+            or member.artifact.provenance
+        ):
+            raise SequenceCollectionError(
+                f"DNAC042: members[{index}] contains context not emitted by collection ingress"
+            )
+        total_bases += len(member.artifact.sequence)
+        if total_bases > MAX_DECOMPRESSED_BYTES:
+            raise SequenceCollectionError(
+                f"DNAC043: collection exceeds {MAX_DECOMPRESSED_BYTES} logical DNA bytes"
+            )
         segments = _source_segments(
             {"sequence_segments": [segment.to_dict() for segment in member.input_source_map]},
             len(member.artifact.sequence),
@@ -342,6 +430,15 @@ def _validate_artifact(artifact: SequenceCollectionArtifact) -> None:
                 SequenceSegment(1, 0, len(member.artifact.sequence)),
             ):
                 raise SequenceCollectionError("DNAC027: raw input must map one member to source line 1")
+            if member.artifact.description:
+                raise SequenceCollectionError("DNAC027: raw input member cannot have a description")
+            expected_fasta = (
+                f">{record_id}\n{member.artifact.sequence}\n".encode("utf-8")
+            )
+            if member.artifact.fasta_sha256 != _sha256(expected_fasta):
+                raise SequenceCollectionError("DNAC027: raw input synthetic FASTA digest is inconsistent")
+            if artifact.logical_sha256 != _sha256(member.artifact.sequence.encode("ascii")):
+                raise SequenceCollectionError("DNAC027: raw input logical DNA digest is inconsistent")
         else:
             local = member.artifact.source_map
             if len(segments) != len(local) or any(
@@ -350,8 +447,14 @@ def _validate_artifact(artifact: SequenceCollectionArtifact) -> None:
             ):
                 raise SequenceCollectionError("DNAC028: FASTA local/global source maps differ")
             shifts = {outer.line - inner.line for outer, inner in zip(segments, local)}
-            if len(shifts) != 1 or next(iter(shifts), -1) < 0:
+            if len(shifts) != 1:
                 raise SequenceCollectionError("DNAC028: FASTA local/global source maps are inconsistent")
+            shift = next(iter(shifts))
+            if shift < 0 or (index == 0 and shift != 0):
+                raise SequenceCollectionError("DNAC028: FASTA local/global source-map shift is invalid")
+            if index and shift + 1 <= previous_outer_line:
+                raise SequenceCollectionError("DNAC028: FASTA member overlaps the preceding record")
+            previous_outer_line = segments[-1].line
 
 
 def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
@@ -385,6 +488,10 @@ def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
     members_value = payload["members"]
     if not isinstance(members_value, list) or not members_value:
         raise SequenceCollectionError("DNAC025: collection must contain at least one member")
+    if len(members_value) > MAX_SOURCE_RECORDS:
+        raise SequenceCollectionError(
+            f"DNAC025: collection exceeds {MAX_SOURCE_RECORDS} members"
+        )
     members: list[SequenceCollectionMember] = []
     for index, member_value in enumerate(members_value):
         member_payload = _mapping(member_value, f"members[{index}]")
@@ -432,4 +539,10 @@ def _as_collection(payload: dict[str, Any]) -> SequenceCollectionArtifact:
 
 
 def load_sequence_collection(path: str | Path) -> SequenceCollectionArtifact:
-    return _as_collection(_load_json(Path(path).read_bytes()))
+    try:
+        raw = read_regular_file(path, maximum_bytes=MAX_JSON_BYTES, label="collection artifact")
+    except BoundedIOError as failure:
+        raise SequenceCollectionError(
+            f"DNAC041: unsafe or oversized collection artifact: {failure}"
+        ) from failure
+    return _as_collection(_load_json(raw))

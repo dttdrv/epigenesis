@@ -1,0 +1,17 @@
+include LICENSE
+include README.md
+include SPEC.md
+include pyproject.toml
+recursive-include docs *.md
+recursive-include brainc/standards *.json
+recursive-include tests *.py
+recursive-exclude tests/data *
+include tests/data/J02482.1.fasta
+include tests/data/J02482.1.gff3
+include tests/data/J02482.1.source.json
+include tests/data/J02482.1.gff3.source.json
+include tests/data/U49845.1.gb
+include tests/data/U49845.1.gb.source.json
+include tests/data/CP032762.1.source.json
+global-exclude __pycache__
+global-exclude *.py[cod]

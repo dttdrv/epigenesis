@@ -1,17 +1,25 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "epigenesis-compiler"
-version = "0.4.0"
-description = "A deterministic compiler kernel for DNA-bound scalar state initialization"
+version = "0.9.0"
+description = "Deterministic DNA compilation to independently verifiable biological state"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 
 [project.scripts]
 brainc = "brainc.cli:main"
+brainc-validate-bio-chain = "brainc.validator_bio_chain:main"
+brainc-validate-genbank = "brainc.validator_insdc:main"
+brainc-validate-insdc-graph = "brainc.validator_insdc_graph:main"
 
 [tool.setuptools]
-packages = ["brainc"]
+packages = ["brainc", "brainc.v2"]
+
+[tool.setuptools.package-data]
+brainc = ["standards/*.json"]

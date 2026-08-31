@@ -1,0 +1,77 @@
+{
+  "schema": "epigenesis.ncbi-genbank-conformance-source/v1",
+  "accession": "CP032762",
+  "version": "CP032762.1",
+  "record": {
+    "ncbi_nuccore_uid": "1489987070",
+    "locus": "CP032762",
+    "length_bp": 5868661,
+    "molecule_type": "DNA",
+    "topology": "circular",
+    "division": "BCT",
+    "create_date": "2018-10-15",
+    "update_date": "25-OCT-2019"
+  },
+  "source": {
+    "provider": "NCBI Entrez Nucleotide",
+    "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=CP032762.1&rettype=gbwithparts&retmode=text",
+    "equivalent_url": "https://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?id=CP032762.1&db=nuccore&report=genbank&retmode=text",
+    "summary_url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nuccore&id=CP032762.1&retmode=json",
+    "retrieved_at": "2026-08-31T11:23:51Z",
+    "format": "GenBank flat file (gbwithparts)",
+    "raw_byte_length": 13418250,
+    "raw_line_count": 198698,
+    "raw_sha256": "c54efd1ee2a811c8efbe12e3f8ea9757013877ce7e5faf8c06d39ac326a91582",
+    "lf_terminated": true,
+    "final_blank_line": true
+  },
+  "sequence": {
+    "canonicalization": "GA4GH refget Sequences v2",
+    "alphabet": "ACGT",
+    "length": 5868661,
+    "md5": "c05de9d9e6b6dba988054b1f4983440d",
+    "sha256": "b2c317b26275d822aae0063819b0b4012f247404edf87982d1eed303416bde62",
+    "sha512t24u": "SFU4YXxY_mSKaqHE06_SmfWkLboBMB-N",
+    "refget": "SQ.SFU4YXxY_mSKaqHE06_SmfWkLboBMB-N"
+  },
+  "independent_sequence_corroboration": {
+    "provider": "EMBL-EBI ENA refget",
+    "metadata_url": "https://www.ebi.ac.uk/ena/cram/sequence/insdc:CP032762.1/metadata",
+    "sequence_url": "https://www.ebi.ac.uk/ena/cram/sequence/insdc:CP032762.1",
+    "reported_length": 5868661,
+    "reported_md5": "c05de9d9e6b6dba988054b1f4983440d",
+    "fetched_sequence_sha256": "b2c317b26275d822aae0063819b0b4012f247404edf87982d1eed303416bde62"
+  },
+  "structure": {
+    "feature_count": 10919,
+    "feature_key_counts": {
+      "CDS": 5391,
+      "gene": 5453,
+      "ncRNA": 2,
+      "rRNA": 12,
+      "regulatory": 12,
+      "source": 1,
+      "tRNA": 47,
+      "tmRNA": 1
+    },
+    "origin_sequence_line_count": 97812,
+    "maximum_line_length_bytes": 79
+  },
+  "compiler_release_gate": {
+    "artifact_bytes": 37192363,
+    "artifact_sha256": "97b13016b899da15a76b66c5d2a94bf839f225e42a3f92fdc20bb63e873768b1",
+    "bio_ir_sha256": "5367765fa8310e0491ec39e8e496750a18b2a51b5f52daaab5ad681b7f929035",
+    "sequence_collection_artifact_sha256": "84f05893b51d644511327d97d9417c1cf7f13583f3076115ca73e7bc042a61f6",
+    "refget_seqcol_digest": "gF82ixP2u8Jn7b814kR1kORCsMs3nNa7",
+    "report_sha256": "447f3c4e32714ae9efc637657ed777f80a8faaceec2302c38c7ba4b9ecee5c0c",
+    "summary": {
+      "records": 1,
+      "source_bytes": 13418250,
+      "sequence_bases": 5868661,
+      "sequence_chunks": 6,
+      "features": 10919,
+      "segments": 10919,
+      "unresolved_references": []
+    }
+  }
+}

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.11"
+          - os: macos-latest
+            python: "3.11"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit and integration tests
+        run: python -m unittest discover -s tests -v
+      - name: Standalone real-DNA replay
+        run: python tests/verify.py real-dna
+      - name: GenBank compiler and independent validator replay
+        run: python tests/verify.py genbank-real-dna
+      - name: Compiler-only boundary
+        run: python tests/verify.py boundary
+      - name: Canonicalization vectors
+        run: python tests/verify.py canonical
+
+  release-gates:
+    name: Source and wheel release gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Tamper and contract attacks
+        run: |
+          python tests/verify.py tamper
+          python tests/verify.py contract-attacks
+      - name: Installed wheel smoke test
+        env:
+          PIP_NO_INDEX: "1"
+        run: python tests/verify.py wheel
+      - name: Source archive self-test
+        env:
+          PIP_NO_INDEX: "1"
+        run: python tests/verify.py sdist

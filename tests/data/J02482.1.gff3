@@ -1,0 +1,29 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+##sequence-region J02482.1 1 5386
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=2886930
+J02482.1	Genbank	region	1	5386	.	+	.	ID=J02482.1:1..5386;Dbxref=taxon:2886930;Is_circular=true;gbkey=Src;mol_type=genomic DNA;old-name=BACTERIOPHAGE PHI-X174
+J02482.1	Genbank	sequence_alteration	23	23	.	+	.	ID=id-J02482.1:23..23;Note=in am18 and am35 [14];gbkey=variation;replace=t
+J02482.1	Genbank	sequence_alteration	25	25	.	+	.	ID=id-J02482.1:25..25;Note=ts116 [14];gbkey=variation;replace=c
+J02482.1	Genbank	CDS	51	221	.	+	0	ID=cds-AAA32573.1;Dbxref=NCBI_GP:AAA32573.1;Name=AAA32573.1;gbkey=CDS;product=K;protein_id=AAA32573.1;transl_table=11
+J02482.1	Genbank	sequence_alteration	57	57	.	+	.	ID=id-J02482.1:57..57;Note=am6 [14];gbkey=variation;replace=c
+J02482.1	Genbank	sequence_alteration	117	117	.	+	.	ID=id-J02482.1:117..117;Note=am6 [14];gbkey=variation;replace=a
+J02482.1	Genbank	CDS	133	393	.	+	0	ID=cds-AAA32574.1;Dbxref=NCBI_GP:AAA32574.1;Name=AAA32574.1;Note=DNA maturation;gbkey=CDS;product=C;protein_id=AAA32574.1;transl_table=11
+J02482.1	Genbank	mRNA	358	3975	.	+	.	ID=rna-J02482.1:358..3975;gbkey=mRNA;product=major transcript
+J02482.1	Genbank	exon	358	3975	.	+	.	ID=exon-J02482.1:358..3975-1;Parent=rna-J02482.1:358..3975;gbkey=mRNA;product=major transcript
+J02482.1	Genbank	CDS	1001	2284	.	+	0	ID=cds-AAA32578.1;Parent=rna-J02482.1:358..3975;Dbxref=NCBI_GP:AAA32578.1;Name=AAA32578.1;gbkey=CDS;product=F;protein_id=AAA32578.1;transl_table=11
+J02482.1	Genbank	mRNA	358	991	.	+	.	ID=rna-J02482.1:358..991;gbkey=mRNA;product=minor transcript
+J02482.1	Genbank	exon	358	991	.	+	.	ID=exon-J02482.1:358..991-1;Parent=rna-J02482.1:358..991;gbkey=mRNA;product=minor transcript
+J02482.1	Genbank	CDS	390	848	.	+	0	ID=cds-AAA32575.1;Parent=rna-J02482.1:358..991;Dbxref=NCBI_GP:AAA32575.1;Name=AAA32575.1;gbkey=CDS;product=D;protein_id=AAA32575.1;transl_table=11
+J02482.1	Genbank	CDS	568	843	.	+	0	ID=cds-AAA32576.1;Dbxref=NCBI_GP:AAA32576.1;Name=AAA32576.1;gbkey=CDS;product=E;protein_id=AAA32576.1;transl_table=11
+J02482.1	Genbank	CDS	848	964	.	+	0	ID=cds-AAA32577.1;Dbxref=NCBI_GP:AAA32577.1;Name=AAA32577.1;Note=DNA condensation;gbkey=CDS;product=J;protein_id=AAA32577.1;transl_table=11
+J02482.1	Genbank	CDS	2395	2922	.	+	0	ID=cds-AAA32579.1;Dbxref=NCBI_GP:AAA32579.1;Name=AAA32579.1;gbkey=CDS;product=G;protein_id=AAA32579.1;transl_table=11
+J02482.1	Genbank	CDS	2931	3917	.	+	0	ID=cds-AAA32580.1;Dbxref=NCBI_GP:AAA32580.1;Name=AAA32580.1;gbkey=CDS;product=H;protein_id=AAA32580.1;transl_table=11
+J02482.1	Genbank	sequence_feature	3962	3962	.	+	.	ID=id-J02482.1:3962..3962;Note=transcription start site;gbkey=misc_feature
+J02482.1	Genbank	CDS	3981	5522	.	+	0	ID=cds-AAA32570.1;Dbxref=NCBI_GP:AAA32570.1;Name=AAA32570.1;Note=rf replication;gbkey=CDS;product=A;protein_id=AAA32570.1;transl_table=11
+J02482.1	Genbank	origin_of_replication	4306	4306	.	+	.	ID=id-J02482.1:4306..4306;Note=origin of viral strand synthesis;gbkey=rep_origin
+J02482.1	Genbank	CDS	4497	5522	.	+	0	ID=cds-AAA32571.1;Dbxref=NCBI_GP:AAA32571.1;Name=AAA32571.1;gbkey=CDS;product=A*;protein_id=AAA32571.1;transl_table=11
+J02482.1	Genbank	sequence_feature	4899	4899	.	+	.	ID=id-J02482.1:4899..4899;Note=transcription start site;gbkey=misc_feature
+J02482.1	Genbank	CDS	5075	5437	.	+	0	ID=cds-AAA32572.1;Dbxref=NCBI_GP:AAA32572.1;Name=AAA32572.1;gbkey=CDS;product=B;protein_id=AAA32572.1;transl_table=11
+

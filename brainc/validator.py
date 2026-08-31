@@ -11,10 +11,14 @@ from __future__ import annotations
 import base64
 import gzip
 import hashlib
+import io
 import json
 import math
+import os
 from pathlib import Path
 import re
+import stat
+import tempfile
 from typing import Any
 import zlib
 
@@ -22,6 +26,15 @@ import zlib
 SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 IUPAC = frozenset("ACGTRYSWKMBDHVN")
 SAFE_INTEGER = 2**53 - 1
+MAX_INPUT_BYTES = 16 * 1024 * 1024
+MAX_JSON_BYTES = 16 * 1024 * 1024
+MAX_DECOMPRESSED_BYTES = 64 * 1024 * 1024
+MAX_JSON_DEPTH = 64
+MAX_JSON_MEMBERS = 1_000_000
+MAX_STRING_BYTES = 1 * 1024 * 1024
+MAX_IDENTIFIER_BYTES = 256
+MAX_SOURCE_RECORDS = 100_000
+_CHUNK_BYTES = 64 * 1024
 SEQUENCE_COMPILER = {
     "name": "brainc-dna", "version": "0.3.0",
     "passes": ["parse-fasta", "parse-context", "validate-iupac", "resolve-reference",
@@ -51,20 +64,207 @@ def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def _parse_integer(value: str) -> int:
+    parsed = int(value)
+    if not -SAFE_INTEGER <= parsed <= SAFE_INTEGER:
+        raise ValidationError("JSON integer exceeds I-JSON safe range")
+    return parsed
+
+
+def _parse_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValidationError("non-finite number is not allowed")
+    return parsed
+
+
+def _validate_tree(value: Any, label: str) -> None:
+    members = 0
+    stack: list[tuple[Any, int]] = [(value, 0)]
+    while stack:
+        current, depth = stack.pop()
+        if depth > MAX_JSON_DEPTH:
+            raise ValidationError(f"{label} exceeds JSON depth limit {MAX_JSON_DEPTH}")
+        if current is None or type(current) is bool:
+            continue
+        if type(current) is int:
+            if not -SAFE_INTEGER <= current <= SAFE_INTEGER:
+                raise ValidationError(f"{label} contains an unsafe JSON integer")
+            continue
+        if type(current) is float:
+            if not math.isfinite(current):
+                raise ValidationError(f"{label} contains a non-finite JSON number")
+            continue
+        if type(current) is str:
+            if any(0xD800 <= ord(character) <= 0xDFFF for character in current):
+                raise ValidationError(f"{label} contains a lone Unicode surrogate")
+            if len(current.encode("utf-8")) > MAX_STRING_BYTES:
+                raise ValidationError(
+                    f"{label} exceeds JSON string byte limit {MAX_STRING_BYTES}"
+                )
+            continue
+        if type(current) is list:
+            members += len(current)
+            stack.extend((item, depth + 1) for item in reversed(current))
+        elif type(current) is dict:
+            members += len(current)
+            for key, item in reversed(list(current.items())):
+                if type(key) is not str:
+                    raise ValidationError(f"{label} contains a non-string object key")
+                stack.append((key, depth + 1))
+                stack.append((item, depth + 1))
+        else:
+            raise ValidationError(
+                f"{label} contains unsupported type {type(current).__name__}"
+            )
+        if members > MAX_JSON_MEMBERS:
+            raise ValidationError(
+                f"{label} exceeds JSON member limit {MAX_JSON_MEMBERS}"
+            )
+
+
 def _decode(raw: bytes, label: str) -> dict[str, Any]:
+    if type(raw) is not bytes or len(raw) > MAX_JSON_BYTES:
+        raise ValidationError(f"{label} must be at most {MAX_JSON_BYTES} JSON bytes")
     try:
-        value = json.loads(raw.decode("utf-8"), object_pairs_hook=_pairs, parse_constant=_reject)
+        value = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_pairs,
+            parse_constant=_reject,
+            parse_int=_parse_integer,
+            parse_float=_parse_float,
+        )
     except ValidationError: raise
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as failure:
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError) as failure:
         raise ValidationError(f"invalid {label}: {failure}") from failure
     if type(value) is not dict: raise ValidationError(f"{label} must be an object")
+    _validate_tree(value, label)
     return value
 
 
+def _read_bytes(path: str | Path, label: str, maximum_bytes: int) -> bytes:
+    source = Path(path)
+    descriptor = -1
+    try:
+        inspected = source.lstat()
+        if stat.S_ISLNK(inspected.st_mode) or not stat.S_ISREG(inspected.st_mode):
+            raise ValidationError(f"{label} must be a regular non-linked file")
+        if inspected.st_size > maximum_bytes:
+            raise ValidationError(f"{label} exceeds byte limit {maximum_bytes}")
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        descriptor = os.open(source, flags)
+        opened = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or (opened.st_dev, opened.st_ino) != (inspected.st_dev, inspected.st_ino)
+        ):
+            raise ValidationError(f"{label} changed or is not a safe regular file")
+        if opened.st_size > maximum_bytes:
+            raise ValidationError(f"{label} exceeds byte limit {maximum_bytes}")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(
+                descriptor, min(_CHUNK_BYTES, maximum_bytes + 1 - total)
+            )
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > maximum_bytes:
+                raise ValidationError(f"{label} exceeds byte limit {maximum_bytes}")
+        finished = os.fstat(descriptor)
+        stable = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if any(getattr(opened, field) != getattr(finished, field) for field in stable):
+            raise ValidationError(f"{label} changed while being read")
+        if total != opened.st_size:
+            raise ValidationError(f"{label} did not match its inspected length")
+        return b"".join(chunks)
+    except ValidationError:
+        raise
+    except OSError as failure:
+        raise ValidationError(f"cannot read {label}: {failure}") from failure
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def _read(path: str | Path, label: str) -> tuple[dict[str, Any], bytes]:
-    try: raw = Path(path).read_bytes()
-    except OSError as failure: raise ValidationError(f"cannot read {label}: {failure}") from failure
+    raw = _read_bytes(path, label, MAX_JSON_BYTES)
     return _decode(raw, label), raw
+
+
+def _pretty_bytes(value: dict[str, Any], label: str) -> bytes:
+    _validate_tree(value, label)
+    try:
+        raw = (
+            json.dumps(
+                value,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError) as failure:
+        raise ValidationError(f"cannot serialize {label}: {failure}") from failure
+    if len(raw) > MAX_JSON_BYTES:
+        raise ValidationError(f"{label} exceeds byte limit {MAX_JSON_BYTES}")
+    return raw
+
+
+def _atomic_write(path: str | Path, raw: bytes, label: str) -> None:
+    if type(raw) is not bytes or len(raw) > MAX_JSON_BYTES:
+        raise ValidationError(f"{label} must be at most {MAX_JSON_BYTES} bytes")
+    destination = Path(path)
+    descriptor = -1
+    temporary: str | None = None
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            existing = destination.lstat()
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and (
+            stat.S_ISLNK(existing.st_mode) or not stat.S_ISREG(existing.st_mode)
+        ):
+            raise ValidationError(
+                f"{label} path must be absent or a regular non-linked file"
+            )
+        descriptor, temporary = tempfile.mkstemp(
+            prefix=f".{destination.name}.", dir=destination.parent
+        )
+        with os.fdopen(descriptor, "wb") as stream:
+            descriptor = -1
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            current = destination.lstat()
+        except FileNotFoundError:
+            current = None
+        if current is not None and (
+            stat.S_ISLNK(current.st_mode) or not stat.S_ISREG(current.st_mode)
+        ):
+            raise ValidationError(
+                f"{label} path must be absent or a regular non-linked file"
+            )
+        os.replace(temporary, destination)
+        temporary = None
+    except ValidationError:
+        raise
+    except OSError as failure:
+        raise ValidationError(f"cannot write {label}: {failure}") from failure
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
 
 
 def _canonical(value: Any) -> bytes:
@@ -151,12 +351,28 @@ def _artifact(value: dict[str, Any], label: str) -> None:
 
 
 def _parse_fasta(raw: bytes) -> tuple[str, str, str, list[dict[str, int]]]:
-    try: lines = raw.decode("utf-8").splitlines()
+    if type(raw) is not bytes or len(raw) > MAX_DECOMPRESSED_BYTES:
+        raise ValidationError(
+            f"FASTA must be at most {MAX_DECOMPRESSED_BYTES} logical bytes"
+        )
+    try: source = raw.decode("utf-8")
     except UnicodeDecodeError as failure: raise ValidationError("FASTA must be UTF-8") from failure
+    line_breaks = source.count("\n") + source.count("\r") - source.count("\r\n")
+    line_breaks += sum(
+        source.count(separator)
+        for separator in ("\v", "\f", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+    )
+    if line_breaks > MAX_JSON_MEMBERS:
+        raise ValidationError("FASTA exceeds physical line ceiling")
+    lines = source.splitlines()
     if not lines or not lines[0].startswith(">"): raise ValidationError("FASTA must begin with a defline")
     head = lines[0][1:].split(maxsplit=1)
     if not head: raise ValidationError("FASTA record id is empty")
     record_id, description = head[0], head[1] if len(head) == 2 else ""
+    if len(record_id.encode("utf-8")) > MAX_IDENTIFIER_BYTES:
+        raise ValidationError("FASTA record id exceeds identifier byte ceiling")
+    if len(description.encode("utf-8")) > MAX_STRING_BYTES:
+        raise ValidationError("FASTA description exceeds JSON string byte ceiling")
     parts: list[str] = []; segments: list[dict[str, int]] = []; offset = 0
     for line_number, line in enumerate(lines[1:], 2):
         if line.startswith(">"): raise ValidationError("single-record FASTA contains another defline")
@@ -167,6 +383,8 @@ def _parse_fasta(raw: bytes) -> tuple[str, str, str, list[dict[str, int]]]:
         offset += len(line)
     sequence = "".join(parts)
     if not sequence: raise ValidationError("FASTA sequence is empty")
+    if len(sequence.encode("ascii")) > MAX_STRING_BYTES:
+        raise ValidationError("FASTA sequence exceeds JSON string byte ceiling")
     return record_id, description, sequence, segments
 
 
@@ -258,8 +476,28 @@ def _sequence_payload(raw: bytes) -> dict[str, Any]:
 
 
 def _unwrap(raw: bytes) -> tuple[bytes, str | None]:
+    if type(raw) is not bytes or len(raw) > MAX_INPUT_BYTES:
+        raise ValidationError(f"source input exceeds byte limit {MAX_INPUT_BYTES}")
     if not raw.startswith(b"\x1f\x8b"): return raw, None
-    try: return gzip.decompress(raw), _raw_digest(raw)
+    chunks: list[bytes] = []
+    total = 0
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(raw), mode="rb") as stream:
+            while True:
+                chunk = stream.read(
+                    min(_CHUNK_BYTES, MAX_DECOMPRESSED_BYTES + 1 - total)
+                )
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                total += len(chunk)
+                if total > MAX_DECOMPRESSED_BYTES:
+                    raise ValidationError(
+                        f"gzip source exceeds decompressed byte limit {MAX_DECOMPRESSED_BYTES}"
+                    )
+        return b"".join(chunks), _raw_digest(raw)
+    except ValidationError:
+        raise
     except (gzip.BadGzipFile, EOFError, OSError, zlib.error) as failure:
         raise ValidationError(f"malformed gzip source: {failure}") from failure
 
@@ -273,9 +511,18 @@ def _expected_collection(raw: bytes, record_id: str | None) -> dict[str, Any]:
     if logical.startswith(b">"):
         if record_id is not None: raise ValidationError("record_id is only valid for raw IUPAC collection input")
         kind = "fasta"
+        line_breaks = logical.count(b"\n") + logical.count(b"\r") - logical.count(b"\r\n")
+        line_breaks += sum(
+            logical.count(separator)
+            for separator in (b"\v", b"\f", b"\x1c", b"\x1d", b"\x1e", b"\x85")
+        )
+        if line_breaks > MAX_JSON_MEMBERS:
+            raise ValidationError("FASTA collection exceeds physical line ceiling")
         lines = logical.splitlines(keepends=True)
         if not lines or not lines[0].startswith(b">"): raise ValidationError("FASTA collection must begin with a defline")
         starts = [index for index, line in enumerate(lines) if line.startswith(b">")]
+        if len(starts) > MAX_SOURCE_RECORDS:
+            raise ValidationError("FASTA collection exceeds source record ceiling")
         records = [(start, b"".join(lines[start:(starts[position + 1] if position + 1 < len(starts) else len(lines))]))
                    for position, start in enumerate(starts)]
     else:
@@ -286,6 +533,8 @@ def _expected_collection(raw: bytes, record_id: str | None) -> dict[str, Any]:
         except UnicodeDecodeError as failure: raise ValidationError("raw sequence must be ASCII") from failure
         if not sequence or any(character.isspace() or character.upper() not in IUPAC for character in sequence):
             raise ValidationError("raw sequence must be non-empty whitespace-free IUPAC DNA")
+        if len(sequence) > MAX_STRING_BYTES:
+            raise ValidationError("raw sequence exceeds JSON string byte ceiling")
         kind = "raw-iupac"
         records = [(None, f">{record_id}\n{sequence}\n".encode("utf-8"))]
     members: list[dict[str, Any]] = []
@@ -500,8 +749,13 @@ def validate_chain(*, fasta: str | Path, sequence: str | Path, manifest: str | P
     checks: list[dict[str, Any]] = []
     hashes: dict[str, str] = {}
     try:
-        fasta_raw = Path(fasta).read_bytes(); hashes["source_input"] = _raw_digest(fasta_raw)
-        context_raw = None if context is None else Path(context).read_bytes()
+        fasta_raw = _read_bytes(fasta, "source input", MAX_INPUT_BYTES)
+        hashes["source_input"] = _raw_digest(fasta_raw)
+        context_raw = (
+            None
+            if context is None
+            else _read_bytes(context, "sequence context", MAX_JSON_BYTES)
+        )
         if context_raw is not None: hashes["context"] = _raw_digest(context_raw)
         source, source_raw = _read(sequence, "sequence artifact"); hashes["source_artifact"] = _raw_digest(source_raw)
         if source.get("format") == "brain01.sequence-ir":
@@ -535,5 +789,4 @@ def validate_chain(*, fasta: str | Path, sequence: str | Path, manifest: str | P
 
 
 def save_report(report: dict[str, Any], path: str | Path) -> None:
-    destination = Path(path); destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
+    _atomic_write(path, _pretty_bytes(report, "validation report"), "validation report")

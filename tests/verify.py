@@ -5,24 +5,69 @@ from __future__ import annotations
 import argparse
 import ast
 import base64
+from collections.abc import Iterator
 import copy
+import gc
 import hashlib
 import json
 import math
 import os
 from pathlib import Path
+from pathlib import PurePosixPath
+import shutil
+import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
+import zipfile
 
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT))
 
 from brainc._canonical import ContractError, canonical_bytes, digest, save_artifact
+from brainc.bio import GFF3Compiler
+from brainc.bio_graph import compile_feature_graph
 from brainc.compiler import CompilerError, compile_program, load_policy, load_program, save as save_program
+from brainc.insdc import GenBankCompiler, load_genbank_artifact
 from brainc.provider import ProviderError, load_response, make_request, save as save_provider
-from brainc.sequence_collection import SequenceCollectionCompiler, load_sequence_collection
+from brainc.sequence_collection import (
+    SequenceCollectionCompiler,
+    SequenceCollectionError,
+    load_sequence_collection,
+)
 from brainc.validator import validate_chain
+from brainc.validator_bio import validate_bio_chain
+from brainc.validator_bio_graph import validate_feature_graph_bundle
+from brainc.v2 import inline_storage, pack, policy_artifact, save as save_v2, target_artifact
+from brainc.v2._common import seal as seal_v2
+from brainc.v2.target import DEV_DOMAIN, OP_UNIT_CREATE
+
+
+U49845_EXPECTED = {
+    "raw_bytes": 10541,
+    "raw_sha256": "1b41f0096dece0626236d49e0bede43b07ab4fd1aa576c1284cc4fb50bea2fd4",
+    "artifact_bytes": 31047,
+    "artifact_sha256": "88644e5230b7b568ea60e1c85dd4f0cebf6a020b7c87c849a50c05fb918afd11",
+    "bio_ir_sha256": "16d430edfd507bc00ec3c1a6b077a7430713b3ecc1cb0484d9250d97c3f60d8f",
+    "sequence_collection_artifact_sha256": "d2c28a3b9fc441c4049875c560aa129a4bc923e45548e7edbc9618b35c3ce5fa",
+    "refget_seqcol_digest": "EnzSK21xMemjRN-WyXOuo6mb5DylpTpE",
+    "report_sha256": "ec1d09607820fbfa71d47a874b7051bca7d31d5c2381e8694d3ef8acbb1d7f6a",
+    "record_ids": ["U49845.1"],
+    "sequence_bases": 5028,
+    "sequence_sha256": "36203848f0560d3bc23561205438cbb3dc22b068ecfc92f9e3d77334b9ed9e9d",
+    "sequence_refget": "SQ.lDmukOs0TZpjopBrnhAwI775FEAhj379",
+    "feature_key_counts": {"CDS": 3, "gene": 2, "source": 1},
+    "summary": {
+        "records": 1,
+        "source_bytes": 10541,
+        "sequence_bases": 5028,
+        "sequence_chunks": 1,
+        "features": 6,
+        "segments": 6,
+        "unresolved_references": [],
+    },
+}
 
 
 def _artifact(core: dict) -> dict:
@@ -76,7 +121,8 @@ def _build_real_chain(root: Path) -> dict[str, Path | dict]:
 
 
 def real_dna() -> None:
-    raw = (ROOT / "tests" / "data" / "J02482.1.fasta").read_bytes()
+    source_input = ROOT / "tests" / "data" / "J02482.1.fasta"
+    raw = source_input.read_bytes()
     metadata = json.loads((ROOT / "tests" / "data" / "J02482.1.source.json").read_text(encoding="utf-8"))
     assert metadata["accession"] == "J02482.1"
     assert hashlib.sha256(raw).hexdigest() == metadata["fasta_sha256"] == "2826ee08e3506154cdeb7ab734ec6f9ebbea6e5d16d0bec488030192faf492a7"
@@ -84,13 +130,280 @@ def real_dna() -> None:
     assert len(bases) == metadata["bases"] == 5386
     assert hashlib.sha256(bases).hexdigest() == metadata["normalized_sequence_sha256"] == "97038c7e1edea2297667d7f0426ba942b322c74cb30e072ec66ba47f9c0448d0"
     with tempfile.TemporaryDirectory() as directory:
-        chain = _build_real_chain(Path(directory))
+        root = Path(directory)
+        chain = _build_real_chain(root / "scalar")
         assert chain["report"]["valid"], chain["report"]
         source = json.loads(Path(chain["source"]).read_text(encoding="utf-8"))
         program = json.loads(Path(chain["program"]).read_text(encoding="utf-8"))
         assert source["members"][0]["sequence_artifact"]["sequence_ir"]["refget_id"] == "SQ.IIXILYBQCpHdC4qpI3sOQ_HAeAm9bmeF"
         assert program["program_ir"]["states"][0]["value"] == 1.0
+
+        gff3_path = ROOT / "tests" / "data" / "J02482.1.gff3"
+        gff3 = gff3_path.read_bytes()
+        collection = SequenceCollectionCompiler().compile_file(source_input)
+        biological_source = root / "biological-source.json"
+        collection.save(biological_source)
+        bio = GFF3Compiler().compile_file(gff3_path, collection)
+        bio_report = validate_bio_chain(
+            bio.to_dict(),
+            collection.to_dict(),
+            fasta_source=raw,
+            gff3_source=gff3,
+            source_metadata=(ROOT / "tests" / "data" / "J02482.1.source.json").read_bytes(),
+        )
+        assert bio_report["valid"], bio_report
+        assert bio_report["summary"]["sequence_bases"] == 5386
+        assert bio_report["summary"]["features"] == 23
+        assert bio_report["summary"]["relationships"] == 4
+
+        bundle = compile_feature_graph(
+            biological_source, bio, gff3_source=gff3
+        )
+        graph_report = validate_feature_graph_bundle(
+            bundle.to_dict(), collection.to_dict(), bio.to_dict()
+        )
+        assert graph_report["valid"], graph_report
+        assert graph_report["result"]["units"] == 23
+        assert graph_report["result"]["edges"] == 4
+        bundle.save(root / "feature-graph")
     print("REAL-DNA-E2E-PASSED")
+
+
+def _walk_key_paths(
+    value: object,
+    path: tuple[str, ...] = (),
+) -> Iterator[tuple[tuple[str, ...], object]]:
+    pending = [(path, value)]
+    while pending:
+        current_path, current = pending.pop()
+        if type(current) is dict:
+            for key, child in current.items():
+                child_path = (*current_path, key)
+                yield child_path, child
+                pending.append((child_path, child))
+        elif type(current) is list:
+            pending.extend(((*current_path, str(index)), child) for index, child in enumerate(current))
+
+
+def _assert_genbank_wire(payload: dict, raw: bytes, expected: dict) -> None:
+    collection = payload["sequence_collection"]
+    bio_ir = payload["bio_ir"]
+    records = bio_ir["records"]
+    members = collection["members"]
+
+    assert payload["version"] == 2
+    assert payload["artifact_sha256"] == expected["artifact_sha256"]
+    assert payload["bio_ir_sha256"] == expected["bio_ir_sha256"]
+    assert collection["artifact_sha256"] == expected["sequence_collection_artifact_sha256"]
+    assert bio_ir["sequence_collection_artifact_sha256"] == collection["artifact_sha256"]
+    assert collection["inputs"]["source"]["sha256"] == expected["raw_sha256"]
+    assert collection["inputs"]["source"]["byte_length"] == len(raw)
+    assert collection["refget_seqcol"]["digest"] == expected["refget_seqcol_digest"]
+    assert [record["record_id"] for record in records] == expected["record_ids"]
+    assert [member["record_id"] for member in members] == expected["record_ids"]
+    assert sum(member["sequence"]["bases"] for member in members) == expected["sequence_bases"]
+    assert [member["sequence"]["refget_id"] for member in members] == [expected["sequence_refget"]]
+    assert [member["sequence"]["sha256"] for member in members] == [expected["sequence_sha256"]]
+    assert collection["refget_seqcol"]["level_2"] == {
+        "lengths": [member["sequence"]["bases"] for member in members],
+        "names": expected["record_ids"],
+        "sequences": [expected["sequence_refget"]],
+    }
+
+    feature_key_counts: dict[str, int] = {}
+    for record in records:
+        for feature in record["features"]:
+            feature_key_counts[feature["key"]] = feature_key_counts.get(feature["key"], 0) + 1
+    assert feature_key_counts == expected["feature_key_counts"]
+
+    sequence_paths: list[tuple[str, ...]] = []
+    storage_paths: list[tuple[str, ...]] = []
+    chunk_paths: list[tuple[str, ...]] = []
+    source_chunks_found = False
+    raw_sha_count = 0
+    sequence_sha_count = 0
+    for path, value in _walk_key_paths(payload):
+        if path[-1] == "sequence":
+            sequence_paths.append(path)
+        elif path[-1] == "storage":
+            storage_paths.append(path)
+        elif path[-1] == "chunks":
+            chunk_paths.append(path)
+        elif path[-1] == "source_chunks":
+            source_chunks_found = True
+        if value == expected["raw_sha256"]:
+            raw_sha_count += 1
+        if value == expected["sequence_sha256"]:
+            sequence_sha_count += 1
+        if path[-1] == "source_map":
+            for nested_path, _ in _walk_key_paths(value, path):
+                assert nested_path[-1] not in {"text", "eol", "chunks", "source_chunks"}, nested_path
+    expected_sequence_paths = [
+        ("sequence_collection", "members", str(index), "sequence")
+        for index in range(len(members))
+    ]
+    expected_storage_paths = [
+        ("sequence_collection", "inputs", "source", "storage"),
+        *(
+            ("sequence_collection", "members", str(index), "sequence", "storage")
+            for index in range(len(members))
+        ),
+    ]
+    expected_chunk_paths = [(*path, "chunks") for path in expected_storage_paths]
+    assert sorted(sequence_paths) == sorted(expected_sequence_paths)
+    assert sorted(storage_paths) == sorted(expected_storage_paths)
+    assert sorted(chunk_paths) == sorted(expected_chunk_paths)
+    assert not source_chunks_found
+    assert "inputs" not in payload
+    assert all("sequence" not in record and "source_chunks" not in record for record in records)
+    assert raw_sha_count == 1
+    assert sequence_sha_count == 1
+
+
+def _independent_genbank_report(source_path: Path, artifact_path: Path) -> dict:
+    validator = ROOT / "brainc" / "validator_insdc.py"
+    with tempfile.TemporaryDirectory() as directory:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(validator),
+                str(source_path),
+                str(artifact_path),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=directory,
+            timeout=180,
+            env=dict(os.environ),
+        )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == "", result.stderr
+    return json.loads(result.stdout)
+
+
+def _run_genbank_gate(source_path: Path, expected: dict) -> dict:
+    inspected = source_path.lstat()
+    assert stat.S_ISREG(inspected.st_mode), f"GenBank source must be a regular non-linked file: {source_path}"
+    assert inspected.st_size == expected["raw_bytes"]
+    with source_path.open("rb") as source:
+        raw = source.read(expected["raw_bytes"] + 1)
+    assert len(raw) == expected["raw_bytes"]
+    assert hashlib.sha256(raw).hexdigest() == expected["raw_sha256"]
+    if "raw_line_count" in expected:
+        assert len(raw.splitlines()) == expected["raw_line_count"]
+    if expected.get("final_blank_line") is True:
+        assert raw.endswith(b"//\n\n")
+
+    artifact = GenBankCompiler().compile_file(source_path)
+    payload = artifact.to_dict()
+    _assert_genbank_wire(payload, raw, expected)
+
+    with tempfile.TemporaryDirectory() as directory:
+        artifact_path = Path(directory) / "compiled-genbank.json"
+        artifact.save(artifact_path)
+        assert artifact_path.stat().st_size == expected["artifact_bytes"]
+
+        del payload, artifact
+        gc.collect()
+        loaded = load_genbank_artifact(artifact_path, genbank_source=raw)
+        assert loaded.digest == expected["artifact_sha256"]
+        del loaded
+        gc.collect()
+
+        report = _independent_genbank_report(source_path, artifact_path)
+
+    assert report["valid"] is True
+    assert report["report_sha256"] == expected["report_sha256"]
+    assert report["inputs"] == {
+        "genbank_source_sha256": expected["raw_sha256"],
+        "genbank_artifact_sha256": expected["artifact_sha256"],
+        "sequence_collection_artifact_sha256": expected["sequence_collection_artifact_sha256"],
+    }
+    assert report["replay"] == {
+        "source_sha256": expected["raw_sha256"],
+        "sequence_collection_artifact_sha256": expected["sequence_collection_artifact_sha256"],
+        "refget_seqcol_digest": expected["refget_seqcol_digest"],
+        "bio_ir_sha256": expected["bio_ir_sha256"],
+        "genbank_artifact_sha256": expected["artifact_sha256"],
+    }
+    assert report["summary"] == expected["summary"]
+    return report
+
+
+def genbank_real_dna() -> None:
+    source_path = ROOT / "tests" / "data" / "U49845.1.gb"
+    provenance = json.loads(
+        (ROOT / "tests" / "data" / "U49845.1.gb.source.json").read_text(encoding="utf-8")
+    )
+    assert provenance["record"] == "U49845.1"
+    assert provenance["bytes"] == U49845_EXPECTED["raw_bytes"]
+    assert provenance["sha256"] == U49845_EXPECTED["raw_sha256"]
+    assert provenance["normalized_sequence_sha256"] == U49845_EXPECTED["sequence_sha256"]
+    assert provenance["refget_id"] == U49845_EXPECTED["sequence_refget"]
+    _run_genbank_gate(source_path, U49845_EXPECTED)
+    print("GENBANK-REAL-DNA-PASSED")
+
+
+def genbank_scale(source_path: Path) -> None:
+    metadata = json.loads(
+        (ROOT / "tests" / "data" / "CP032762.1.source.json").read_text(encoding="utf-8")
+    )
+    source = metadata["source"]
+    sequence = metadata["sequence"]
+    compiled = metadata["compiler_release_gate"]
+    expected = {
+        **compiled,
+        "raw_bytes": source["raw_byte_length"],
+        "raw_sha256": source["raw_sha256"],
+        "raw_line_count": source["raw_line_count"],
+        "final_blank_line": source["final_blank_line"],
+        "record_ids": [metadata["version"]],
+        "sequence_bases": sequence["length"],
+        "sequence_sha256": sequence["sha256"],
+        "sequence_refget": sequence["refget"],
+        "feature_key_counts": metadata["structure"]["feature_key_counts"],
+    }
+    _run_genbank_gate(source_path, expected)
+    print("GENBANK-SCALE-PASSED")
+
+
+def runtime_integration() -> None:
+    """Materialize the real-DNA module in the separately released runtime."""
+
+    runtime_root = ROOT.parent / "epigenesis-runtime"
+    assert runtime_root.is_dir(), "sibling Epigenesis runtime checkout is required"
+    source_input = ROOT / "tests" / "data" / "J02482.1.fasta"
+    gff3_path = ROOT / "tests" / "data" / "J02482.1.gff3"
+    gff3 = gff3_path.read_bytes()
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        collection = SequenceCollectionCompiler().compile_file(source_input)
+        source = root / "source.json"
+        collection.save(source)
+        bio = GFF3Compiler().compile_file(gff3_path, collection)
+        bundle = compile_feature_graph(source, bio, gff3_source=gff3)
+        paths = bundle.save(root / "feature-graph")
+
+        sys.path.insert(0, str(runtime_root))
+        try:
+            from epirun.contracts import load_development_module, load_target_contract
+            from epirun.development import develop
+
+            target = load_target_contract(paths["target_contract"])
+            module = load_development_module(paths["development_module"], target)
+            developed = develop(target, module)
+        finally:
+            if sys.path[0] == str(runtime_root):
+                sys.path.pop(0)
+        assert developed.final_state_sha256 == (
+            "95cd313a51e6c43c29582c6834db0452430468a12975e0429434c329c313c2aa"
+        )
+        parent_edges = developed.state.edge_set("create.relationship.parent")
+        assert parent_edges.source_ids == (6, 9, 12, 13)
+        assert parent_edges.target_ids == (22, 21, 21, 22)
+    print("RUNTIME-INTEGRATION-PASSED")
 
 
 def tamper() -> None:
@@ -117,7 +430,12 @@ def tamper() -> None:
             {key: value for key, value in forged_source.items() if key != "artifact_sha256"}
         )
         _write_json(forged_source, source_path)
-        load_sequence_collection(source_path)
+        try:
+            load_sequence_collection(source_path)
+        except SequenceCollectionError:
+            pass
+        else:
+            raise AssertionError("producer accepted a shifted collection source map")
         source_report = validate_chain(
             fasta=fresh["source_input"], sequence=source_path, manifest=fresh["manifest"],
             request=fresh["request"], response=fresh["response"], policy=fresh["policy"],
@@ -131,7 +449,30 @@ def tamper() -> None:
 def boundary() -> None:
     denied = {"socket", "urllib", "requests", "httpx", "aiohttp", "subprocess", "importlib",
               "torch", "tensorflow", "jax", "sklearn"}
-    for path in (ROOT / "brainc").glob("*.py"):
+    biological_fixtures = {
+        "j02482",
+        "nc_001422",
+        "phix",
+        "u49845",
+        "cp032762",
+        "5386",
+        "5028",
+        "5868661",
+        "2826ee08e3506154cdeb7ab734ec6f9ebbea6e5d16d0bec488030192faf492a7",
+        "97038c7e1edea2297667d7f0426ba942b322c74cb30e072ec66ba47f9c0448d0",
+        "sq.iixilybqcphdc4qpi3soq_haeam9bmef",
+        "95cd313a51e6c43c29582c6834db0452430468a12975e0429434c329c313c2aa",
+        "1b41f0096dece0626236d49e0bede43b07ab4fd1aa576c1284cc4fb50bea2fd4",
+        "36203848f0560d3bc23561205438cbb3dc22b068ecfc92f9e3d77334b9ed9e9d",
+        "sq.ldmukos0tzpjopbrnhawi775feahj379",
+        "c54efd1ee2a811c8efbe12e3f8ea9757013877ce7e5faf8c06d39ac326a91582",
+        "b2c317b26275d822aae0063819b0b4012f247404edf87982d1eed303416bde62",
+        "sq.sfu4yxxy_mskaqhe06_smfwklbobmb-n",
+        "97b13016b899da15a76b66c5d2a94bf839f225e42a3f92fdc20bb63e873768b1",
+        "5367765fa8310e0491ec39e8e496750a18b2a51b5f52daaab5ad681b7f929035",
+        "447f3c4e32714ae9efc637657ed777f80a8faaceec2302c38c7ba4b9ecee5c0c",
+    }
+    for path in (ROOT / "brainc").rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         imports: set[str] = set()
         for node in ast.walk(tree):
@@ -140,6 +481,8 @@ def boundary() -> None:
         assert not imports & denied, (path, imports & denied)
         text = path.read_text(encoding="utf-8").lower()
         for marker in ("train_model(", "optimizer.step(", "requests.get(", "subprocess.run("):
+            assert marker not in text, (path, marker)
+        for marker in biological_fixtures:
             assert marker not in text, (path, marker)
     print("COMPILER-BOUNDARY-PASSED")
 
@@ -151,13 +494,589 @@ def wheel() -> None:
         subprocess.run([sys.executable, "-m", "pip", "wheel", "--no-index", "--no-deps", "--no-build-isolation",
                         "--wheel-dir", str(wheels), str(ROOT)], check=True, capture_output=True, text=True)
         wheel_path, = wheels.glob("*.whl")
+        with zipfile.ZipFile(wheel_path) as archive:
+            names = archive.namelist()
+            metadata_name, = [name for name in names if name.endswith(".dist-info/METADATA")]
+            metadata_text = archive.read(metadata_name).decode("utf-8")
+            entry_points_name, = [
+                name for name in names if name.endswith(".dist-info/entry_points.txt")
+            ]
+            entry_points_text = archive.read(entry_points_name).decode("utf-8")
+            assert "Version: 0.9.0\n" in metadata_text
+            assert "License-Expression: Apache-2.0\n" in metadata_text
+            assert "brainc/validator_bio_graph.py" in names
+            for required_module in (
+                "brainc/insdc.py",
+                "brainc/insdc_graph.py",
+                "brainc/sequence_collection_v2.py",
+                "brainc/validator_insdc.py",
+                "brainc/validator_insdc_graph.py",
+                "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
+            ):
+                assert required_module in names, required_module
+            assert "brainc = brainc.cli:main" in entry_points_text
+            assert (
+                "brainc-validate-genbank = brainc.validator_insdc:main"
+                in entry_points_text
+            )
+            assert (
+                "brainc-validate-insdc-graph = brainc.validator_insdc_graph:main"
+                in entry_points_text
+            )
+            assert not any(
+                PurePosixPath(name).name.casefold() == "cp032762.1.gb"
+                for name in names
+            ), "large CP032762.1 source bytes must not be bundled in the wheel"
+            assert any(name.endswith(".dist-info/licenses/LICENSE") for name in names)
         subprocess.run([sys.executable, "-m", "pip", "install", "--no-index", "--no-deps", "--target", str(installed),
                         str(wheel_path)], check=True, capture_output=True, text=True)
         environment = dict(os.environ); environment["PYTHONPATH"] = str(installed)
         result = subprocess.run([sys.executable, "-m", "brainc", "--help"], check=True,
                                 capture_output=True, text=True, cwd=root, env=environment)
-        assert "compile-collection" in result.stdout and "validate" in result.stdout
+        for command in (
+            "compile-collection",
+            "validate",
+            "compile-v2",
+            "check-v2",
+            "validate-v2",
+            "compile-gff3",
+            "validate-gff3",
+            "compile-feature-graph",
+            "validate-feature-graph",
+            "compile-genbank",
+            "validate-genbank",
+            "compile-insdc-graph",
+        ):
+            assert command in result.stdout, (command, result.stdout)
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import brainc, brainc.v2, brainc.validator_v2, brainc.bio, "
+                    "brainc.bio_graph, brainc.validator_bio, "
+                    "brainc.validator_bio_graph, brainc.insdc, "
+                    "brainc.insdc_graph, brainc.sequence_collection_v2, "
+                    "brainc.validator_insdc, brainc.validator_insdc_graph; "
+                    "assert brainc.__version__ == '0.9.0'"
+                ),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+
+        genbank_source = ROOT / "tests" / "data" / "U49845.1.gb"
+        genbank_artifact = root / "U49845.1.genbank.json"
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "brainc",
+                "compile-genbank",
+                str(genbank_source),
+                "-o",
+                str(genbank_artifact),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        compiled_genbank = json.loads(genbank_artifact.read_text(encoding="utf-8"))
+        assert compiled_genbank["format"] == "brainc.bio.insdc-genbank-ir"
+        assert compiled_genbank["version"] == 2
+        assert compiled_genbank["bio_ir"]["records"][0]["record_id"] == "U49845.1"
+        assert (
+            compiled_genbank["sequence_collection"]["members"][0]["sequence"]["bases"]
+            == 5028
+        )
+
+        genbank_report_path = root / "U49845.1.validation.json"
+        genbank_validation = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "brainc",
+                "validate-genbank",
+                str(genbank_source),
+                str(genbank_artifact),
+                "--report",
+                str(genbank_report_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        genbank_report = json.loads(genbank_validation.stdout)
+        assert genbank_report["valid"] is True
+        assert genbank_report["summary"]["records"] == 1
+        assert genbank_report["summary"]["sequence_bases"] == 5028
+        assert json.loads(genbank_report_path.read_text(encoding="utf-8")) == genbank_report
+
+        scripts = installed / ("Scripts" if os.name == "nt" else "bin")
+        validator_script = scripts / (
+            "brainc-validate-genbank.exe" if os.name == "nt" else "brainc-validate-genbank"
+        )
+        assert validator_script.is_file(), validator_script
+        standalone_report_path = root / "U49845.1.standalone-validation.json"
+        subprocess.run(
+            [
+                str(validator_script),
+                str(genbank_source),
+                str(genbank_artifact),
+                "-o",
+                str(standalone_report_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        assert (
+            json.loads(standalone_report_path.read_text(encoding="utf-8"))
+            == genbank_report
+        )
+
+        insdc_graph_directory = root / "U49845.1.insdc-graph"
+        insdc_graph_compile = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "brainc",
+                "compile-insdc-graph",
+                str(genbank_artifact),
+                "-o",
+                str(insdc_graph_directory),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        insdc_graph_summary = json.loads(insdc_graph_compile.stdout)
+        assert Path(insdc_graph_summary["bundle"]) == (
+            insdc_graph_directory / "bundle.json"
+        )
+        insdc_graph_validator = scripts / (
+            "brainc-validate-insdc-graph.exe"
+            if os.name == "nt"
+            else "brainc-validate-insdc-graph"
+        )
+        assert insdc_graph_validator.is_file(), insdc_graph_validator
+        insdc_graph_report_path = root / "U49845.1.insdc-graph-validation.json"
+        subprocess.run(
+            [
+                str(insdc_graph_validator),
+                str(genbank_source),
+                str(genbank_artifact),
+                str(insdc_graph_directory),
+                "-o",
+                str(insdc_graph_report_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        insdc_graph_report = json.loads(
+            insdc_graph_report_path.read_text(encoding="utf-8")
+        )
+        assert insdc_graph_report["valid"] is True
+        assert insdc_graph_report["result"]["units"] == 6
+        assert insdc_graph_report["result"]["edges"] == 0
+        assert insdc_graph_report["result"]["tensor_bytes"] == 536
+
+        source_input = ROOT / "tests" / "data" / "J02482.1.fasta"
+        source = root / "source.json"
+        subprocess.run(
+            [sys.executable, "-m", "brainc", "compile-collection", str(source_input), "-o", str(source)],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        target = target_artifact(
+            {
+                "id": "org.example.wheel-gate",
+                "abi_major": 1,
+                "opsets": [{"domain": DEV_DOMAIN, "version": 1}],
+                "unit_schemas": [
+                    {
+                        "id": "node",
+                        "fields": [
+                            {
+                                "id": "value",
+                                "type": {"dtype": "u64", "shape": []},
+                                "unit": None,
+                                "mutability": "constant",
+                                "numeric": {"kind": "integer"},
+                            }
+                        ],
+                    }
+                ],
+                "edge_schemas": [],
+                "ports": [],
+                "rules": [],
+            }
+        )
+        target_path = root / "target.json"
+        save_v2(target, target_path)
+        outputs = [
+            {
+                "id": "t.count",
+                "type": {"dtype": "u64", "shape": []},
+                "unit": None,
+                "axes": [],
+                "storage": inline_storage(pack("u64", [1])),
+            },
+            {
+                "id": "t.value",
+                "type": {"dtype": "u64", "shape": []},
+                "unit": None,
+                "axes": [],
+                "storage": inline_storage(pack("u64", [7])),
+            },
+        ]
+        manifest = seal_v2(
+            {
+                "format": "brainc.provider-manifest",
+                "version": 2,
+                "provider": {"name": "wheel-gate", "version": "1"},
+                "model_identity": {"kind": "content-sha256", "value": digest("wheel-gate")},
+                "accepts": ["brain01.sequence-collection-ir/v1"],
+                "outputs": [
+                    {key: output[key] for key in ("id", "type", "unit", "axes")}
+                    for output in outputs
+                ],
+            }
+        )
+        manifest_path = root / "manifest.json"
+        save_v2(manifest, manifest_path)
+        request = root / "request.json"
+        subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "make-request-v2", str(source),
+                "--manifest", str(manifest_path), "--output-id", "t.count",
+                "--output-id", "t.value", "-o", str(request),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        request_value = json.loads(request.read_text(encoding="utf-8"))
+        response = seal_v2(
+            {
+                "format": "brainc.prediction-response",
+                "version": 2,
+                "request_artifact_sha256": request_value["artifact_sha256"],
+                "provider": manifest["provider"],
+                "model_identity": manifest["model_identity"],
+                "outputs": outputs,
+            }
+        )
+        response_path = root / "response.json"
+        save_v2(response, response_path)
+        target_binding = {
+            "id": target["contract"]["id"],
+            "abi_major": target["contract"]["abi_major"],
+            "contract_sha256": target["contract_sha256"],
+        }
+        policy = policy_artifact(
+            "wheel-gate",
+            target_binding,
+            [
+                {"id": "t.count", "from_output": "t.count"},
+                {"id": "t.value", "from_output": "t.value"},
+            ],
+            [
+                {
+                    "id": "create.nodes",
+                    "op": OP_UNIT_CREATE,
+                    "version": 1,
+                    "schema": "node",
+                    "count": "t.count",
+                    "initializers": [{"field": "value", "tensor": "t.value"}],
+                }
+            ],
+        )
+        policy_path = root / "policy.json"
+        save_v2(policy, policy_path)
+        module = root / "module.json"
+        subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "compile-v2", str(source),
+                "--manifest", str(manifest_path), "--request", str(request),
+                "--response", str(response_path), "--policy", str(policy_path),
+                "--target", str(target_path), "-o", str(module),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        validation = subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "validate-v2",
+                "--source-input", str(source_input), "--source-artifact", str(source),
+                "--manifest", str(manifest_path), "--request", str(request),
+                "--response", str(response_path), "--policy", str(policy_path),
+                "--target", str(target_path), "--module", str(module),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        assert json.loads(validation.stdout)["valid"]
+
+        gff3_source = ROOT / "tests" / "data" / "J02482.1.gff3"
+        bio_ir = root / "bio-ir.json"
+        subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "compile-gff3", str(gff3_source),
+                "--sequence-collection", str(source), "-o", str(bio_ir),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        bio_report_path = root / "bio-validation.json"
+        bio_validation = subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "validate-gff3", str(bio_ir),
+                "--sequence-collection", str(source),
+                "--sequence-input", str(source_input),
+                "--gff3-source", str(gff3_source),
+                "--report", str(bio_report_path),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        bio_report = json.loads(bio_validation.stdout)
+        assert bio_report["valid"]
+        assert bio_report["summary"]["features"] == 23
+        assert bio_report["summary"]["relationships"] == 4
+        assert json.loads(bio_report_path.read_text(encoding="utf-8")) == bio_report
+
+        graph_directory = root / "feature-graph"
+        graph_compile = subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "compile-feature-graph", str(bio_ir),
+                "--sequence-collection", str(source),
+                "--gff3-source", str(gff3_source),
+                "-o", str(graph_directory),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        graph_summary = json.loads(graph_compile.stdout)
+        bundle_path = Path(graph_summary["bundle"])
+        assert bundle_path == graph_directory / "bundle.json"
+        graph_report_path = root / "graph-validation.json"
+        graph_validation = subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "validate-feature-graph", str(bundle_path),
+                "--sequence-collection", str(source), "--bio-ir", str(bio_ir),
+                "--report", str(graph_report_path),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        graph_report = json.loads(graph_validation.stdout)
+        assert graph_report["valid"]
+        assert graph_report["result"]["units"] == 23
+        assert graph_report["result"]["edges"] == 4
+        assert json.loads(graph_report_path.read_text(encoding="utf-8")) == graph_report
     print("WHEEL-SMOKE-PASSED")
+
+
+def sdist() -> None:
+    """Build the published source archive and test it outside the checkout."""
+
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        distributions = root / "dist"
+        distributions.mkdir()
+        script = (
+            "import pathlib, setuptools.build_meta as backend; "
+            f"print(backend.build_sdist({str(distributions)!r}))"
+        )
+        subprocess.run(
+            [sys.executable, "-c", script],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+            env=dict(os.environ),
+        )
+        archives = list(distributions.glob("*.tar.gz"))
+        assert len(archives) == 1, archives
+        archive_path = archives[0]
+        extracted = root / "extracted"
+        extracted.mkdir()
+        with tarfile.open(archive_path, "r:gz") as archive:
+            names = archive.getnames()
+            top_levels = {name.split("/", 1)[0] for name in names if name}
+            assert len(top_levels) == 1, top_levels
+            package_root = next(iter(top_levels))
+            required = {
+                "LICENSE",
+                "README.md",
+                "SPEC.md",
+                "docs/STANDARDS.md",
+                "pyproject.toml",
+                "tests/verify.py",
+                "tests/data/J02482.1.fasta",
+                "tests/data/J02482.1.gff3",
+                "tests/data/J02482.1.source.json",
+                "tests/data/J02482.1.gff3.source.json",
+                "tests/data/U49845.1.gb",
+                "brainc/insdc.py",
+                "brainc/sequence_collection_v2.py",
+                "brainc/validator_insdc.py",
+                "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
+            }
+            missing = sorted(
+                relative
+                for relative in required
+                if f"{package_root}/{relative}" not in names
+            )
+            assert not missing, f"sdist is missing publication inputs: {missing}"
+            assert not any(
+                PurePosixPath(name).name.casefold() == "cp032762.1.gb"
+                for name in names
+            ), "large CP032762.1 source bytes must not be bundled in the sdist"
+            for member in archive.getmembers():
+                relative = PurePosixPath(member.name)
+                assert not relative.is_absolute(), member.name
+                assert relative.parts and ".." not in relative.parts, member.name
+                assert "\\" not in member.name, member.name
+                assert all(":" not in part for part in relative.parts), member.name
+                target = extracted.joinpath(*relative.parts)
+                assert target.resolve(strict=False).is_relative_to(
+                    extracted.resolve()
+                ), member.name
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    continue
+                assert member.isfile(), (
+                    "sdist contains a non-regular archive member",
+                    member.name,
+                    member.type,
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                source = archive.extractfile(member)
+                assert source is not None, member.name
+                with source, target.open("xb") as output:
+                    shutil.copyfileobj(source, output, length=1024 * 1024)
+        source_root = extracted / package_root
+        environment = dict(os.environ)
+        environment.pop("PYTHONPATH", None)
+        result = subprocess.run(
+            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=source_root,
+            env=environment,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "OK" in result.stderr, result.stderr
+
+        installed = root / "installed"
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--no-index",
+                "--no-deps",
+                "--no-build-isolation",
+                "--target",
+                str(installed),
+                str(source_root),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        installed_environment = dict(environment)
+        installed_environment["PYTHONPATH"] = str(installed)
+        help_result = subprocess.run(
+            [sys.executable, "-m", "brainc", "--help"],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=installed_environment,
+        )
+        for command in ("compile-genbank", "validate-genbank"):
+            assert command in help_result.stdout, (command, help_result.stdout)
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import brainc, brainc.insdc, brainc.sequence_collection_v2, "
+                    "brainc.validator_insdc; assert brainc.__version__ == '0.9.0'"
+                ),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=installed_environment,
+        )
+
+        genbank_source = source_root / "tests" / "data" / "U49845.1.gb"
+        genbank_artifact = root / "sdist-U49845.1.genbank.json"
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "brainc",
+                "compile-genbank",
+                str(genbank_source),
+                "-o",
+                str(genbank_artifact),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=installed_environment,
+        )
+        validation = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "brainc",
+                "validate-genbank",
+                str(genbank_source),
+                str(genbank_artifact),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=installed_environment,
+        )
+        report = json.loads(validation.stdout)
+        assert report["valid"] is True
+        assert report["summary"]["records"] == 1
+        assert report["summary"]["sequence_bases"] == 5028
+
+        scripts = installed / ("Scripts" if os.name == "nt" else "bin")
+        validator_script = scripts / (
+            "brainc-validate-genbank.exe" if os.name == "nt" else "brainc-validate-genbank"
+        )
+        assert validator_script.is_file(), validator_script
+        standalone = subprocess.run(
+            [str(validator_script), str(genbank_source), str(genbank_artifact)],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=installed_environment,
+        )
+        assert json.loads(standalone.stdout) == report
+    print("SDIST-SELF-TEST-PASSED")
 
 
 def canonical() -> None:
@@ -337,10 +1256,23 @@ def contract_attacks() -> None:
     print("CONTRACT-ATTACKS-PASSED")
 
 
-COMMANDS = {"real-dna": real_dna, "tamper": tamper, "boundary": boundary, "wheel": wheel,
+COMMANDS = {"real-dna": real_dna, "genbank-real-dna": genbank_real_dna,
+            "runtime-integration": runtime_integration,
+            "tamper": tamper, "boundary": boundary, "wheel": wheel,
+            "sdist": sdist,
             "canonical": canonical, "contract-attacks": contract_attacks}
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(); parser.add_argument("gate", choices=COMMANDS)
-    COMMANDS[parser.parse_args().gate]()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("gate", choices=sorted([*COMMANDS, "genbank-scale"]))
+    parser.add_argument("--source", type=Path, help="local CP032762.1 GenBank source for genbank-scale")
+    arguments = parser.parse_args()
+    if arguments.gate == "genbank-scale":
+        if arguments.source is None:
+            parser.error("genbank-scale requires --source PATH; it never downloads source data")
+        genbank_scale(arguments.source)
+    else:
+        if arguments.source is not None:
+            parser.error("--source is only valid with genbank-scale")
+        COMMANDS[arguments.gate]()

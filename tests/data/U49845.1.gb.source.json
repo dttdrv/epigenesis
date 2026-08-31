@@ -1,0 +1,16 @@
+{
+  "authority": "NCBI GenBank",
+  "bytes": 10541,
+  "format": "brainc.test-source-provenance",
+  "normalized_sequence_sha256": "36203848f0560d3bc23561205438cbb3dc22b068ecfc92f9e3d77334b9ed9e9d",
+  "record": "U49845.1",
+  "refget_id": "SQ.lDmukOs0TZpjopBrnhAwI775FEAhj379",
+  "retrieval": {
+    "method": "preformatted-record-block",
+    "profile": "GenBank Flat File"
+  },
+  "retrieved_on": "2026-08-31",
+  "sha256": "1b41f0096dece0626236d49e0bede43b07ab4fd1aa576c1284cc4fb50bea2fd4",
+  "uri": "https://www.ncbi.nlm.nih.gov/genbank/samplerecord/",
+  "version": 1
+}

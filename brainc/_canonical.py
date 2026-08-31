@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import hashlib
 import json
 import math
 from pathlib import Path
 import re
 from typing import Any
+
+from ._io import (
+    BoundedIOError,
+    MAX_JSON_BYTES,
+    MAX_JSON_DEPTH,
+    MAX_JSON_MEMBERS,
+    MAX_STRING_BYTES,
+    atomic_write_file,
+    load_json_object,
+    pretty_json_bytes,
+    read_regular_file,
+)
 
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
@@ -33,24 +46,22 @@ def no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def loads(raw: bytes, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(
-            raw.decode("utf-8"),
-            object_pairs_hook=no_duplicates,
-            parse_constant=reject_constant,
+        return load_json_object(
+            raw,
+            label,
+            maximum_bytes=MAX_JSON_BYTES,
+            maximum_depth=MAX_JSON_DEPTH,
+            maximum_members=MAX_JSON_MEMBERS,
+            maximum_string_bytes=MAX_STRING_BYTES,
         )
-    except ContractError:
-        raise
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as failure:
+    except BoundedIOError as failure:
         raise ContractError(f"invalid {label} JSON: {failure}") from failure
-    if type(value) is not dict:
-        raise ContractError(f"{label} must be a JSON object")
-    return value
 
 
 def load(path: str | Path, label: str) -> tuple[dict[str, Any], bytes]:
     try:
-        raw = Path(path).read_bytes()
-    except OSError as failure:
+        raw = read_regular_file(path, maximum_bytes=MAX_JSON_BYTES, label=label)
+    except BoundedIOError as failure:
         raise ContractError(f"cannot read {label}: {failure}") from failure
     return loads(raw, label), raw
 
@@ -58,8 +69,8 @@ def load(path: str | Path, label: str) -> tuple[dict[str, Any], bytes]:
 def canonical_bytes(value: Any) -> bytes:
     """Serialize an I-JSON value with RFC 8785 JSON canonicalization."""
     try:
-        return _jcs(value).encode("utf-8")
-    except (TypeError, ValueError, UnicodeError) as failure:
+        return "".join(_jcs_chunks(value)).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError, RecursionError) as failure:
         raise ContractError(f"value is not RFC 8785 canonical JSON: {failure}") from failure
 
 
@@ -98,31 +109,60 @@ def _jcs_number(value: float) -> str:
     return sign + rendered + ("e+" if normalized_exponent >= 0 else "e") + str(normalized_exponent)
 
 
-def _jcs(value: Any) -> str:
+def _jcs_chunks(value: Any) -> Iterator[str]:
+    """Yield RFC 8785 text without constructing every enclosing subtree."""
+
     if value is None:
-        return "null"
-    if type(value) is bool:
-        return "true" if value else "false"
-    if type(value) is str:
-        return _jcs_string(value)
-    if type(value) is int:
+        yield "null"
+    elif type(value) is bool:
+        yield "true" if value else "false"
+    elif type(value) is str:
+        yield _jcs_string(value)
+    elif type(value) is int:
         if not -SAFE_INTEGER <= value <= SAFE_INTEGER:
             raise ValueError(f"integer exceeds I-JSON safe range: {value}")
-        return str(value)
-    if type(value) is float:
-        return _jcs_number(value)
-    if type(value) is list:
-        return "[" + ",".join(_jcs(item) for item in value) + "]"
-    if type(value) is dict:
+        yield str(value)
+    elif type(value) is float:
+        yield _jcs_number(value)
+    elif type(value) is list:
+        yield "["
+        for index, item in enumerate(value):
+            if index:
+                yield ","
+            yield from _jcs_chunks(item)
+        yield "]"
+    elif type(value) is dict:
         if any(type(key) is not str for key in value):
             raise TypeError("JSON object keys must be strings")
-        ordered = sorted(value, key=lambda key: key.encode("utf-16be"))
-        return "{" + ",".join(_jcs_string(key) + ":" + _jcs(value[key]) for key in ordered) + "}"
-    raise TypeError(f"unsupported JSON value type: {type(value).__name__}")
+        yield "{"
+        for index, key in enumerate(sorted(value, key=lambda item: item.encode("utf-16be"))):
+            if index:
+                yield ","
+            yield _jcs_string(key)
+            yield ":"
+            yield from _jcs_chunks(value[key])
+        yield "}"
+    else:
+        raise TypeError(f"unsupported JSON value type: {type(value).__name__}")
 
 
 def digest(value: Any) -> str:
-    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+    hasher = hashlib.sha256()
+    try:
+        pending: list[str] = []
+        pending_characters = 0
+        for chunk in _jcs_chunks(value):
+            pending.append(chunk)
+            pending_characters += len(chunk)
+            if pending_characters >= 64 * 1024:
+                hasher.update("".join(pending).encode("utf-8"))
+                pending.clear()
+                pending_characters = 0
+        if pending:
+            hasher.update("".join(pending).encode("utf-8"))
+    except (TypeError, ValueError, UnicodeError, RecursionError) as failure:
+        raise ContractError(f"value is not RFC 8785 canonical JSON: {failure}") from failure
+    return hasher.hexdigest()
 
 
 def bytes_digest(value: bytes) -> str:
@@ -170,9 +210,20 @@ def artifact_digest(payload: dict[str, Any], field: str = "artifact_sha256") -> 
 
 
 def save_artifact(payload: dict[str, Any], path: str | Path) -> None:
-    destination = Path(path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n",
-        encoding="utf-8",
-    )
+    try:
+        raw = pretty_json_bytes(
+            payload,
+            ensure_ascii=False,
+            maximum_bytes=MAX_JSON_BYTES,
+            maximum_depth=MAX_JSON_DEPTH,
+            maximum_members=MAX_JSON_MEMBERS,
+            maximum_string_bytes=MAX_STRING_BYTES,
+        )
+        atomic_write_file(
+            path,
+            raw,
+            maximum_bytes=MAX_JSON_BYTES,
+            label="artifact output",
+        )
+    except BoundedIOError as failure:
+        raise ContractError(f"cannot save artifact: {failure}") from failure

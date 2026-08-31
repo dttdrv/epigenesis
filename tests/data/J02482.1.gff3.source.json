@@ -1,0 +1,14 @@
+{
+  "authority": "NCBI Nucleotide",
+  "format": "brainc.test-source-provenance",
+  "record": "J02482.1",
+  "retrieval": {
+    "db": "nuccore",
+    "retmode": "text",
+    "rettype": "gff3"
+  },
+  "retrieved_on": "2026-08-31",
+  "sha256": "dedcf7f2aac487f0367e2a284e7cece30f6b2d42a4a2e0deb06dbdc30b094c84",
+  "uri": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=J02482.1&rettype=gff3&retmode=text",
+  "version": 1
+}

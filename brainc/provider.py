@@ -9,8 +9,8 @@ from typing import Any
 from ._canonical import (
     ContractError, artifact_digest, digest, keys, load, number, save_artifact, sha256, text
 )
-from .sequence import load_sequence_artifact
-from .sequence_collection import load_sequence_collection
+from .sequence import _as_artifact as _as_sequence_artifact
+from .sequence_collection import _as_collection as _as_sequence_collection
 
 
 class ProviderError(ContractError):
@@ -34,9 +34,9 @@ def load_source(path: str | Path) -> dict[str, Any]:
     payload, _ = load(path, "sequence source")
     identity = (payload.get("format"), payload.get("version"))
     if identity == ("brain01.sequence-ir", 2):
-        load_sequence_artifact(path)
+        _as_sequence_artifact(payload)
     elif identity == ("brain01.sequence-collection-ir", 1):
-        load_sequence_collection(path)
+        _as_sequence_collection(payload)
     else:
         raise ProviderError("unsupported sequence source format or version")
     return payload

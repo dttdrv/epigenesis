@@ -10,12 +10,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 import base64
 import hashlib
-import json
 from pathlib import Path
 import re
 from typing import Any
 
 from ._canonical import ContractError, canonical_bytes
+from ._io import (
+    BoundedIOError,
+    MAX_IDENTIFIER_BYTES,
+    MAX_INPUT_BYTES,
+    MAX_JSON_BYTES,
+    MAX_JSON_DEPTH,
+    MAX_JSON_MEMBERS,
+    MAX_STRING_BYTES,
+    atomic_write_file,
+    load_json_object,
+    pretty_json_bytes,
+    read_regular_file,
+)
 
 
 SEQUENCE_COMPILER_VERSION = "0.3.0"
@@ -30,6 +42,7 @@ SEQUENCE_PASSES = (
 IUPAC_DNA = frozenset("ACGTRYSWKMBDHVN")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 COORDINATE_SYSTEM = "0-based-half-open"
+MAX_SOURCE_LINE_BREAKS = MAX_JSON_MEMBERS
 
 
 class SequenceCompilerError(ValueError):
@@ -51,31 +64,32 @@ def _canonical_digest(value: Any) -> str:
     return _sha256_bytes(_canonical_bytes(value))
 
 
-def _reject_constant(value: str) -> None:
-    raise ValueError(f"non-finite JSON number is not allowed: {value}")
-
-
-def _object_no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"duplicate JSON key: {key}")
-        result[key] = value
-    return result
-
-
 def _load_json_bytes(raw: bytes, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(
-            raw.decode("utf-8"),
-            object_pairs_hook=_object_no_duplicates,
-            parse_constant=_reject_constant,
+        return load_json_object(
+            raw,
+            label,
+            maximum_bytes=MAX_JSON_BYTES,
+            maximum_depth=MAX_JSON_DEPTH,
+            maximum_members=MAX_JSON_MEMBERS,
+            maximum_string_bytes=MAX_STRING_BYTES,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as failure:
+    except BoundedIOError as failure:
         raise SequenceCompilerError(f"DNA020: invalid {label} JSON: {failure}") from failure
-    if not isinstance(value, dict):
-        raise SequenceCompilerError(f"DNA020: {label} must be a JSON object")
-    return value
+
+
+def _artifact_bytes(payload: dict[str, Any]) -> bytes:
+    try:
+        return pretty_json_bytes(
+            payload,
+            ensure_ascii=True,
+            maximum_bytes=MAX_JSON_BYTES,
+            maximum_depth=MAX_JSON_DEPTH,
+            maximum_members=MAX_JSON_MEMBERS,
+            maximum_string_bytes=MAX_STRING_BYTES,
+        )
+    except BoundedIOError as failure:
+        raise SequenceCompilerError(f"DNA038: sequence artifact is outside compiler limits: {failure}") from failure
 
 
 def _require_keys(value: dict[str, Any], required: set[str], optional: set[str], label: str) -> None:
@@ -91,6 +105,22 @@ def _require_text(value: Any, label: str) -> str:
     if type(value) is not str or not value or value != value.strip():
         raise SequenceCompilerError(f"DNA023: {label} must be a non-empty trimmed string")
     return value
+
+
+def _require_record_id(value: Any, label: str) -> str:
+    record_id = _require_text(value, label)
+    if any(character.isspace() for character in record_id):
+        raise SequenceCompilerError(f"DNA023: {label} must be whitespace-free")
+    if any(
+        ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F
+        for character in record_id
+    ):
+        raise SequenceCompilerError(f"DNA023: {label} contains a control character")
+    if len(record_id.encode("utf-8")) > MAX_IDENTIFIER_BYTES:
+        raise SequenceCompilerError(
+            f"DNA023: {label} exceeds {MAX_IDENTIFIER_BYTES} UTF-8 bytes"
+        )
+    return record_id
 
 
 def _refget_id(sequence: str) -> str:
@@ -238,9 +268,16 @@ class SequenceArtifact:
         return payload
 
     def save(self, path: str | Path) -> None:
-        destination = Path(path)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        raw = _artifact_bytes(self.to_dict())
+        try:
+            atomic_write_file(
+                path,
+                raw,
+                maximum_bytes=MAX_JSON_BYTES,
+                label="sequence artifact output",
+            )
+        except BoundedIOError as failure:
+            raise SequenceCompilerError(f"DNA038: cannot save sequence artifact: {failure}") from failure
 
 
 def _parse_fasta(raw: bytes) -> FastaRecord:
@@ -248,6 +285,15 @@ def _parse_fasta(raw: bytes) -> FastaRecord:
         source = raw.decode("utf-8")
     except UnicodeDecodeError as failure:
         raise SequenceCompilerError("DNA001: FASTA must be UTF-8 text") from failure
+    line_breaks = source.count("\n") + source.count("\r") - source.count("\r\n")
+    line_breaks += sum(
+        source.count(separator)
+        for separator in ("\v", "\f", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+    )
+    if line_breaks > MAX_SOURCE_LINE_BREAKS:
+        raise SequenceCompilerError(
+            f"DNA008: FASTA exceeds {MAX_SOURCE_LINE_BREAKS} physical line breaks"
+        )
     lines = source.splitlines()
     if not lines or not lines[0].startswith(">"):
         raise SequenceCompilerError("DNA002: FASTA must begin with a '>' defline")
@@ -257,8 +303,26 @@ def _parse_fasta(raw: bytes) -> FastaRecord:
     first = defline.split(maxsplit=1)
     record_id = first[0]
     description = first[1] if len(first) == 2 else ""
+    if len(record_id.encode("utf-8")) > MAX_IDENTIFIER_BYTES:
+        raise SequenceCompilerError(
+            f"DNA009: FASTA record identifier exceeds {MAX_IDENTIFIER_BYTES} UTF-8 bytes"
+        )
+    if len(description.encode("utf-8")) > MAX_STRING_BYTES:
+        raise SequenceCompilerError(
+            f"DNA010: FASTA description exceeds {MAX_STRING_BYTES} UTF-8 bytes"
+        )
     if any(character.isspace() for character in record_id):
         raise SequenceCompilerError("DNA003: FASTA record identifier contains whitespace")
+    if any(
+        ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F
+        for character in record_id
+    ):
+        raise SequenceCompilerError("DNA003: FASTA record identifier contains a control character")
+    if any(
+        ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F
+        for character in description
+    ):
+        raise SequenceCompilerError("DNA010: FASTA description contains a control character")
     sequence_parts: list[str] = []
     segments: list[SequenceSegment] = []
     offset = 0
@@ -282,6 +346,10 @@ def _parse_fasta(raw: bytes) -> FastaRecord:
     sequence = "".join(sequence_parts)
     if not sequence:
         raise SequenceCompilerError("DNA007: FASTA sequence is empty")
+    if len(sequence.encode("ascii")) > MAX_STRING_BYTES:
+        raise SequenceCompilerError(
+            f"DNA011: FASTA sequence exceeds emitted JSON string limit {MAX_STRING_BYTES}"
+        )
     return FastaRecord(record_id, description, sequence, tuple(segments))
 
 
@@ -294,7 +362,7 @@ def _parse_context(raw: bytes) -> SequenceContext:
         or value["version"] != 1
     ):
         raise SequenceCompilerError("DNA024: unsupported sequence context format or version")
-    record_id = _require_text(value["record_id"], "context.record_id")
+    record_id = _require_record_id(value["record_id"], "context.record_id")
 
     reference_value = value["reference"]
     reference: ReferenceInterval | None
@@ -363,8 +431,19 @@ class SequenceCompiler:
     """Compile one standard FASTA record and optional explicit context."""
 
     def compile_file(self, path: str | Path, context_path: str | Path | None = None) -> SequenceArtifact:
-        fasta_raw = Path(path).read_bytes()
-        context_raw = None if context_path is None else Path(context_path).read_bytes()
+        try:
+            fasta_raw = read_regular_file(path, maximum_bytes=MAX_INPUT_BYTES, label="FASTA source")
+            context_raw = (
+                None
+                if context_path is None
+                else read_regular_file(
+                    context_path,
+                    maximum_bytes=MAX_JSON_BYTES,
+                    label="sequence context",
+                )
+            )
+        except BoundedIOError as failure:
+            raise SequenceCompilerError(f"DNA039: unsafe or oversized input file: {failure}") from failure
         return self.compile_bytes(fasta_raw, context_raw)
 
     def compile_text(self, source: str, source_name: str = "<memory>") -> SequenceArtifact:
@@ -372,6 +451,16 @@ class SequenceCompiler:
         return self.compile_bytes(source.encode("utf-8"), None)
 
     def compile_bytes(self, fasta_raw: bytes, context_raw: bytes | None = None) -> SequenceArtifact:
+        if type(fasta_raw) is not bytes or len(fasta_raw) > MAX_INPUT_BYTES:
+            raise SequenceCompilerError(
+                f"DNA012: FASTA source must be bytes at most {MAX_INPUT_BYTES} bytes"
+            )
+        if context_raw is not None and (
+            type(context_raw) is not bytes or len(context_raw) > MAX_JSON_BYTES
+        ):
+            raise SequenceCompilerError(
+                f"DNA020: sequence context must be bytes at most {MAX_JSON_BYTES} bytes"
+            )
         record = _parse_fasta(fasta_raw)
         context = None if context_raw is None else _parse_context(context_raw)
         if context is not None and context.record_id != record.record_id:
@@ -382,7 +471,7 @@ class SequenceCompiler:
                 f"DNA036: reference span {reference.end - reference.start} does not equal sequence length "
                 f"{len(record.sequence)}"
             )
-        return SequenceArtifact(
+        artifact = SequenceArtifact(
             fasta_sha256=_sha256_bytes(fasta_raw),
             context_sha256=None if context_raw is None else _sha256_bytes(context_raw),
             record_id=record.record_id,
@@ -392,6 +481,8 @@ class SequenceCompiler:
             provenance=() if context is None else context.provenance,
             source_map=record.segments,
         )
+        _artifact_bytes(artifact.to_dict())
+        return artifact
 
 
 def _as_artifact(payload: dict[str, Any]) -> SequenceArtifact:
@@ -435,9 +526,12 @@ def _as_artifact(payload: dict[str, Any]) -> SequenceArtifact:
         set(),
         "sequence_ir",
     )
-    record_id = _require_text(ir["record_id"], "sequence_ir.record_id")
-    if not isinstance(ir["description"], str):
-        raise SequenceCompilerError("DNA046: sequence_ir.description must be a string")
+    record_id = _require_record_id(ir["record_id"], "sequence_ir.record_id")
+    if not isinstance(ir["description"], str) or ir["description"].splitlines() not in (
+        [],
+        [ir["description"]],
+    ):
+        raise SequenceCompilerError("DNA046: sequence_ir.description must be one text line")
     sequence = ir["sequence"]
     if not isinstance(sequence, str) or not sequence or any(base.upper() not in IUPAC_DNA for base in sequence):
         raise SequenceCompilerError("DNA047: sequence_ir.sequence is not valid IUPAC DNA")
@@ -477,7 +571,12 @@ def _as_artifact(payload: dict[str, Any]) -> SequenceArtifact:
         line, start, length = item["line"], item["normalized_start"], item["length"]
         if any(isinstance(value, bool) or not isinstance(value, int) for value in (line, start, length)):
             raise SequenceCompilerError(f"DNA052: sequence segment {index} values must be integers")
-        if line <= last_line or start != expected_offset or length <= 0:
+        if (
+            line <= last_line
+            or line > MAX_SOURCE_LINE_BREAKS + 1
+            or start != expected_offset
+            or length <= 0
+        ):
             raise SequenceCompilerError(f"DNA053: sequence segment {index} is discontinuous")
         segments.append(SequenceSegment(line, start, length))
         expected_offset += length
@@ -489,6 +588,12 @@ def _as_artifact(payload: dict[str, Any]) -> SequenceArtifact:
         inputs["fasta_sha256"], inputs["context_sha256"], record_id, ir["description"], sequence,
         reference, provenance, tuple(segments),
     )
+    if artifact.context_sha256 is None and (
+        artifact.reference is not None or artifact.provenance
+    ):
+        raise SequenceCompilerError(
+            "DNA058: sequence context assertions require inputs.context_sha256"
+        )
     expected_sequence_fields = artifact._sequence_ir()
     if ir != expected_sequence_fields:
         raise SequenceCompilerError("DNA055: derived sequence IR fields do not recompute")
@@ -500,6 +605,9 @@ def _as_artifact(payload: dict[str, Any]) -> SequenceArtifact:
 
 
 def load_sequence_artifact(path: str | Path) -> SequenceArtifact:
-    raw = Path(path).read_bytes()
+    try:
+        raw = read_regular_file(path, maximum_bytes=MAX_JSON_BYTES, label="sequence artifact")
+    except BoundedIOError as failure:
+        raise SequenceCompilerError(f"DNA039: unsafe or oversized sequence artifact: {failure}") from failure
     payload = _load_json_bytes(raw, "sequence artifact")
     return _as_artifact(payload)
