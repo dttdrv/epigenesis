@@ -14,7 +14,15 @@ from brainc.development_bundle import (
     DevelopmentBundleError,
     compile_development,
 )
-from brainc.source import FASTA_PROFILE, RAW_PROFILE, compile_source
+from brainc.source import (
+    EXTERNAL_PROFILE,
+    FASTA_PROFILE,
+    RAW_PROFILE,
+    REFERENCE_FASTA_PROFILE,
+    SourceBundle,
+    compile_external_source,
+    compile_source,
+)
 from brainc.v2 import (
     V2Error,
     inline_storage,
@@ -26,6 +34,7 @@ from brainc.v2 import (
     target_artifact,
 )
 from brainc.v2.target import DEV_DOMAIN, OP_UNIT_CREATE
+from tests.test_external_profile import FASTQ, NATIVE_INDEX, _closure
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,13 +46,20 @@ def _seal(core: dict) -> dict:
 
 
 class _Chain:
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self,
+        root: Path,
+        profile: str = FASTA_PROFILE,
+        source: SourceBundle | None = None,
+    ) -> None:
         self.root = root
-        self.source = compile_source(
-            FASTA_PROFILE,
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.source = source or compile_source(
+            profile,
             {"sequence": FASTA},
             parameters={"wrapper": "identity"},
         )
+        profile = self.source.profile
         self.source_directory = root / "source"
         self.source.save(self.source_directory)
         self.source_path = self.source_directory / "source.json"
@@ -80,6 +96,11 @@ class _Chain:
             "axes": [],
             "storage": inline_storage(pack("u64", [1])),
         }
+        acceptance = f"brainc.source-descriptor/v1;profile={profile}"
+        if profile == EXTERNAL_PROFILE:
+            acceptance += ";manifest=" + self.source.to_dict()["source_ir"][
+                "parameters"
+            ]["profile_manifest_sha256"]
         self.manifest = _seal(
             {
                 "format": "brainc.provider-manifest",
@@ -89,9 +110,7 @@ class _Chain:
                     "kind": "content-sha256",
                     "value": digest({"algorithm": "caller-supplied", "version": 1}),
                 },
-                "accepts": [
-                    f"brainc.source-descriptor/v1;profile={FASTA_PROFILE}"
-                ],
+                "accepts": [acceptance],
                 "outputs": [
                     {key: deepcopy(output[key]) for key in ("id", "type", "unit", "axes")}
                 ],
@@ -196,6 +215,58 @@ class DevelopmentBundleTests(unittest.TestCase):
         self.assertEqual(module["sources"]["sequence"], bundle["source"]["descriptor"])
         self.assertEqual(bundle["blobs"], [])
         self.assertNotIn(str(self.root), repr(bundle))
+
+    def test_reference_fasta_catalog_reaches_the_typed_development_target(self) -> None:
+        chain = _Chain(self.root / "reference-chain", REFERENCE_FASTA_PROFILE)
+        compiled = chain.compile()
+        bundle = compiled.to_dict()
+        module = compiled.artifacts["development_module"]
+        self.assertEqual(chain.source.profile, REFERENCE_FASTA_PROFILE)
+        self.assertEqual(set(chain.source.artifacts), {"reference"})
+        self.assertEqual(
+            bundle["source"]["native"],
+            chain.source.to_dict()["source_ir"]["artifacts"],
+        )
+        self.assertEqual(
+            module["sources"]["sequence"],
+            bundle["source"]["descriptor"],
+        )
+        self.assertEqual(module["module"]["budgets"]["units"], 1)
+
+    def test_external_profile_reaches_target_with_exact_manifest_acceptance(self) -> None:
+        manifest, descriptor, report, _, _, _ = _closure()
+        source = compile_external_source(
+            manifest,
+            descriptor,
+            report,
+            original_payloads={"reads": FASTQ},
+            native_artifact_payloads={"read-index": NATIVE_INDEX},
+        )
+        chain = _Chain(self.root / "external-chain", source=source)
+        compiled = chain.compile()
+        expected_tag = (
+            "brainc.source-descriptor/v1;profile=external-dna-source/v1;manifest="
+            + manifest["artifact_sha256"]
+        )
+        self.assertEqual(chain.manifest["accepts"], [expected_tag])
+        self.assertEqual(compiled.artifacts["development_module"]["sources"]["sequence"], compiled.to_dict()["source"]["descriptor"])
+
+        for rejected in (
+            "brainc.source-descriptor/v1;profile=external-dna-source/v1",
+            expected_tag[:-64] + "0" * 64,
+        ):
+            attacked = deepcopy(chain.manifest)
+            attacked["accepts"] = [rejected]
+            attacked = _seal(
+                {
+                    key: value
+                    for key, value in attacked.items()
+                    if key != "artifact_sha256"
+                }
+            )
+            path = chain._write("attacked-external-manifest", attacked)
+            with self.assertRaises(V2Error):
+                make_development_request(source, path, ["t.value"])
 
     def test_request_builder_requires_and_replays_the_native_source_closure(self) -> None:
         self.assertEqual(

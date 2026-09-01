@@ -14,6 +14,7 @@ from brainc.insdc import (
 from brainc.sequence import SequenceCompilerError, _as_artifact
 from brainc.sequence_collection import SequenceCollectionError, _as_collection
 from brainc.source import (
+    EXTERNAL_PROFILE,
     FORMAT as SOURCE_DESCRIPTOR_FORMAT,
     PROFILES as SOURCE_DESCRIPTOR_PROFILES,
     VERSION as SOURCE_DESCRIPTOR_VERSION,
@@ -104,7 +105,17 @@ def _source_acceptance_tag(source: dict[str, Any]) -> str:
     profile = source_ir.get("profile")
     if type(profile) is not str or profile not in SOURCE_DESCRIPTOR_PROFILES:
         raise V2Error("source descriptor profile is unsupported")
-    return f"{source_tag};profile={profile}"
+    acceptance = f"{source_tag};profile={profile}"
+    if profile == EXTERNAL_PROFILE:
+        parameters = source_ir.get("parameters")
+        manifest_sha256 = (
+            parameters.get("profile_manifest_sha256")
+            if type(parameters) is dict
+            else None
+        )
+        sha256(manifest_sha256, "external profile manifest SHA-256")
+        acceptance += f";manifest={manifest_sha256}"
+    return acceptance
 
 
 def load_source(path: str | Path) -> tuple[dict[str, Any], dict[str, int]]:

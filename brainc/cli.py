@@ -13,6 +13,7 @@ from .bio import GFF3Compiler, load_gff3_artifact
 from .bio_graph import compile_feature_graph
 from .compiler import compile_program, load_policy, load_program, save as save_program
 from .development_bundle import compile_development
+from .external_profile import MAX_EVIDENCE_BYTES, MAX_PROFILE_BYTES
 from .insdc import GenBankCompiler
 from .insdc_graph import compile_insdc_graph
 from .provider import (
@@ -25,11 +26,15 @@ from .provider import (
 from .sequence import SequenceCompiler, SequenceCompilerError, load_sequence_artifact
 from .sequence_collection import SequenceCollectionCompiler, SequenceCollectionError, load_sequence_collection
 from .source import (
+    EXTERNAL_PROFILE,
     FASTA_PROFILE,
     GFF3_PROFILE,
     GENBANK_PROFILE,
     PROFILES,
     RAW_PROFILE,
+    REFERENCE_FASTA_PROFILE,
+    ScaleLimits,
+    compile_external_source_paths,
     compile_source,
 )
 from .validator import save_report, validate_chain
@@ -71,6 +76,22 @@ from .validator_v2 import (
 )
 
 
+def _role_path_argument(value: str) -> tuple[str, str]:
+    role, separator, path = value.partition("=")
+    if not separator or not role or not path:
+        raise argparse.ArgumentTypeError("expected ROLE=PATH")
+    return role, path
+
+
+def _role_paths(values: list[tuple[str, str]], label: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for role, path in values:
+        if role in result:
+            raise ValueError(f"{label} role {role!r} was supplied more than once")
+        result[role] = path
+    return result
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="brainc",
@@ -81,18 +102,53 @@ def _parser() -> argparse.ArgumentParser:
         "compile-source",
         help="compile one explicitly selected DNA source profile to a source bundle",
     )
-    source.add_argument("--profile", choices=sorted(PROFILES), required=True)
+    source.add_argument(
+        "--profile",
+        choices=sorted(PROFILES - {EXTERNAL_PROFILE}),
+        required=True,
+    )
     source.add_argument("--sequence")
     source.add_argument("--genbank")
     source.add_argument("--annotation")
     source.add_argument("--record-id")
     source.add_argument("--wrapper", choices=("identity", "gzip"))
+    for option in (
+        "maximum-input-bytes",
+        "maximum-logical-bytes",
+        "maximum-records",
+        "maximum-record-bases",
+        "maximum-header-bytes",
+        "maximum-gzip-members",
+    ):
+        source.add_argument(f"--{option}", type=int)
     source.add_argument(
         "--sequence-profile",
         choices=(RAW_PROFILE, FASTA_PROFILE),
         help="explicit external-sequence profile for GFF3",
     )
     source.add_argument("-o", "--output", required=True)
+    external_source = sub.add_parser(
+        "compile-external-source",
+        help="admit an exact data-only frontend evidence closure",
+    )
+    external_source.add_argument("--profile-manifest", required=True)
+    external_source.add_argument("--source-descriptor", required=True)
+    external_source.add_argument("--validation-report", required=True)
+    external_source.add_argument(
+        "--source-input",
+        action="append",
+        type=_role_path_argument,
+        required=True,
+        metavar="ROLE=PATH",
+    )
+    external_source.add_argument(
+        "--native-artifact",
+        action="append",
+        type=_role_path_argument,
+        required=True,
+        metavar="ROLE=PATH",
+    )
+    external_source.add_argument("-o", "--output", required=True)
     sequence = sub.add_parser("compile-sequence", help="compile one FASTA record to Sequence IR")
     sequence.add_argument("input"); sequence.add_argument("--context"); sequence.add_argument("-o", "--output", required=True)
     collection = sub.add_parser("compile-collection", help="compile multi-FASTA or gzipped FASTA to collection IR")
@@ -299,7 +355,7 @@ def _source_arguments(
     if args.profile == RAW_PROFILE:
         selected(required={"sequence", "record_id"}, allowed={"sequence", "record_id"})
         return {"sequence": args.sequence}, {"record_id": args.record_id}
-    if args.profile == FASTA_PROFILE:
+    if args.profile in {FASTA_PROFILE, REFERENCE_FASTA_PROFILE}:
         selected(required={"sequence", "wrapper"}, allowed={"sequence", "wrapper"})
         return {"sequence": args.sequence}, {"wrapper": args.wrapper}
     if args.profile == GENBANK_PROFILE:
@@ -329,6 +385,32 @@ def _source_arguments(
             "sequence_parameters": sequence_parameters,
         },
     )
+
+
+def _source_limits(args: argparse.Namespace) -> ScaleLimits | None:
+    names = (
+        "maximum_input_bytes",
+        "maximum_logical_bytes",
+        "maximum_records",
+        "maximum_record_bases",
+        "maximum_header_bytes",
+        "maximum_gzip_members",
+    )
+    overrides = {
+        name: getattr(args, name)
+        for name in names
+        if getattr(args, name) is not None
+    }
+    if not overrides:
+        return None
+    if args.profile != REFERENCE_FASTA_PROFILE:
+        raise ValueError(
+            "source execution limits apply only to the reference FASTA profile"
+        )
+    defaults = ScaleLimits()
+    values = {name: getattr(defaults, name) for name in names}
+    values.update(overrides)
+    return ScaleLimits(**values)
 
 
 def _check_v2(args: argparse.Namespace) -> None:
@@ -381,6 +463,11 @@ def _bio_json(path: str, label: str, *, sequence_strings: bool) -> dict[str, Any
     )
 
 
+def _external_json(path: str, label: str, maximum_bytes: int) -> dict[str, Any]:
+    raw = read_regular_file(path, maximum_bytes=maximum_bytes, label=label)
+    return load_json_object(raw, label, maximum_bytes=maximum_bytes)
+
+
 def _emit_report(report: dict[str, Any], output: str | None) -> int:
     if output is not None:
         save_v2(report, output)
@@ -397,6 +484,39 @@ def main(argv: list[str] | None = None) -> int:
                 args.profile,
                 inputs,
                 parameters=parameters,
+                limits=_source_limits(args),
+            ).save(args.output)
+            print(
+                json.dumps(
+                    {
+                        "output": str(args.output),
+                        "source": str(paths["source.json"]),
+                    },
+                    sort_keys=True,
+                )
+            )
+        elif args.command == "compile-external-source":
+            paths = compile_external_source_paths(
+                _external_json(
+                    args.profile_manifest,
+                    "external profile manifest",
+                    MAX_PROFILE_BYTES,
+                ),
+                _external_json(
+                    args.source_descriptor,
+                    "external source descriptor",
+                    MAX_EVIDENCE_BYTES,
+                ),
+                _external_json(
+                    args.validation_report,
+                    "external validation report",
+                    MAX_EVIDENCE_BYTES,
+                ),
+                original_paths=_role_paths(args.source_input, "source input"),
+                native_artifact_paths=_role_paths(
+                    args.native_artifact,
+                    "native artifact",
+                ),
             ).save(args.output)
             print(
                 json.dumps(

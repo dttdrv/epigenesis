@@ -49,6 +49,19 @@ from .insdc import (
     GenBankError,
     validate_genbank_artifact,
 )
+from .external_source import (
+    FORMAT as EXTERNAL_FORMAT,
+    MAX_CLOSURE_BYTES as EXTERNAL_OUTPUT_BYTES,
+    PROFILE as EXTERNAL_PROFILE,
+    VERSION as EXTERNAL_VERSION,
+    ExternalSourceError,
+    build_external_source_closure,
+    build_external_source_closure_from_paths,
+    input_references as external_input_references,
+    profile_parameters as external_profile_parameters,
+    source_records as external_source_records,
+    validate_external_source_closure,
+)
 from .sequence_collection import (
     FORMAT as COLLECTION_FORMAT,
     VERSION as COLLECTION_VERSION,
@@ -57,6 +70,16 @@ from .sequence_collection import (
     SequenceCollectionError,
     _as_collection,
 )
+from .source_scale import (
+    DEFAULT_LIMITS as DEFAULT_SCALE_LIMITS,
+    FORMAT as REFERENCE_FORMAT,
+    PROFILE as REFERENCE_FASTA_PROFILE,
+    VERSION as REFERENCE_VERSION,
+    ScaleLimits,
+    SourceScaleError,
+    compile_reference_fasta,
+    validate_reference_catalog,
+)
 
 
 FORMAT = "brainc.source-descriptor"
@@ -64,7 +87,16 @@ VERSION = 1
 RAW_PROFILE = "raw-iupac-dna/v1"
 FASTA_PROFILE = "fasta-dna/v1"
 GFF3_PROFILE = "gff3-external-sequence/v1"
-PROFILES = frozenset({RAW_PROFILE, FASTA_PROFILE, GENBANK_PROFILE, GFF3_PROFILE})
+PROFILES = frozenset(
+    {
+        RAW_PROFILE,
+        FASTA_PROFILE,
+        REFERENCE_FASTA_PROFILE,
+        EXTERNAL_PROFILE,
+        GENBANK_PROFILE,
+        GFF3_PROFILE,
+    }
+)
 PRODUCER = {
     "name": "brainc-source",
     "version": "1.0.0",
@@ -79,10 +111,13 @@ PRODUCER = {
 SOURCE_FILENAME = "source.json"
 ROLE_FILENAMES = {
     "sequence": "sequence.json",
+    "reference": "reference.json",
+    "external": "external.json",
     "genbank": "genbank.json",
     "annotation": "annotation.json",
 }
 _REFGET_RE = re.compile(r"SQ\.[A-Za-z0-9_-]{32}\Z")
+MAX_SOURCE_DESCRIPTOR_BYTES = GFF3_OUTPUT_BYTES
 
 
 class SourceError(ContractError):
@@ -147,17 +182,35 @@ def _route(profile: Any, parameters_value: Any) -> tuple[_Route, dict[str, Any]]
         _keys(parameters, {"record_id"}, "parameters")
         _text(parameters["record_id"], "parameters.record_id", identifier=True)
         return _Route(("sequence",), ("sequence",)), copy.deepcopy(parameters)
-    if profile == FASTA_PROFILE:
+    if profile in {FASTA_PROFILE, REFERENCE_FASTA_PROFILE}:
         _keys(parameters, {"wrapper"}, "parameters")
         if (
             type(parameters["wrapper"]) is not str
             or parameters["wrapper"] not in {"identity", "gzip"}
         ):
             raise _fail("parameters.wrapper must be identity or gzip")
-        return _Route(("sequence",), ("sequence",)), copy.deepcopy(parameters)
+        artifacts = (
+            ("reference",)
+            if profile == REFERENCE_FASTA_PROFILE
+            else ("sequence",)
+        )
+        return _Route(("sequence",), artifacts), copy.deepcopy(parameters)
     if profile == GENBANK_PROFILE:
         _keys(parameters, set(), "parameters")
         return _Route(("genbank",), ("genbank",)), {}
+    if profile == EXTERNAL_PROFILE:
+        _keys(
+            parameters,
+            {"profile_id", "profile_version", "profile_manifest_sha256"},
+            "parameters",
+        )
+        _text(parameters["profile_id"], "parameters.profile_id", identifier=True)
+        _integer(parameters["profile_version"], "parameters.profile_version", minimum=1)
+        sha256(
+            parameters["profile_manifest_sha256"],
+            "parameters.profile_manifest_sha256",
+        )
+        return _Route((), ("external",)), copy.deepcopy(parameters)
 
     _keys(parameters, {"sequence_profile", "sequence_parameters"}, "parameters")
     sequence_profile = parameters["sequence_profile"]
@@ -231,6 +284,8 @@ def _artifact_reference(payload: dict[str, Any]) -> dict[str, Any]:
     identity = (artifact_format, artifact_version)
     ir_fields = {
         (COLLECTION_FORMAT, COLLECTION_VERSION): "collection_ir_sha256",
+        (REFERENCE_FORMAT, REFERENCE_VERSION): "catalog_sha256",
+        (EXTERNAL_FORMAT, EXTERNAL_VERSION): "closure_ir_sha256",
         (GENBANK_FORMAT, GENBANK_VERSION): "bio_ir_sha256",
         (GFF3_FORMAT, GFF3_VERSION): "bio_ir_sha256",
     }
@@ -276,17 +331,17 @@ def _genbank_records(payload: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _descriptor(
+def _descriptor_from_references(
     profile: str,
     parameters: dict[str, Any],
-    inputs: dict[str, bytes],
+    input_references: dict[str, dict[str, Any]],
     artifacts: dict[str, dict[str, Any]],
     records: list[dict[str, Any]],
 ) -> dict[str, Any]:
     source_ir = {
         "profile": profile,
         "parameters": copy.deepcopy(parameters),
-        "inputs": {role: _input_reference(raw) for role, raw in inputs.items()},
+        "inputs": copy.deepcopy(input_references),
         "artifacts": {
             role: _artifact_reference(payload) for role, payload in artifacts.items()
         },
@@ -305,12 +360,34 @@ def _descriptor(
     return payload
 
 
+def _descriptor(
+    profile: str,
+    parameters: dict[str, Any],
+    inputs: dict[str, bytes],
+    artifacts: dict[str, dict[str, Any]],
+    records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return _descriptor_from_references(
+        profile,
+        parameters,
+        {role: _input_reference(raw) for role, raw in inputs.items()},
+        artifacts,
+        records,
+    )
+
+
 def _artifact_bytes(payload: dict[str, Any]) -> bytes:
     identity = (payload.get("format"), payload.get("version"))
-    if identity == (GFF3_FORMAT, GFF3_VERSION):
+    if identity == (FORMAT, VERSION):
+        maximum, depth, members = MAX_SOURCE_DESCRIPTOR_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
+    elif identity == (GFF3_FORMAT, GFF3_VERSION):
         maximum, depth, members = GFF3_OUTPUT_BYTES, GFF3_JSON_DEPTH, GFF3_JSON_MEMBERS
     elif identity == (GENBANK_FORMAT, GENBANK_VERSION):
         maximum, depth, members = GENBANK_OUTPUT_BYTES, GENBANK_JSON_DEPTH, MAX_JSON_MEMBERS
+    elif identity == (REFERENCE_FORMAT, REFERENCE_VERSION):
+        maximum, depth, members = GFF3_OUTPUT_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
+    elif identity == (EXTERNAL_FORMAT, EXTERNAL_VERSION):
+        maximum, depth, members = EXTERNAL_OUTPUT_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
     else:
         maximum, depth, members = MAX_JSON_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
     try:
@@ -378,11 +455,37 @@ def compile_source(
     inputs: Mapping[str, str | Path],
     *,
     parameters: Mapping[str, Any],
+    limits: ScaleLimits | None = None,
 ) -> SourceBundle:
     """Compile exactly one declared source profile; bytes never select a route."""
 
     route, normalized_parameters = _route(profile, parameters)
+    if profile == EXTERNAL_PROFILE:
+        raise _fail("external profiles must use compile_external_source")
+    if limits is not None and type(limits) is not ScaleLimits:
+        raise _fail("limits must be ScaleLimits")
+    if limits is not None and profile != REFERENCE_FASTA_PROFILE:
+        raise _fail("limits apply only to the reference FASTA profile")
     paths = _input_paths(inputs, route.input_roles)
+    if profile == REFERENCE_FASTA_PROFILE:
+        try:
+            reference = compile_reference_fasta(
+                paths["sequence"],
+                wrapper=normalized_parameters["wrapper"],
+                limits=DEFAULT_SCALE_LIMITS if limits is None else limits,
+            )
+        except SourceScaleError as failure:
+            raise _fail(str(failure)) from failure
+        artifacts = {"reference": reference}
+        descriptor = _descriptor_from_references(
+            profile,
+            normalized_parameters,
+            {"sequence": reference["inputs"]["source"]},
+            artifacts,
+            reference["sequence_catalog"]["records"],
+        )
+        return SourceBundle._create(descriptor, artifacts)
+
     snapshots = {
         role: _read(
             paths[role],
@@ -431,6 +534,70 @@ def compile_source(
     return SourceBundle._create(descriptor, artifacts)
 
 
+def compile_external_source(
+    profile_manifest: dict[str, Any],
+    source_descriptor: dict[str, Any],
+    validation_report: dict[str, Any],
+    *,
+    original_payloads: Mapping[str, bytes],
+    native_artifact_payloads: Mapping[str, bytes],
+) -> SourceBundle:
+    """Admit one explicitly selected, independently replayed external frontend."""
+
+    try:
+        external = build_external_source_closure(
+            profile_manifest,
+            source_descriptor,
+            validation_report,
+            original_payloads=original_payloads,
+            native_artifact_payloads=native_artifact_payloads,
+        )
+    except ExternalSourceError as failure:
+        raise _fail(str(failure)) from failure
+    return _external_source_bundle(external)
+
+
+def compile_external_source_paths(
+    profile_manifest: dict[str, Any],
+    source_descriptor: dict[str, Any],
+    validation_report: dict[str, Any],
+    *,
+    original_paths: Mapping[str, str | Path],
+    native_artifact_paths: Mapping[str, str | Path],
+) -> SourceBundle:
+    """Admit external frontend evidence while streaming original source paths."""
+
+    try:
+        external = build_external_source_closure_from_paths(
+            profile_manifest,
+            source_descriptor,
+            validation_report,
+            original_paths=original_paths,
+            native_artifact_paths=native_artifact_paths,
+        )
+    except ExternalSourceError as failure:
+        raise _fail(str(failure)) from failure
+    return _external_source_bundle(external)
+
+
+def _external_source_bundle(external: dict[str, Any]) -> SourceBundle:
+    try:
+        parameters = external_profile_parameters(external)
+        inputs = external_input_references(external)
+        records = external_source_records(external)
+    except ExternalSourceError as failure:
+        raise _fail(str(failure)) from failure
+    artifacts = {"external": external}
+    descriptor = _descriptor_from_references(
+        EXTERNAL_PROFILE,
+        parameters,
+        inputs,
+        artifacts,
+        records,
+    )
+    return SourceBundle._create(descriptor, artifacts)
+
+
 def _validate_input_references(value: Any, roles: tuple[str, ...]) -> None:
     inputs = _keys(value, set(roles), "source_ir.inputs")
     for role in roles:
@@ -446,6 +613,22 @@ def _validate_input_references(value: Any, roles: tuple[str, ...]) -> None:
         )
 
 
+def _validate_external_input_references(value: Any) -> None:
+    if type(value) is not dict or not value or len(value) > 64:
+        raise _fail("source_ir.inputs must contain 1..64 external input roles")
+    if any(type(role) is not str for role in value):
+        raise _fail("source_ir.inputs external role names must be strings")
+    for role, reference in value.items():
+        _text(role, "source_ir.inputs external role", identifier=True)
+        item = _keys(
+            reference,
+            {"sha256", "byte_length"},
+            f"source_ir.inputs.{role}",
+        )
+        sha256(item["sha256"], f"source_ir.inputs.{role}.sha256")
+        _integer(item["byte_length"], f"source_ir.inputs.{role}.byte_length")
+
+
 def _validate_artifact_references(value: Any, roles: tuple[str, ...]) -> None:
     artifacts = _keys(value, set(roles), "source_ir.artifacts")
     for role in roles:
@@ -456,6 +639,8 @@ def _validate_artifact_references(value: Any, roles: tuple[str, ...]) -> None:
         )
         expected = {
             "sequence": (COLLECTION_FORMAT, COLLECTION_VERSION),
+            "reference": (REFERENCE_FORMAT, REFERENCE_VERSION),
+            "external": (EXTERNAL_FORMAT, EXTERNAL_VERSION),
             "genbank": (GENBANK_FORMAT, GENBANK_VERSION),
             "annotation": (GFF3_FORMAT, GFF3_VERSION),
         }[role]
@@ -485,7 +670,10 @@ def validate_source_descriptor(payload: dict[str, Any]) -> dict[str, Any]:
     route, normalized_parameters = _route(source_ir["profile"], source_ir["parameters"])
     if source_ir["parameters"] != normalized_parameters:
         raise _fail("source_ir.parameters is not the exact normalized profile object")
-    _validate_input_references(source_ir["inputs"], route.input_roles)
+    if source_ir["profile"] == EXTERNAL_PROFILE:
+        _validate_external_input_references(source_ir["inputs"])
+    else:
+        _validate_input_references(source_ir["inputs"], route.input_roles)
     _validate_artifact_references(source_ir["artifacts"], route.artifact_roles)
     records = source_ir["records"]
     if type(records) is not list or not records or len(records) > MAX_SOURCE_RECORDS:
@@ -517,8 +705,10 @@ def validate_source_descriptor(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _read_descriptor_directory(directory: Path) -> dict[str, bytes]:
     limits = {
-        SOURCE_FILENAME: MAX_JSON_BYTES,
+        SOURCE_FILENAME: MAX_SOURCE_DESCRIPTOR_BYTES,
         ROLE_FILENAMES["sequence"]: MAX_JSON_BYTES,
+        ROLE_FILENAMES["reference"]: GFF3_OUTPUT_BYTES,
+        ROLE_FILENAMES["external"]: EXTERNAL_OUTPUT_BYTES,
         ROLE_FILENAMES["genbank"]: GENBANK_OUTPUT_BYTES,
         ROLE_FILENAMES["annotation"]: GFF3_OUTPUT_BYTES,
     }
@@ -674,6 +864,16 @@ def _validate_native(
                 raw_files[filename], filename,
                 maximum=GENBANK_OUTPUT_BYTES, depth=GENBANK_JSON_DEPTH, members=MAX_JSON_MEMBERS,
             )
+        elif role == "reference":
+            payload = _loads(
+                raw_files[filename], filename,
+                maximum=GFF3_OUTPUT_BYTES, depth=MAX_JSON_DEPTH, members=MAX_JSON_MEMBERS,
+            )
+        elif role == "external":
+            payload = _loads(
+                raw_files[filename], filename,
+                maximum=EXTERNAL_OUTPUT_BYTES, depth=MAX_JSON_DEPTH, members=MAX_JSON_MEMBERS,
+            )
         else:
             payload = _loads(
                 raw_files[filename], filename,
@@ -698,22 +898,34 @@ def _validate_native_payloads(
         try:
             if role == "sequence":
                 collection = _as_collection(payload)
+            elif role == "reference":
+                validate_reference_catalog(payload)
+            elif role == "external":
+                validate_external_source_closure(payload)
             elif role == "genbank":
                 validate_genbank_artifact(payload)
             else:
                 assert collection is not None
                 validate_gff3_artifact(payload, collection)
-        except (SequenceCollectionError, GenBankError, GFF3Error) as failure:
+        except (
+            SequenceCollectionError,
+            GenBankError,
+            GFF3Error,
+            ExternalSourceError,
+        ) as failure:
             raise _fail(f"invalid {role} native artifact: {failure}") from failure
 
     expected_refs = {role: _artifact_reference(value) for role, value in artifacts.items()}
     if descriptor["source_ir"]["artifacts"] != expected_refs:
         raise _fail("source descriptor native artifact references do not match bundle children")
-    records = (
-        _genbank_records(artifacts["genbank"])
-        if profile == GENBANK_PROFILE
-        else _collection_records(artifacts["sequence"])
-    )
+    if profile == GENBANK_PROFILE:
+        records = _genbank_records(artifacts["genbank"])
+    elif profile == REFERENCE_FASTA_PROFILE:
+        records = artifacts["reference"]["sequence_catalog"]["records"]
+    elif profile == EXTERNAL_PROFILE:
+        records = external_source_records(artifacts["external"])
+    else:
+        records = _collection_records(artifacts["sequence"])
     if descriptor["source_ir"]["records"] != records:
         raise _fail("source descriptor record catalog does not match native source")
 
@@ -725,6 +937,23 @@ def _validate_native_payloads(
             raise _fail(
                 "source descriptor input byte length does not match native GenBank source"
             )
+    elif profile == REFERENCE_FASTA_PROFILE:
+        native_source = artifacts["reference"]["inputs"]["source"]
+        if descriptor_inputs != {"sequence": native_source}:
+            raise _fail(
+                "source descriptor input identity does not match reference FASTA source"
+            )
+        expected_input_digests = {"sequence": native_source["sha256"]}
+    elif profile == EXTERNAL_PROFILE:
+        expected_inputs = external_input_references(artifacts["external"])
+        if descriptor_inputs != expected_inputs:
+            raise _fail(
+                "source descriptor inputs do not match external frontend evidence"
+            )
+        expected_input_digests = {
+            role: reference["sha256"]
+            for role, reference in expected_inputs.items()
+        }
     else:
         expected_input_digests = {
             "sequence": artifacts["sequence"]["inputs"]["raw_sha256"]
@@ -745,6 +974,18 @@ def _validate_native_payloads(
         sequence_inputs = artifacts["sequence"]["inputs"]
         if sequence_inputs["kind"] != "fasta" or sequence_inputs["wrapper"] != expected_wrapper:
             raise _fail("FASTA profile does not match its native collection")
+    elif profile == REFERENCE_FASTA_PROFILE:
+        if (
+            artifacts["reference"]["inputs"]["profile"] != REFERENCE_FASTA_PROFILE
+            or artifacts["reference"]["inputs"]["wrapper"]
+            != descriptor["source_ir"]["parameters"]["wrapper"]
+        ):
+            raise _fail("reference FASTA profile does not match its native catalog")
+    elif profile == EXTERNAL_PROFILE:
+        if descriptor["source_ir"]["parameters"] != external_profile_parameters(
+            artifacts["external"]
+        ):
+            raise _fail("external source profile does not match its evidence closure")
     elif profile == GENBANK_PROFILE and artifacts["genbank"]["profile"] != GENBANK_PROFILE:
         raise _fail("GenBank profile does not match its native artifact")
     elif profile == GFF3_PROFILE:
@@ -780,7 +1021,9 @@ def load_source_bundle(directory: str | Path) -> SourceBundle:
     descriptor = validate_source_descriptor(
         _loads(
             raw_files[SOURCE_FILENAME], SOURCE_FILENAME,
-            maximum=MAX_JSON_BYTES, depth=MAX_JSON_DEPTH, members=MAX_JSON_MEMBERS,
+            maximum=MAX_SOURCE_DESCRIPTOR_BYTES,
+            depth=MAX_JSON_DEPTH,
+            members=MAX_JSON_MEMBERS,
         )
     )
     artifacts = _validate_native(descriptor, raw_files)
@@ -789,17 +1032,22 @@ def load_source_bundle(directory: str | Path) -> SourceBundle:
 
 __all__ = [
     "FASTA_PROFILE",
+    "EXTERNAL_PROFILE",
     "FORMAT",
     "GFF3_PROFILE",
     "GENBANK_PROFILE",
     "PROFILES",
     "RAW_PROFILE",
+    "REFERENCE_FASTA_PROFILE",
     "ROLE_FILENAMES",
     "SOURCE_FILENAME",
+    "ScaleLimits",
     "SourceBundle",
     "SourceError",
     "VERSION",
     "compile_source",
+    "compile_external_source",
+    "compile_external_source_paths",
     "load_source_bundle",
     "validate_source_bundle",
     "validate_source_descriptor",

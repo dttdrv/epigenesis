@@ -7,14 +7,19 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from brainc._canonical import digest
 from brainc.source import (
+    EXTERNAL_PROFILE,
     FASTA_PROFILE,
     GFF3_PROFILE,
     GENBANK_PROFILE,
+    PROFILES,
     RAW_PROFILE,
+    REFERENCE_FASTA_PROFILE,
     SourceError,
+    ScaleLimits,
     compile_source,
     load_source_bundle,
     validate_source_descriptor,
@@ -65,6 +70,13 @@ class SourceDispatchTests(unittest.TestCase):
                     ["a", "b"],
                 ),
                 (
+                    REFERENCE_FASTA_PROFILE,
+                    {"sequence": multi},
+                    {"wrapper": "identity"},
+                    {"reference"},
+                    ["a", "b"],
+                ),
+                (
                     GENBANK_PROFILE,
                     {"genbank": GENBANK},
                     {},
@@ -82,6 +94,7 @@ class SourceDispatchTests(unittest.TestCase):
                     ["J02482.1"],
                 ),
             )
+            self.assertEqual({case[0] for case in cases}, PROFILES - {EXTERNAL_PROFILE})
             for profile, inputs, parameters, roles, record_ids in cases:
                 with self.subTest(profile=profile, parameters=parameters):
                     first = compile_source(profile, inputs, parameters=parameters)
@@ -162,6 +175,16 @@ class SourceDispatchTests(unittest.TestCase):
                 (FASTA_PROFILE, {"sequence": raw}, {"wrapper": "identity"}),
                 (FASTA_PROFILE, {"sequence": compressed}, {"wrapper": "identity"}),
                 (FASTA_PROFILE, {"sequence": fasta}, {"wrapper": "gzip"}),
+                (
+                    REFERENCE_FASTA_PROFILE,
+                    {"sequence": compressed},
+                    {"wrapper": "identity"},
+                ),
+                (
+                    REFERENCE_FASTA_PROFILE,
+                    {"sequence": fasta},
+                    {"wrapper": "gzip"},
+                ),
             )
             for profile, inputs, parameters in rejected:
                 with self.subTest(profile=profile, parameters=parameters):
@@ -175,6 +198,7 @@ class SourceDispatchTests(unittest.TestCase):
             (RAW_PROFILE, {"sequence": missing}, {}),
             (RAW_PROFILE, {"sequence": missing, "extra": missing}, {"record_id": "x"}),
             (FASTA_PROFILE, {"sequence": missing}, {"wrapper": "br"}),
+            (REFERENCE_FASTA_PROFILE, {"sequence": missing}, {"wrapper": "br"}),
             (GENBANK_PROFILE, {"genbank": missing}, {"version": 273}),
             (
                 GFF3_PROFILE,
@@ -262,6 +286,47 @@ class SourceDispatchTests(unittest.TestCase):
                 with self.assertRaises(SourceError):
                     load_source_bundle(alias)
 
+    def test_reference_fasta_route_streams_and_publishes_only_compact_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "reference.fasta"
+            source.write_bytes(b">chr1\nACGTACGT\n>chr2\nNNRY\n")
+            with mock.patch(
+                "brainc.source._read",
+                side_effect=AssertionError("reference FASTA must bypass byte snapshots"),
+            ):
+                compiled = compile_source(
+                    REFERENCE_FASTA_PROFILE,
+                    {"sequence": source},
+                    parameters={"wrapper": "identity"},
+                )
+            directory = root / "source-bundle"
+            compiled.save(directory)
+            loaded = load_source_bundle(directory)
+            self.assertEqual(loaded.to_dict(), compiled.to_dict())
+            self.assertEqual(
+                {item.name for item in directory.iterdir()},
+                {"source.json", "reference.json"},
+            )
+            wire = b"".join(path.read_bytes() for path in directory.iterdir())
+            self.assertNotIn(b"ACGTACGT", wire)
+
+            with self.assertRaisesRegex(SourceError, "logical FASTA exceeds"):
+                compile_source(
+                    REFERENCE_FASTA_PROFILE,
+                    {"sequence": source},
+                    parameters={"wrapper": "identity"},
+                    limits=ScaleLimits(maximum_logical_bytes=8),
+                )
+            with self.assertRaisesRegex(SourceError, "only to the reference"):
+                compile_source(
+                    FASTA_PROFILE,
+                    {"sequence": source},
+                    parameters={"wrapper": "identity"},
+                    limits=ScaleLimits(),
+                )
+            self.assertNotIn(str(root).encode(), wire)
+
     def test_resealed_descriptor_input_digests_cannot_detach_from_native_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -273,8 +338,14 @@ class SourceDispatchTests(unittest.TestCase):
             compressed.write_bytes(gzip.compress(multi.read_bytes(), mtime=0))
             cases = (
                 (RAW_PROFILE, {"sequence": raw}, {"record_id": "raw-1"}, "sequence"),
-                (FASTA_PROFILE, {"sequence": multi}, {"wrapper": "identity"}, "sequence"),
-                (FASTA_PROFILE, {"sequence": compressed}, {"wrapper": "gzip"}, "sequence"),
+            (FASTA_PROFILE, {"sequence": multi}, {"wrapper": "identity"}, "sequence"),
+            (FASTA_PROFILE, {"sequence": compressed}, {"wrapper": "gzip"}, "sequence"),
+            (
+                REFERENCE_FASTA_PROFILE,
+                {"sequence": multi},
+                {"wrapper": "identity"},
+                "sequence",
+            ),
                 (GENBANK_PROFILE, {"genbank": GENBANK}, {}, "genbank"),
                 (
                     GFF3_PROFILE,
@@ -299,10 +370,12 @@ class SourceDispatchTests(unittest.TestCase):
                         json.dumps(descriptor, indent=2, sort_keys=True) + "\n",
                         encoding="utf-8",
                     )
-                    with self.assertRaisesRegex(
-                        SourceError,
-                        "input digests do not match native source inputs",
-                    ):
+                    expected = (
+                        "input identity does not match reference FASTA source"
+                        if profile == REFERENCE_FASTA_PROFILE
+                        else "input digests do not match native source inputs"
+                    )
+                    with self.assertRaisesRegex(SourceError, expected):
                         load_source_bundle(directory)
 
     def test_genbank_input_length_cannot_detach_from_embedded_native_source(self) -> None:

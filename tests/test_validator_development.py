@@ -21,6 +21,7 @@ from brainc.source import (
     GFF3_PROFILE,
     GENBANK_PROFILE,
     RAW_PROFILE,
+    REFERENCE_FASTA_PROFILE,
     compile_source,
 )
 from brainc.v2 import (
@@ -265,7 +266,7 @@ class DevelopmentValidatorTests(unittest.TestCase):
         )
         self.assertEqual(direct, first)
 
-    def test_every_source_profile_replays_from_original_bytes(self) -> None:
+    def test_every_source_profile_replays_from_original_sources(self) -> None:
         multi = self.root / "multi.fasta"
         multi.write_bytes(b">a\nACGT\n>b\nNNRY\n")
         compressed = self.root / "multi.fasta.gz"
@@ -286,6 +287,16 @@ class DevelopmentValidatorTests(unittest.TestCase):
             (RAW_PROFILE, {"sequence": raw}, {"record_id": "raw-1"}),
             (FASTA_PROFILE, {"sequence": multi}, {"wrapper": "identity"}),
             (FASTA_PROFILE, {"sequence": compressed}, {"wrapper": "gzip"}),
+            (
+                REFERENCE_FASTA_PROFILE,
+                {"sequence": multi},
+                {"wrapper": "identity"},
+            ),
+            (
+                REFERENCE_FASTA_PROFILE,
+                {"sequence": compressed},
+                {"wrapper": "gzip"},
+            ),
             (GENBANK_PROFILE, {"genbank": GENBANK}, {}),
             (
                 GFF3_PROFILE,
@@ -321,6 +332,100 @@ class DevelopmentValidatorTests(unittest.TestCase):
                     parameters,
                 )
                 self.assertTrue(fixture.validate_paths()["valid"])
+
+    def test_reference_fasta_replay_streams_original_path_and_fails_closed(self) -> None:
+        reference = self.root / "reference.fasta"
+        reference.write_bytes(b">chr1\nACGTACGT\n>chr2\nNNRY\n")
+        fixture = _Fixture(
+            self.root / "reference-route",
+            REFERENCE_FASTA_PROFILE,
+            {"sequence": reference},
+            {"wrapper": "identity"},
+        )
+        with mock.patch.object(
+            independent,
+            "_read_regular",
+            side_effect=AssertionError("reference FASTA must stream by path"),
+        ):
+            report = fixture.validate_paths()
+        self.assertEqual(
+            report["inputs"]["source_inputs"]["sequence"],
+            fixture.source.artifacts["reference"]["inputs"]["source"],
+        )
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            status = main(
+                [
+                    str(fixture.source_directory),
+                    str(fixture.development_directory),
+                    "--source-input",
+                    f"sequence={reference}",
+                ]
+            )
+        self.assertEqual(status, 0)
+        cli_report = json.loads(stdout.getvalue())
+        self.assertIs(validate_development_report(cli_report), cli_report)
+
+        with self.assertRaisesRegex(DevelopmentValidationError, "must be a path"):
+            validate_development_bundle(
+                fixture.compiled.to_dict(),
+                fixture.compiled.artifacts,
+                fixture.source.to_dict(),
+                fixture.source.artifacts,
+                source_inputs={"sequence": reference.read_bytes()},
+            )
+
+        wrong = self.root / "wrong-reference.fasta"
+        wrong.write_bytes(b">chr1\nACGT\n")
+        with self.assertRaisesRegex(DevelopmentValidationError, "reference FASTA replay"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs={"sequence": wrong},
+            )
+
+        alias = self.root / "reference-link"
+        alias.symlink_to(reference)
+        with self.assertRaisesRegex(DevelopmentValidationError, "non-linked"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs={"sequence": alias},
+            )
+
+        hardlink = self.root / "reference-hardlink"
+        hardlink.hardlink_to(reference)
+        with self.assertRaisesRegex(DevelopmentValidationError, "non-linked"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs={"sequence": hardlink},
+            )
+        hardlink.unlink()
+
+        descriptor = deepcopy(fixture.source.to_dict())
+        natives = deepcopy(fixture.source.artifacts)
+        native = natives["reference"]
+        native["inputs"]["source"]["sha256"] = "0" * 64
+        native["inputs"]["logical"]["sha256"] = "0" * 64
+        natives["reference"] = _reseal(native)
+        descriptor["source_ir"]["inputs"]["sequence"] = deepcopy(
+            natives["reference"]["inputs"]["source"]
+        )
+        descriptor["source_ir"]["artifacts"]["reference"][
+            "artifact_sha256"
+        ] = natives["reference"]["artifact_sha256"]
+        descriptor["source_ir_sha256"] = digest(descriptor["source_ir"])
+        descriptor = _reseal(descriptor)
+        with self.assertRaisesRegex(DevelopmentValidationError, "reference FASTA replay"):
+            validate_development_bundle(
+                fixture.compiled.to_dict(),
+                fixture.compiled.artifacts,
+                descriptor,
+                natives,
+                source_inputs={"sequence": reference},
+            )
 
     def test_path_loaders_require_exact_flat_nonlinked_closure_and_bounds(self) -> None:
         extra = self.fixture.development_directory / "extra.json"
@@ -754,6 +859,7 @@ class DevelopmentValidatorIsolationTests(unittest.TestCase):
             "assert callable(validator.main); "
             "forbidden={'brainc.source','brainc.development_bundle','brainc.bio',"
             "'brainc.insdc','brainc.sequence','brainc.sequence_collection',"
+            "'brainc.source_scale',"
             "'brainc.sequence_collection_v2','brainc._canonical','brainc._io',"
             "'brainc.v2','brainc.v2.compiler','brainc.v2.provider',"
             "'brainc.v2.policy','brainc.v2.target','brainc.v2.tensor'}; "
@@ -779,7 +885,15 @@ class DevelopmentValidatorIsolationTests(unittest.TestCase):
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id in {"eval", "exec", "compile", "__import__"}:
                     forbidden_calls.append(node.func.id)
-        self.assertEqual(relative, {"validator_bio", "validator_insdc", "validator_v2"})
+        self.assertEqual(
+            relative,
+            {
+                "validator_bio",
+                "validator_insdc",
+                "validator_reference",
+                "validator_v2",
+            },
+        )
         self.assertEqual(forbidden_calls, [])
 
 

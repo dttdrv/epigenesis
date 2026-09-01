@@ -89,6 +89,8 @@ SOURCE_DESCRIPTOR_PROFILES = frozenset(
     {
         "raw-iupac-dna/v1",
         "fasta-dna/v1",
+        "fasta-reference-dna/v1",
+        "external-dna-source/v1",
         "genbank-273-traditional-dna-physical-structural/v2",
         "gff3-external-sequence/v1",
     }
@@ -936,7 +938,17 @@ def _source_acceptance_tag(value: dict[str, Any]) -> str:
     profile = source_ir.get("profile")
     if type(profile) is not str or profile not in SOURCE_DESCRIPTOR_PROFILES:
         raise ValidationError("source descriptor profile is unsupported")
-    return f"{source_tag};profile={profile}"
+    acceptance = f"{source_tag};profile={profile}"
+    if profile == "external-dna-source/v1":
+        parameters = source_ir.get("parameters")
+        manifest_sha256 = (
+            parameters.get("profile_manifest_sha256")
+            if type(parameters) is dict
+            else None
+        )
+        _sha(manifest_sha256, "external profile manifest SHA-256")
+        acceptance += f";manifest={manifest_sha256}"
+    return acceptance
 
 
 def _source_reference(value: Any, label: str) -> tuple[dict[str, Any], str]:

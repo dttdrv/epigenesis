@@ -11,15 +11,18 @@ import brainc
 from brainc.cli import main
 from brainc.development_bundle import CHILD_FILENAMES
 from brainc.source import (
+    EXTERNAL_PROFILE,
     FASTA_PROFILE,
     GFF3_PROFILE,
     GENBANK_PROFILE,
     PROFILES,
     RAW_PROFILE,
+    REFERENCE_FASTA_PROFILE,
     load_source_bundle,
 )
 from brainc.v2 import V2Error, compile_module
 from tests.test_development_bundle import _Chain, _seal
+from tests.test_external_profile import FASTQ, NATIVE_INDEX, _closure
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,16 +39,23 @@ class CompilerOneZeroCliTests(unittest.TestCase):
             fromlist=["compile_development"],
         )
         self.assertIs(brainc.compile_source, source.compile_source)
+        self.assertIs(brainc.compile_external_source, source.compile_external_source)
+        self.assertIs(
+            brainc.compile_external_source_paths,
+            source.compile_external_source_paths,
+        )
         self.assertIs(
             brainc.compile_development,
             development.compile_development,
         )
         self.assertIs(brainc.SourceBundle, source.SourceBundle)
         self.assertIs(brainc.SourceError, source.SourceError)
+        self.assertIs(brainc.ScaleLimits, source.ScaleLimits)
         self.assertIs(brainc.DevelopmentBundle, development.DevelopmentBundle)
         self.assertIs(brainc.DevelopmentBundleError, development.DevelopmentBundleError)
         self.assertIs(brainc.validate_source_bundle, source.validate_source_bundle)
         self.assertEqual(brainc.PROFILES, PROFILES)
+        self.assertEqual(brainc.EXTERNAL_PROFILE, EXTERNAL_PROFILE)
         self.assertIs(
             brainc.make_development_request,
             __import__(
@@ -129,6 +139,11 @@ class CompilerOneZeroCliTests(unittest.TestCase):
                     {"source.json", "sequence.json"},
                 ),
                 (
+                    REFERENCE_FASTA_PROFILE,
+                    ["--sequence", str(FASTA), "--wrapper", "identity"],
+                    {"source.json", "reference.json"},
+                ),
+                (
                     GENBANK_PROFILE,
                     ["--genbank", str(GENBANK)],
                     {"source.json", "genbank.json"},
@@ -191,6 +206,72 @@ class CompilerOneZeroCliTests(unittest.TestCase):
             self.assertIn("brainc: SOURCE001:", stderr.getvalue())
             self.assertNotIn("Traceback", stderr.getvalue())
             self.assertFalse(rejected.exists())
+
+            limited = root / "limited-reference"
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                result = main(
+                    [
+                        "compile-source",
+                        "--profile",
+                        REFERENCE_FASTA_PROFILE,
+                        "--sequence",
+                        str(FASTA),
+                        "--wrapper",
+                        "identity",
+                        "--maximum-logical-bytes",
+                        "8",
+                        "--output",
+                        str(limited),
+                    ]
+                )
+            self.assertEqual(result, 2)
+            self.assertIn("logical FASTA exceeds", stderr.getvalue())
+            self.assertFalse(limited.exists())
+
+    def test_compile_external_source_cli_admits_exact_evidence_paths(self) -> None:
+        manifest, descriptor, report, _, _, _ = _closure()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            files = {
+                "manifest": manifest,
+                "descriptor": descriptor,
+                "report": report,
+            }
+            paths = {}
+            for name, value in files.items():
+                path = root / f"{name}.json"
+                path.write_text(json.dumps(value), encoding="utf-8")
+                paths[name] = path
+            source = root / "reads.fastq"
+            native = root / "read-index.json"
+            source.write_bytes(FASTQ)
+            native.write_bytes(NATIVE_INDEX)
+            output = root / "external-source"
+            with redirect_stdout(io.StringIO()):
+                result = main(
+                    [
+                        "compile-external-source",
+                        "--profile-manifest",
+                        str(paths["manifest"]),
+                        "--source-descriptor",
+                        str(paths["descriptor"]),
+                        "--validation-report",
+                        str(paths["report"]),
+                        "--source-input",
+                        f"reads={source}",
+                        "--native-artifact",
+                        f"read-index={native}",
+                        "--output",
+                        str(output),
+                    ]
+                )
+            self.assertEqual(result, 0)
+            self.assertEqual(load_source_bundle(output).profile, EXTERNAL_PROFILE)
+            self.assertEqual(
+                {path.name for path in output.iterdir()},
+                {"source.json", "external.json"},
+            )
 
     def test_compile_development_publishes_the_exact_flat_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
