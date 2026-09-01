@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import brainc.validator_insdc_graph as validator
 from brainc.insdc import GenBankCompiler
@@ -49,6 +50,265 @@ class IndependentINSDCGraphValidatorTests(unittest.TestCase):
         compiled = compile_insdc_graph(cls.source)
         cls.index = compiled.to_dict()
         cls.artifacts = compiled.artifacts
+
+    def test_canonical_size_guard_matches_valid_rfc8785_bytes(self) -> None:
+        rfc_sample = {
+            "numbers": [333333333.33333329, 1e30, 4.50, 2e-3, 1e-27],
+            "string": "€$\u000f\nA'B\"\\\"/",
+            "literals": [None, True, False],
+        }
+        rfc_bytes = (
+            '{"literals":[null,true,false],"numbers":'
+            '[333333333.3333333,1e+30,4.5,0.002,1e-27],'
+            '"string":"€$\\u000f\\nA\'B\\\"\\\\\\\"/"}'
+        ).encode("utf-8")
+        self.assertEqual(validator.canonical_bytes(rfc_sample), rfc_bytes)
+        values = (
+            None,
+            True,
+            False,
+            0,
+            -validator.SAFE_INTEGER,
+            validator.SAFE_INTEGER,
+            -0.0,
+            1.0,
+            1e-7,
+            1e-6,
+            1e20,
+            1e21,
+            5e-324,
+            1.7976931348623157e308,
+            "",
+            "quote=\" slash=\\ controls=\b\t\n\f\r\u0000",
+            "λ🚀\u007f\u0080\u2028\u2029\U0010ffff",
+            [],
+            {},
+            rfc_sample,
+            {
+                "ascii": "quote=\" slash=\\ controls=\b\t\n\f\r\u0000",
+                "unicode": "λ🚀",
+                "values": [None, True, False, -123, 1.25e-7],
+                "nested": {"🚀": [], "�": {}},
+            },
+        )
+        for value in values:
+            with self.subTest(value=repr(value)):
+                canonical_size = len(validator.canonical_bytes(value))
+                self.assertEqual(
+                    validator._validate_tree(
+                        value,
+                        "value",
+                        allow_float=True,
+                        maximum_bytes=canonical_size,
+                    ),
+                    canonical_size,
+                )
+                with self.assertRaisesRegex(
+                    validator.INSDCGraphValidationError,
+                    f"exceeds {canonical_size - 1} canonical JSON bytes",
+                ):
+                    validator._validate_tree(
+                        value,
+                        "value",
+                        allow_float=True,
+                        maximum_bytes=canonical_size - 1,
+                    )
+
+    @unittest.skipUnless(
+        sys.platform.startswith("linux") and Path("/proc/self/statm").exists(),
+        "requires Linux address-space limits",
+    )
+    def test_oversized_shared_strings_are_bounded_under_memory_pressure(self) -> None:
+        command = r'''
+import os
+from pathlib import Path
+import resource
+import sys
+
+sys.path.insert(0, sys.argv[1])
+import brainc.validator_insdc_graph as validator
+
+case = sys.argv[2]
+padding = "x" * validator.MAX_TEXT_BYTES
+if case == "child":
+    value = {
+        "padding": [padding]
+        * (validator.MAX_CHILD_BYTES // validator.MAX_TEXT_BYTES + 1),
+        "artifact_sha256": "0" * 64,
+    }
+    validate = lambda: validator._artifact(value, "child")
+    expected = (
+        "INSDCGRAPHVAL001: child exceeds "
+        f"{validator.MAX_CHILD_BYTES} canonical JSON bytes"
+    )
+else:
+    value = {
+        "format": "brainc.bio.insdc-genbank-ir",
+        "version": 2,
+        "profile": "profile",
+        "authority": {},
+        "compiler": {},
+        "sequence_collection": {},
+        "bio_ir": {
+            "padding": [padding]
+            * (
+                validator.MAX_SOURCE_ARTIFACT_BYTES
+                // validator.MAX_TEXT_BYTES
+                + 1
+            )
+        },
+        "bio_ir_sha256": "0" * 64,
+        "artifact_sha256": "0" * 64,
+    }
+    validate = lambda: validator._source_artifact(value)
+    expected = (
+        "INSDCGRAPHVAL001: GenBank source exceeds "
+        f"{validator.MAX_SOURCE_ARTIFACT_BYTES} canonical JSON bytes"
+    )
+
+page_size = os.sysconf("SC_PAGE_SIZE")
+current_size = int(Path("/proc/self/statm").read_text().split()[0]) * page_size
+limit = current_size + 24 * 1024 * 1024
+resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+try:
+    validate()
+except validator.INSDCGraphValidationError as failure:
+    assert str(failure) == expected, (str(failure), expected)
+else:
+    raise AssertionError("oversized object was accepted")
+print(f"{case}: bounded")
+'''
+        for case in ("child", "source"):
+            with self.subTest(case=case):
+                completed = subprocess.run(
+                    [sys.executable, "-I", "-c", command, str(ROOT), case],
+                    cwd=ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(completed.stdout.strip(), f"{case}: bounded")
+
+    def test_oversized_graph_dicts_reject_before_canonical_materialization(self) -> None:
+        padding = "x" * validator.MAX_TEXT_BYTES
+        child = {
+            "padding": [padding]
+            * (validator.MAX_CHILD_BYTES // validator.MAX_TEXT_BYTES + 1),
+            "artifact_sha256": "0" * 64,
+        }
+        source = {
+            "format": "brainc.bio.insdc-genbank-ir",
+            "version": 2,
+            "profile": "profile",
+            "authority": {},
+            "compiler": {},
+            "sequence_collection": {},
+            "bio_ir": {
+                "padding": [padding]
+                * (
+                    validator.MAX_SOURCE_ARTIFACT_BYTES
+                    // validator.MAX_TEXT_BYTES
+                    + 1
+                )
+            },
+            "bio_ir_sha256": "0" * 64,
+            "artifact_sha256": "0" * 64,
+        }
+        with (
+            mock.patch.object(
+                validator,
+                "canonical_bytes",
+                side_effect=AssertionError(
+                    "whole-artifact canonical materialization reached"
+                ),
+            ),
+            self.assertRaisesRegex(
+                validator.INSDCGraphValidationError,
+                f"child exceeds {validator.MAX_CHILD_BYTES} canonical JSON bytes",
+            ),
+        ):
+            validator._artifact(child, "child")
+        with (
+            mock.patch.object(
+                validator,
+                "canonical_bytes",
+                side_effect=AssertionError(
+                    "whole-artifact canonical materialization reached"
+                ),
+            ),
+            self.assertRaisesRegex(
+                validator.INSDCGraphValidationError,
+                "GenBank source exceeds "
+                f"{validator.MAX_SOURCE_ARTIFACT_BYTES} canonical JSON bytes",
+            ),
+        ):
+            validator._source_artifact(source)
+
+    def test_memoryerror_is_converted_to_graph_validation_error(self) -> None:
+        cases = (
+            (
+                "child",
+                lambda: validator._artifact(self.artifacts["backend_spec"], "child"),
+            ),
+            ("GenBank source", lambda: validator._source_artifact(self.source)),
+        )
+        for failure_point in ("_json_string_size", "canonical_bytes"):
+            for label, validate in cases:
+                with self.subTest(
+                    label=label,
+                    failure_point=failure_point,
+                ), mock.patch.object(
+                    validator,
+                    failure_point,
+                    side_effect=MemoryError("injected allocation failure"),
+                ), self.assertRaisesRegex(
+                    validator.INSDCGraphValidationError,
+                    "validation memory ceiling",
+                ):
+                    validate()
+
+        with mock.patch.object(
+            validator.json,
+            "loads",
+            side_effect=MemoryError("injected JSON allocation failure"),
+        ), self.assertRaisesRegex(
+            validator.INSDCGraphValidationError,
+            "invalid input JSON: memory ceiling exceeded",
+        ):
+            validator._json_object(b"{}", "input")
+
+        with mock.patch.object(
+            validator,
+            "_jcs",
+            side_effect=MemoryError("injected canonical allocation failure"),
+        ), self.assertRaisesRegex(
+            validator.INSDCGraphValidationError,
+            "canonical JSON exceeds the validation memory ceiling",
+        ):
+            validator.canonical_bytes({})
+
+        with mock.patch.object(
+            validator,
+            "_source_artifact",
+            side_effect=MemoryError("injected public-boundary failure"),
+        ), self.assertRaisesRegex(
+            validator.INSDCGraphValidationError,
+            "validation memory ceiling exceeded",
+        ):
+            validator.validate_insdc_graph_bundle({}, {}, {})
+
+    def test_direct_api_caps_original_genbank_bytes_before_replay(self) -> None:
+        with mock.patch.object(validator, "MAX_GENBANK_BYTES", len(self.raw) - 1):
+            with self.assertRaisesRegex(
+                validator.INSDCGraphValidationError,
+                f"at most {len(self.raw) - 1} bytes",
+            ):
+                validator.validate_insdc_graph_bundle(
+                    self.index,
+                    self.artifacts,
+                    self.source,
+                    genbank_source=self.raw,
+                )
 
     def test_actual_genbank_dna_reaches_independent_graph_and_v2_validators(self) -> None:
         report = validator.validate_insdc_graph_bundle(

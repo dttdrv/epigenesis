@@ -35,7 +35,7 @@ from brainc.v2.policy import (
     OP_UNIT_CREATE,
     parse_policy,
 )
-from brainc.v2.provider import load_source
+from brainc.v2.provider import load_request, load_source
 from brainc.v2.target import DEV_DOMAIN, parse_target_artifact
 from brainc.v2.tensor import parse_storage, parse_type
 from brainc.sequence_collection import SequenceCollectionCompiler
@@ -419,6 +419,22 @@ class CompilerV2AdversarialTests(unittest.TestCase):
             parse_type({"dtype": "u64", "shape": [True]}, "attack")
         with self.assertRaises(V2Error):
             make_request(self.chain.source_path, self.chain.manifest_path, tuple(self.chain.output_ids))  # type: ignore[arg-type]
+
+        for field, value in (
+            ("format", []),
+            ("version", True),
+            ("version", 1.0),
+            ("version", []),
+        ):
+            with self.subTest(request_source_field=field, value=value):
+                request = deepcopy(self.chain.request)
+                request["source"][field] = value
+                request_path = self.chain.write(
+                    "bad-request-source-identity",
+                    _reseal(request),
+                )
+                with self.assertRaisesRegex(V2Error, "format/version is unsupported"):
+                    load_request(request_path)
 
     def test_json_boundary_rejects_duplicates_nonfinite_unsafe_and_oversize(self) -> None:
         for raw in (

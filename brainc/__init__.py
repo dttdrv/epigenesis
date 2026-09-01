@@ -14,22 +14,33 @@ __version__ = "0.9.0"
 
 __all__ = [
     "CompilerError",
+    "DevelopmentBundle",
+    "DevelopmentBundleError",
+    "FASTA_PROFILE",
+    "GFF3_PROFILE",
     "GenBankArtifact",
     "GenBankCompiler",
     "GenBankError",
+    "GENBANK_PROFILE",
     "INSDCGraphBundle",
     "INSDCGraphError",
     "INSDCGraphValidationError",
     "INSDCValidationError",
     "ProviderError",
+    "PROFILES",
+    "RAW_PROFILE",
     "SequenceArtifact",
     "SequenceCollectionArtifact",
     "SequenceCollectionCompiler",
     "SequenceCollectionError",
     "SequenceCompiler",
     "SequenceCompilerError",
+    "SourceBundle",
+    "SourceError",
+    "compile_development",
     "compile_program",
     "compile_insdc_graph",
+    "compile_source",
     "load_manifest",
     "load_genbank_artifact",
     "load_insdc_graph_bundle_directory",
@@ -39,6 +50,8 @@ __all__ = [
     "load_response",
     "load_sequence_artifact",
     "load_sequence_collection",
+    "load_source_bundle",
+    "make_development_request",
     "make_request",
     "validate_binding",
     "validate_chain",
@@ -48,11 +61,19 @@ __all__ = [
     "validate_genbank_report",
     "validate_insdc_graph_paths",
     "validate_insdc_graph_report",
+    "validate_source_bundle",
+    "validate_source_descriptor",
 ]
 
 def __getattr__(name: str) -> Any:
     if name in {"CompilerError", "compile_program", "load_policy", "load_program"}:
         from . import compiler as module
+    elif name in {
+        "DevelopmentBundle",
+        "DevelopmentBundleError",
+        "compile_development",
+    }:
+        from . import development_bundle as module
     elif name in {
         "GenBankArtifact",
         "GenBankCompiler",
@@ -104,8 +125,24 @@ def __getattr__(name: str) -> Any:
         "load_sequence_collection",
     }:
         from . import sequence_collection as module
+    elif name in {
+        "FASTA_PROFILE",
+        "GFF3_PROFILE",
+        "GENBANK_PROFILE",
+        "PROFILES",
+        "RAW_PROFILE",
+        "SourceBundle",
+        "SourceError",
+        "compile_source",
+        "load_source_bundle",
+        "validate_source_bundle",
+        "validate_source_descriptor",
+    }:
+        from . import source as module
     elif name == "validate_chain":
         from . import validator as module
+    elif name == "make_development_request":
+        from .v2 import provider as module
     else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     value = getattr(module, name)

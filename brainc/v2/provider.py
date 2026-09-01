@@ -13,6 +13,15 @@ from brainc.insdc import (
 )
 from brainc.sequence import SequenceCompilerError, _as_artifact
 from brainc.sequence_collection import SequenceCollectionError, _as_collection
+from brainc.source import (
+    FORMAT as SOURCE_DESCRIPTOR_FORMAT,
+    VERSION as SOURCE_DESCRIPTOR_VERSION,
+    SourceBundle,
+    SourceError,
+    load_source_bundle,
+    validate_source_bundle,
+    validate_source_descriptor,
+)
 
 from ._common import (
     V2Error,
@@ -40,11 +49,35 @@ SOURCE_FORMATS = {
     ("brain01.sequence-ir", 2): "ir_sha256",
     ("brain01.sequence-collection-ir", 1): "collection_ir_sha256",
     (GENBANK_FORMAT, GENBANK_VERSION): "bio_ir_sha256",
+    (SOURCE_DESCRIPTOR_FORMAT, SOURCE_DESCRIPTOR_VERSION): "source_ir_sha256",
 }
 
 
+def _source_identity(source: dict[str, Any], label: str) -> tuple[str, int]:
+    source_format = source.get("format")
+    source_version = source.get("version")
+    if type(source_format) is not str or type(source_version) is not int:
+        raise V2Error(f"{label} format/version is unsupported")
+    return source_format, source_version
+
+
+def _reject_standalone_descriptor(
+    source: dict[str, Any],
+    *,
+    use: str,
+) -> None:
+    if _source_identity(source, "sequence source") == (
+        SOURCE_DESCRIPTOR_FORMAT,
+        SOURCE_DESCRIPTOR_VERSION,
+    ):
+        raise V2Error(
+            "standalone brainc.source-descriptor/v1 is not a complete source; "
+            f"use {use} with a validated SourceBundle"
+        )
+
+
 def _source_binding(source: dict[str, Any]) -> dict[str, Any]:
-    identity = (source["format"], source["version"])
+    identity = _source_identity(source, "sequence source")
     ir_field = SOURCE_FORMATS.get(identity)
     if ir_field is None:
         raise V2Error("unsupported sequence source format/version")
@@ -62,7 +95,7 @@ def load_source(path: str | Path) -> tuple[dict[str, Any], dict[str, int]]:
         "sequence source",
         maximum_bytes=MAX_SOURCE_JSON_BYTES,
     )
-    identity = (source.get("format"), source.get("version"))
+    identity = _source_identity(source, "sequence source")
     if identity != (GENBANK_FORMAT, GENBANK_VERSION) and len(raw) > MAX_JSON_BYTES:
         raise V2Error(f"sequence source exceeds JSON byte limit {MAX_JSON_BYTES}")
     _check_artifact(source, "sequence source")
@@ -82,9 +115,15 @@ def load_source(path: str | Path) -> tuple[dict[str, Any], dict[str, int]]:
                 member["record_id"]: member["sequence"]["bases"]
                 for member in source["sequence_collection"]["members"]
             }
+        elif identity == (SOURCE_DESCRIPTOR_FORMAT, SOURCE_DESCRIPTOR_VERSION):
+            descriptor = validate_source_descriptor(source)
+            records = {
+                member["record_id"]: member["bases"]
+                for member in descriptor["source_ir"]["records"]
+            }
         else:
             raise V2Error("unsupported sequence source format/version")
-    except (GenBankError, SequenceCompilerError, SequenceCollectionError) as failure:
+    except (GenBankError, SequenceCompilerError, SequenceCollectionError, SourceError) as failure:
         raise V2Error(f"invalid sequence source: {failure}") from failure
     if not records or len(records) > MAX_SOURCE_RECORDS:
         raise V2Error("sequence source record count is outside compiler limits")
@@ -163,14 +202,50 @@ def make_request(
     output_ids: list[str],
 ) -> dict[str, Any]:
     source, records = load_source(source_path)
+    _reject_standalone_descriptor(source, use="make_development_request")
     manifest = load_manifest(manifest_path)
     return _make_request(source, records, manifest, output_ids)
+
+
+def _validated_source_bundle_state(
+    value: str | Path | SourceBundle,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    try:
+        bundle = (
+            validate_source_bundle(value)
+            if isinstance(value, SourceBundle)
+            else load_source_bundle(value)
+        )
+    except (SourceError, OSError, TypeError) as failure:
+        raise V2Error(f"invalid source bundle: {failure}") from failure
+    source = bundle.to_dict()
+    if _source_identity(source, "source bundle descriptor") != (
+        SOURCE_DESCRIPTOR_FORMAT,
+        SOURCE_DESCRIPTOR_VERSION,
+    ):
+        raise V2Error("source bundle descriptor format/version is unsupported")
+    records = {
+        record["record_id"]: record["bases"]
+        for record in source["source_ir"]["records"]
+    }
+    return source, records
+
+
+def make_development_request(
+    source_bundle: str | Path | SourceBundle,
+    manifest_path: str | Path,
+    output_ids: list[str],
+) -> dict[str, Any]:
+    """Bind a request only after validating the complete native source closure."""
+
+    source, records = _validated_source_bundle_state(source_bundle)
+    return _make_request(source, records, load_manifest(manifest_path), output_ids)
 
 
 def _require_validated_genbank_records(
     source: dict[str, Any], records: dict[str, int]
 ) -> None:
-    if (source.get("format"), source.get("version")) != (
+    if _source_identity(source, "validated GenBank source") != (
         GENBANK_FORMAT,
         GENBANK_VERSION,
     ):
@@ -242,7 +317,7 @@ def load_request(path: str | Path) -> dict[str, Any]:
         raise V2Error("unsupported prediction request format")
     exact_version(item["version"], 2, "prediction request.version")
     source = keys(item["source"], {"format", "version", "artifact_sha256", "ir_sha256"}, "prediction request.source")
-    if (source["format"], source["version"]) not in SOURCE_FORMATS:
+    if _source_identity(source, "prediction request source") not in SOURCE_FORMATS:
         raise V2Error("prediction request source format/version is unsupported")
     sha256(source["artifact_sha256"], "prediction request.source.artifact_sha256")
     sha256(source["ir_sha256"], "prediction request.source.ir_sha256")
@@ -311,6 +386,7 @@ def validate_binding(
     response_path: str | Path,
 ) -> tuple[dict[str, Any], dict[str, int], dict[str, Any], dict[str, Any], dict[str, Any]]:
     source, records = load_source(source_path)
+    _reject_standalone_descriptor(source, use="compile_development")
     manifest = load_manifest(manifest_path)
     request = load_request(request_path)
     response = load_response(response_path)
@@ -327,6 +403,24 @@ def _validate_binding_from_validated_genbank_source(
     """Validate a provider chain for the same-stack validated GenBank snapshot."""
 
     _require_validated_genbank_records(source, records)
+    return _validate_binding(
+        source,
+        records,
+        load_manifest(manifest_path),
+        load_request(request_path),
+        load_response(response_path),
+    )
+
+
+def _validate_binding_from_validated_source_bundle(
+    source_bundle: str | Path | SourceBundle,
+    manifest_path: str | Path,
+    request_path: str | Path,
+    response_path: str | Path,
+) -> tuple[dict[str, Any], dict[str, int], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Validate a provider chain after replaying a complete SourceBundle closure."""
+
+    source, records = _validated_source_bundle_state(source_bundle)
     return _validate_binding(
         source,
         records,

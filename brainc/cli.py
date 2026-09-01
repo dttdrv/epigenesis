@@ -12,6 +12,7 @@ from ._io import load_json_object, read_regular_file
 from .bio import GFF3Compiler, load_gff3_artifact
 from .bio_graph import compile_feature_graph
 from .compiler import compile_program, load_policy, load_program, save as save_program
+from .development_bundle import compile_development
 from .insdc import GenBankCompiler
 from .insdc_graph import compile_insdc_graph
 from .provider import (
@@ -23,6 +24,14 @@ from .provider import (
 )
 from .sequence import SequenceCompiler, SequenceCompilerError, load_sequence_artifact
 from .sequence_collection import SequenceCollectionCompiler, SequenceCollectionError, load_sequence_collection
+from .source import (
+    FASTA_PROFILE,
+    GFF3_PROFILE,
+    GENBANK_PROFILE,
+    PROFILES,
+    RAW_PROFILE,
+    compile_source,
+)
 from .validator import save_report, validate_chain
 from .validator_bio import (
     MAX_BIO_ARTIFACT_BYTES,
@@ -41,7 +50,12 @@ from .validator_insdc import (
     INSDCValidationError,
     validate_genbank_paths as independently_validate_genbank_paths,
 )
-from .v2 import compile_module, make_request as make_request_v2, save as save_v2
+from .v2 import (
+    compile_module,
+    make_development_request,
+    make_request as make_request_v2,
+    save as save_v2,
+)
 from .validator_v2 import (
     load as load_v2,
     save_report as save_report_v2,
@@ -63,6 +77,22 @@ def _parser() -> argparse.ArgumentParser:
         description="Deterministic compiler for content-bound biological sources",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    source = sub.add_parser(
+        "compile-source",
+        help="compile one explicitly selected DNA source profile to a source bundle",
+    )
+    source.add_argument("--profile", choices=sorted(PROFILES), required=True)
+    source.add_argument("--sequence")
+    source.add_argument("--genbank")
+    source.add_argument("--annotation")
+    source.add_argument("--record-id")
+    source.add_argument("--wrapper", choices=("identity", "gzip"))
+    source.add_argument(
+        "--sequence-profile",
+        choices=(RAW_PROFILE, FASTA_PROFILE),
+        help="explicit external-sequence profile for GFF3",
+    )
+    source.add_argument("-o", "--output", required=True)
     sequence = sub.add_parser("compile-sequence", help="compile one FASTA record to Sequence IR")
     sequence.add_argument("input"); sequence.add_argument("--context"); sequence.add_argument("-o", "--output", required=True)
     collection = sub.add_parser("compile-collection", help="compile multi-FASTA or gzipped FASTA to collection IR")
@@ -132,6 +162,18 @@ def _parser() -> argparse.ArgumentParser:
     request_v2.add_argument("--manifest", required=True)
     request_v2.add_argument("--output-id", action="append", required=True)
     request_v2.add_argument("-o", "--output", required=True)
+    development_request = sub.add_parser(
+        "make-development-request",
+        help="bind a validated source bundle to a tensor-provider v2 contract",
+    )
+    development_request.add_argument("source_bundle")
+    development_request.add_argument("--manifest", required=True)
+    development_request.add_argument(
+        "--output-id",
+        action="append",
+        required=True,
+    )
+    development_request.add_argument("-o", "--output", required=True)
     compile_cmd = sub.add_parser("compile", help="lower an externally predicted DNA source to state-program IR")
     compile_cmd.add_argument("source"); compile_cmd.add_argument("--manifest", required=True); compile_cmd.add_argument("--request", required=True)
     compile_cmd.add_argument("--response", required=True); compile_cmd.add_argument("--policy", required=True); compile_cmd.add_argument("-o", "--output", required=True)
@@ -147,6 +189,18 @@ def _parser() -> argparse.ArgumentParser:
     compile_v2.add_argument("--target", required=True)
     compile_v2.add_argument("--blob-root")
     compile_v2.add_argument("-o", "--output", required=True)
+    development = sub.add_parser(
+        "compile-development",
+        help="compile a source bundle and caller-supplied interpretation to a development bundle",
+    )
+    development.add_argument("source_bundle")
+    development.add_argument("--manifest", required=True)
+    development.add_argument("--request", required=True)
+    development.add_argument("--response", required=True)
+    development.add_argument("--policy", required=True)
+    development.add_argument("--target", required=True)
+    development.add_argument("--blob-root")
+    development.add_argument("-o", "--output", required=True)
     check = sub.add_parser("check", help="check one compiler artifact's closed schema and digest")
     check.add_argument("kind", choices=["sequence", "collection", "manifest", "request", "response", "policy", "program"]); check.add_argument("artifact")
     check_v2 = sub.add_parser(
@@ -214,6 +268,69 @@ def _check(kind: str, artifact: str) -> Any:
     }[kind](artifact)
 
 
+def _source_arguments(
+    args: argparse.Namespace,
+) -> tuple[dict[str, str], dict[str, Any]]:
+    values = {
+        name: getattr(args, name)
+        for name in (
+            "sequence",
+            "genbank",
+            "annotation",
+            "record_id",
+            "wrapper",
+            "sequence_profile",
+        )
+    }
+
+    def selected(*, required: set[str], allowed: set[str]) -> None:
+        missing = sorted(name for name in required if values[name] is None)
+        extra = sorted(
+            name
+            for name in values
+            if name not in allowed and values[name] is not None
+        )
+        if missing or extra:
+            raise ValueError(
+                f"source profile flags invalid; missing={missing or 'none'}, "
+                f"not-applicable={extra or 'none'}"
+            )
+
+    if args.profile == RAW_PROFILE:
+        selected(required={"sequence", "record_id"}, allowed={"sequence", "record_id"})
+        return {"sequence": args.sequence}, {"record_id": args.record_id}
+    if args.profile == FASTA_PROFILE:
+        selected(required={"sequence", "wrapper"}, allowed={"sequence", "wrapper"})
+        return {"sequence": args.sequence}, {"wrapper": args.wrapper}
+    if args.profile == GENBANK_PROFILE:
+        selected(required={"genbank"}, allowed={"genbank"})
+        return {"genbank": args.genbank}, {}
+
+    selected(
+        required={"sequence", "annotation", "sequence_profile"},
+        allowed={"sequence", "annotation", "sequence_profile", "record_id", "wrapper"},
+    )
+    if args.sequence_profile == RAW_PROFILE:
+        if args.record_id is None or args.wrapper is not None:
+            raise ValueError(
+                "raw GFF3 sequence profile requires --record-id and forbids --wrapper"
+            )
+        sequence_parameters = {"record_id": args.record_id}
+    else:
+        if args.wrapper is None or args.record_id is not None:
+            raise ValueError(
+                "FASTA GFF3 sequence profile requires --wrapper and forbids --record-id"
+            )
+        sequence_parameters = {"wrapper": args.wrapper}
+    return (
+        {"sequence": args.sequence, "annotation": args.annotation},
+        {
+            "sequence_profile": args.sequence_profile,
+            "sequence_parameters": sequence_parameters,
+        },
+    )
+
+
 def _check_v2(args: argparse.Namespace) -> None:
     artifact, _ = load_v2(args.artifact, f"{args.kind} artifact")
     if args.kind == "source":
@@ -274,7 +391,23 @@ def _emit_report(report: dict[str, Any], output: str | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        if args.command == "compile-sequence":
+        if args.command == "compile-source":
+            inputs, parameters = _source_arguments(args)
+            paths = compile_source(
+                args.profile,
+                inputs,
+                parameters=parameters,
+            ).save(args.output)
+            print(
+                json.dumps(
+                    {
+                        "output": str(args.output),
+                        "source": str(paths["source.json"]),
+                    },
+                    sort_keys=True,
+                )
+            )
+        elif args.command == "compile-sequence":
             SequenceCompiler().compile_file(args.input, args.context).save(args.output)
         elif args.command == "compile-collection":
             SequenceCollectionCompiler().compile_file(args.input).save(args.output)
@@ -376,6 +509,15 @@ def main(argv: list[str] | None = None) -> int:
                 make_request_v2(args.source, args.manifest, args.output_id),
                 args.output,
             )
+        elif args.command == "make-development-request":
+            save_v2(
+                make_development_request(
+                    args.source_bundle,
+                    args.manifest,
+                    args.output_id,
+                ),
+                args.output,
+            )
         elif args.command == "compile":
             save_program(compile_program(args.source, args.manifest, args.request, args.response, args.policy), args.output)
         elif args.command == "compile-v2":
@@ -390,6 +532,25 @@ def main(argv: list[str] | None = None) -> int:
                     blob_root=args.blob_root,
                 ),
                 args.output,
+            )
+        elif args.command == "compile-development":
+            paths = compile_development(
+                args.source_bundle,
+                args.manifest,
+                args.request,
+                args.response,
+                args.policy,
+                args.target,
+                blob_root=args.blob_root,
+            ).save(args.output)
+            print(
+                json.dumps(
+                    {
+                        "bundle": str(paths["bundle.json"]),
+                        "output": str(args.output),
+                    },
+                    sort_keys=True,
+                )
             )
         elif args.command == "check":
             _check(args.kind, args.artifact)

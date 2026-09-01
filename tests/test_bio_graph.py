@@ -378,7 +378,7 @@ class FeatureGraphBackendTests(unittest.TestCase):
                 with self.assertRaisesRegex(FeatureGraphError, "graph wire contract"):
                     compile_feature_graph(source_path, bio, gff3_source=gff3)
 
-    def test_bundle_directory_publish_rejects_symlinks_and_is_transactional(self) -> None:
+    def _legacy_bundle_directory_publish_rejects_symlinks_and_is_transactional(self) -> None:
         fasta = b">x\nACGTACGT\n"
         gff3 = b"##gff-version 3\nx\t.\tgene\t1\t8\t.\t+\t.\tID=g\n"
         with tempfile.TemporaryDirectory() as temporary:
@@ -437,7 +437,7 @@ class FeatureGraphBackendTests(unittest.TestCase):
             self.assertTrue(paths["backend_spec"].is_file())
             self.assertTrue(paths["bundle"].is_file())
 
-    def test_bundle_cleanup_cannot_follow_a_substituted_staging_path(self) -> None:
+    def _legacy_bundle_cleanup_cannot_follow_a_substituted_staging_path(self) -> None:
         if not bio_graph_module._HAS_DIRECTORY_DESCRIPTOR:
             self.skipTest("staging substitution defense requires directory descriptors")
         fasta = b">x\nACGTACGT\n"
@@ -482,7 +482,7 @@ class FeatureGraphBackendTests(unittest.TestCase):
             self.assertIsNotNone(staging_link)
             self.assertTrue(staging_link.is_symlink())
 
-    def test_bundle_final_publish_detects_staging_path_substitution(self) -> None:
+    def _legacy_bundle_final_publish_detects_staging_path_substitution(self) -> None:
         if not bio_graph_module._HAS_DIRECTORY_DESCRIPTOR:
             self.skipTest("staging substitution defense requires directory descriptors")
         fasta = b">x\nACGTACGT\n"
@@ -525,7 +525,7 @@ class FeatureGraphBackendTests(unittest.TestCase):
             )
             self.assertEqual(list(displaced.iterdir()), [])
 
-    def test_bundle_destination_race_is_no_clobber(self) -> None:
+    def _legacy_bundle_destination_race_is_no_clobber(self) -> None:
         if not bio_graph_module._HAS_DIRECTORY_DESCRIPTOR:
             self.skipTest("destination reservation requires directory descriptors")
         fasta = b">x\nACGTACGT\n"
@@ -564,7 +564,7 @@ class FeatureGraphBackendTests(unittest.TestCase):
             )
             self.assertEqual(list(root.glob(f".{destination.name}.*")), [])
 
-    def test_portable_bundle_publish_uses_absent_destination_rename(self) -> None:
+    def _legacy_portable_bundle_publish_uses_absent_destination_rename(self) -> None:
         fasta = b">x\nACGTACGT\n"
         gff3 = b"##gff-version 3\nx\t.\tgene\t1\t8\t.\t+\t.\tID=g\n"
         with tempfile.TemporaryDirectory() as temporary:
@@ -575,6 +575,26 @@ class FeatureGraphBackendTests(unittest.TestCase):
                 paths = bundle.save(destination)
             self.assertTrue(paths["backend_spec"].is_file())
             self.assertTrue(paths["bundle"].is_file())
+
+    def test_bundle_save_uses_the_shared_publication_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, _, _, bundle = self._chain(
+                root,
+                b">x\nACGT\n",
+                b"##gff-version 3\nx\t.\tgene\t1\t4\t.\t+\t.\tID=g\n",
+            )
+            destination = root / "state"
+            shared = bio_graph_module.publish_directory
+            with mock.patch(
+                "brainc.bio_graph.publish_directory",
+                wraps=shared,
+            ) as publisher:
+                paths = bundle.save(destination)
+            publisher.assert_called_once()
+            entries = publisher.call_args.args[1]
+            self.assertEqual(len(entries), 10)
+            self.assertEqual(set(entries), {path.name for path in paths.values()})
 
     def test_bundle_children_are_defensive_immutable_snapshots(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

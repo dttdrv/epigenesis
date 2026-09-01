@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from brainc._canonical import SAFE_INTEGER, digest, keys
+from brainc.source import SourceBundle
 
 from ._common import V2Error, pretty_bytes, seal, sorted_unique, text
 from .limits import (
@@ -23,6 +24,7 @@ from .policy import load_policy
 from .provider import (
     _source_binding,
     _validate_binding_from_validated_genbank_source,
+    _validate_binding_from_validated_source_bundle,
     validate_binding,
 )
 from .target import (
@@ -351,6 +353,38 @@ def _compile_module_from_validated_genbank_source(
         _validate_binding_from_validated_genbank_source(
             source,
             records,
+            manifest_path,
+            request_path,
+            response_path,
+        )
+    )
+    return _compile_module(
+        source,
+        records,
+        manifest,
+        request,
+        response,
+        policy_path,
+        target_path,
+        blob_root=blob_root,
+    )
+
+
+def _compile_module_from_validated_source_bundle(
+    source_bundle: str | Path | SourceBundle,
+    manifest_path: str | Path,
+    request_path: str | Path,
+    response_path: str | Path,
+    policy_path: str | Path,
+    target_path: str | Path,
+    *,
+    blob_root: str | Path | None = None,
+) -> dict[str, Any]:
+    """Lower a chain only after replaying its complete native source closure."""
+
+    source, records, manifest, request, response = (
+        _validate_binding_from_validated_source_bundle(
+            source_bundle,
             manifest_path,
             request_path,
             response_path,

@@ -307,6 +307,45 @@ class CompilerV2CliTests(unittest.TestCase):
         module = self._run("check-v2", "module", "module.json", expected=2)
         self.assertIn("--target", module.stderr)
 
+    def test_compile_v2_reports_malformed_request_source_identity_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = self._build_chain(root)
+            request = json.loads(paths["request"].read_text(encoding="utf-8"))
+            request["source"]["version"] = []
+            malformed = root / "malformed-request.json"
+            save(
+                seal(
+                    {
+                        key: value
+                        for key, value in request.items()
+                        if key != "artifact_sha256"
+                    }
+                ),
+                malformed,
+            )
+            output = root / "malformed-module.json"
+            result = self._run(
+                "compile-v2",
+                paths["source"],
+                "--manifest",
+                paths["manifest"],
+                "--request",
+                malformed,
+                "--response",
+                paths["response"],
+                "--policy",
+                paths["policy"],
+                "--target",
+                paths["target"],
+                "--output",
+                output,
+                expected=2,
+            )
+            self.assertIn("format/version is unsupported", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

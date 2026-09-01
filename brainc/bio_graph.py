@@ -10,16 +10,17 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-import errno
 import json
-import os
 from pathlib import Path
-import secrets
-import stat
 import tempfile
 from typing import Any
 
 from ._canonical import ContractError, artifact_digest, canonical_bytes, digest
+from ._publish import (
+    HAS_LINUX_DIRECTORY_PUBLICATION,
+    PublicationError,
+    publish_directory,
+)
 from .bio import (
     GFF3Artifact,
     GFF3Error,
@@ -50,21 +51,7 @@ BUNDLE_FORMAT = "brainc.bio.feature-graph-bundle"
 RELATIONSHIP_KINDS = ("derives-from", "parent")
 STRANDS = ("+", "-", ".", "?")
 MAX_U64 = 2**64 - 1
-_HAS_DIRECTORY_DESCRIPTOR = (
-    os.name == "posix"
-    and all(
-        operation in getattr(os, "supports_dir_fd", set())
-        for operation in (
-            os.open,
-            os.unlink,
-            os.rename,
-            os.stat,
-            os.mkdir,
-            os.rmdir,
-        )
-    )
-)
-_directory_fsync = os.fsync
+_HAS_DIRECTORY_DESCRIPTOR = HAS_LINUX_DIRECTORY_PUBLICATION
 
 FEATURE_FIELD_SPECS: tuple[dict[str, Any], ...] = (
     {
@@ -581,73 +568,6 @@ def _preflight_wire(value: dict[str, Any], label: str) -> None:
         ) from failure
 
 
-def _save_staged_artifact(
-    artifact: dict[str, Any],
-    role: str,
-    staging: Path,
-    directory_descriptor: int,
-) -> None:
-    """Write one graph artifact without resolving a substituted POSIX path."""
-
-    if directory_descriptor < 0:
-        save(artifact, staging / f"{role}.json")
-        return
-    raw = pretty_bytes(artifact)
-    final_name = f"{role}.json"
-    temporary_name = f".{final_name}.{secrets.token_hex(12)}"
-    descriptor = -1
-    temporary_exists = False
-    try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        flags |= getattr(os, "O_NOFOLLOW", 0)
-        descriptor = os.open(
-            temporary_name,
-            flags,
-            0o600,
-            dir_fd=directory_descriptor,
-        )
-        temporary_exists = True
-        view = memoryview(raw)
-        while view:
-            written = os.write(descriptor, view)
-            if written <= 0:
-                raise OSError("artifact write made no progress")
-            view = view[written:]
-        os.fsync(descriptor)
-        os.close(descriptor)
-        descriptor = -1
-        try:
-            os.stat(
-                final_name,
-                dir_fd=directory_descriptor,
-                follow_symlinks=False,
-            )
-        except FileNotFoundError:
-            pass
-        else:
-            raise OSError(f"staged artifact already exists: {final_name}")
-        os.rename(
-            temporary_name,
-            final_name,
-            src_dir_fd=directory_descriptor,
-            dst_dir_fd=directory_descriptor,
-        )
-        temporary_exists = False
-    except V2Error:
-        raise
-    except OSError as failure:
-        raise V2Error(f"cannot write staged {role}: {failure}") from failure
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        if temporary_exists:
-            try:
-                os.unlink(temporary_name, dir_fd=directory_descriptor)
-            except OSError:
-                pass
-
-
 def _bio_payload(value: GFF3Artifact | dict[str, Any]) -> dict[str, Any]:
     if isinstance(value, GFF3Artifact):
         return value.to_dict()
@@ -1097,325 +1017,25 @@ class FeatureGraphBundle:
         return payload
 
     def save(self, directory: str | Path) -> dict[str, Path]:
-        destination = Path(directory)
         bundle_payload = self.to_dict()
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            existing = destination.lstat()
-        except FileNotFoundError:
-            existing = None
-        except OSError as failure:
-            raise _fail(f"cannot inspect output directory: {failure}") from failure
-        if existing is not None:
-            kind = "symbolic link" if stat.S_ISLNK(existing.st_mode) else "existing path"
-            raise _fail(
-                f"feature-graph output directory must be absent, not a {kind}"
-            )
         artifacts = {
             **bundle_payload["artifacts"],
             "bundle": bundle_payload,
         }
-        parent_descriptor = -1
-        parent_identity: tuple[int, int] | None = None
-        if _HAS_DIRECTORY_DESCRIPTOR:
-            try:
-                parent_inspected = destination.parent.lstat()
-                if stat.S_ISLNK(parent_inspected.st_mode) or not stat.S_ISDIR(
-                    parent_inspected.st_mode
-                ):
-                    raise _fail(
-                        "feature-graph output parent must be a non-linked directory"
-                    )
-                parent_flags = os.O_RDONLY
-                parent_flags |= getattr(os, "O_CLOEXEC", 0)
-                parent_flags |= getattr(os, "O_DIRECTORY", 0)
-                parent_flags |= getattr(os, "O_NOFOLLOW", 0)
-                parent_descriptor = os.open(destination.parent, parent_flags)
-                parent_opened = os.fstat(parent_descriptor)
-                parent_identity = (parent_opened.st_dev, parent_opened.st_ino)
-                if (
-                    not stat.S_ISDIR(parent_opened.st_mode)
-                    or parent_identity
-                    != (parent_inspected.st_dev, parent_inspected.st_ino)
-                ):
-                    raise _fail(
-                        "feature-graph output parent changed while opening"
-                    )
-            except (FeatureGraphError, OSError) as failure:
-                if parent_descriptor >= 0:
-                    os.close(parent_descriptor)
-                if isinstance(failure, FeatureGraphError):
-                    raise
-                raise _fail(
-                    f"cannot open feature-graph output parent: {failure}"
-                ) from failure
         try:
-            staging = Path(
-                tempfile.mkdtemp(
-                    prefix=f".{destination.name}.", dir=destination.parent
-                )
+            paths = publish_directory(
+                directory,
+                {f"{role}.json": artifact for role, artifact in artifacts.items()},
+                pretty_bytes,
             )
-        except OSError as failure:
-            if parent_descriptor >= 0:
-                os.close(parent_descriptor)
+        except PublicationError as failure:
+            state = " after commit" if failure.committed else ""
             raise _fail(
-                f"cannot create feature-graph staging directory: {failure}"
+                f"cannot publish feature-graph directory{state}: {failure.strerror}"
             ) from failure
-        staging_metadata = staging.lstat()
-        staging_identity = (staging_metadata.st_dev, staging_metadata.st_ino)
-        staging_descriptor = -1
-        published = False
-        staging_moved = False
-        reservation_created = False
-        reservation_identity: tuple[int, int] | None = None
-
-        if _HAS_DIRECTORY_DESCRIPTOR:
-            directory_flags = os.O_RDONLY
-            directory_flags |= getattr(os, "O_CLOEXEC", 0)
-            directory_flags |= getattr(os, "O_DIRECTORY", 0)
-            directory_flags |= getattr(os, "O_NOFOLLOW", 0)
-            try:
-                staging_descriptor = os.open(staging, directory_flags)
-                opened = os.fstat(staging_descriptor)
-                if (
-                    not stat.S_ISDIR(opened.st_mode)
-                    or (opened.st_dev, opened.st_ino) != staging_identity
-                ):
-                    raise _fail(
-                        "feature-graph staging directory changed while opening"
-                    )
-                parent_entry = os.stat(
-                    staging.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-                if (
-                    not stat.S_ISDIR(parent_entry.st_mode)
-                    or (parent_entry.st_dev, parent_entry.st_ino)
-                    != staging_identity
-                ):
-                    raise _fail(
-                        "feature-graph staging directory is outside output parent"
-                    )
-            except (FeatureGraphError, OSError) as failure:
-                if staging_descriptor >= 0:
-                    os.close(staging_descriptor)
-                    staging_descriptor = -1
-                if parent_descriptor >= 0:
-                    os.close(parent_descriptor)
-                    parent_descriptor = -1
-                try:
-                    current = staging.lstat()
-                    if (
-                        stat.S_ISDIR(current.st_mode)
-                        and not stat.S_ISLNK(current.st_mode)
-                        and (current.st_dev, current.st_ino) == staging_identity
-                    ):
-                        staging.rmdir()
-                except OSError:
-                    pass
-                if isinstance(failure, FeatureGraphError):
-                    raise
-                raise _fail(
-                    f"cannot open feature-graph staging directory: {failure}"
-                ) from failure
-
-        def require_staging_identity() -> None:
-            current = staging.lstat()
-            if (
-                stat.S_ISLNK(current.st_mode)
-                or not stat.S_ISDIR(current.st_mode)
-                or (current.st_dev, current.st_ino) != staging_identity
-            ):
-                raise _fail("feature-graph staging directory changed identity")
-
-        try:
-            for role, artifact in artifacts.items():
-                require_staging_identity()
-                try:
-                    _save_staged_artifact(
-                        artifact, role, staging, staging_descriptor
-                    )
-                except V2Error as failure:
-                    raise _fail(f"cannot save {role}: {failure}") from failure
-                require_staging_identity()
-            if staging_descriptor >= 0:
-                try:
-                    _directory_fsync(staging_descriptor)
-                except OSError as failure:
-                    unsupported = {
-                        errno.EBADF,
-                        errno.EINVAL,
-                        getattr(errno, "ENOTSUP", errno.EINVAL),
-                        getattr(errno, "EOPNOTSUPP", errno.EINVAL),
-                    }
-                    if failure.errno not in unsupported:
-                        raise
-            try:
-                if parent_descriptor >= 0:
-                    os.mkdir(
-                        destination.name,
-                        0o700,
-                        dir_fd=parent_descriptor,
-                    )
-                    reserved = os.stat(
-                        destination.name,
-                        dir_fd=parent_descriptor,
-                        follow_symlinks=False,
-                    )
-                else:
-                    # Windows directory renames are no-clobber: renaming a
-                    # directory to an existing name fails.  It also cannot
-                    # replace an empty directory, so do not create the POSIX
-                    # reservation used by the descriptor-capable path.
-                    reserved = None
-            except FileExistsError as failure:
-                raise _fail(
-                    "feature-graph output path appeared during staging"
-                ) from failure
-            if parent_descriptor >= 0:
-                assert reserved is not None
-                reservation_created = True
-                reservation_identity = (reserved.st_dev, reserved.st_ino)
-                if not stat.S_ISDIR(reserved.st_mode) or stat.S_ISLNK(
-                    reserved.st_mode
-                ):
-                    raise _fail(
-                        "feature-graph output reservation is not a directory"
-                    )
-                os.replace(
-                    staging.name,
-                    destination.name,
-                    src_dir_fd=parent_descriptor,
-                    dst_dir_fd=parent_descriptor,
-                )
-                published_entry = os.stat(
-                    destination.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-            else:
-                try:
-                    os.rename(staging, destination)
-                except FileExistsError as failure:
-                    raise _fail(
-                        "feature-graph output path appeared during staging"
-                    ) from failure
-                published_entry = destination.lstat()
-            staging_moved = True
-            reservation_created = False
-            if (
-                not stat.S_ISDIR(published_entry.st_mode)
-                or stat.S_ISLNK(published_entry.st_mode)
-                or (published_entry.st_dev, published_entry.st_ino)
-                != staging_identity
-            ):
-                raise _fail(
-                    "feature-graph staging identity changed during publication"
-                )
-            if parent_descriptor >= 0:
-                parent_finished = destination.parent.lstat()
-                if (
-                    stat.S_ISLNK(parent_finished.st_mode)
-                    or not stat.S_ISDIR(parent_finished.st_mode)
-                    or (parent_finished.st_dev, parent_finished.st_ino)
-                    != parent_identity
-                ):
-                    raise _fail(
-                        "feature-graph output parent changed during publication"
-                    )
-                try:
-                    _directory_fsync(parent_descriptor)
-                except OSError as failure:
-                    unsupported = {
-                        errno.EBADF,
-                        errno.EINVAL,
-                        getattr(errno, "ENOTSUP", errno.EINVAL),
-                        getattr(errno, "EOPNOTSUPP", errno.EINVAL),
-                    }
-                    if failure.errno not in unsupported:
-                        raise
-            published = True
-        except FeatureGraphError:
-            raise
-        except OSError as failure:
-            raise _fail(f"cannot publish feature-graph directory: {failure}") from failure
-        finally:
-            if not published and staging_descriptor >= 0:
-                # Address the original staging directory through its still-open
-                # descriptor.  A hostile pathname substitution cannot redirect
-                # cleanup into another directory.
-                for role in artifacts:
-                    try:
-                        os.unlink(f"{role}.json", dir_fd=staging_descriptor)
-                    except OSError:
-                        pass
-            elif not published:
-                # Portable fallback for hosts without descriptor-relative
-                # directory operations.  The staging directory is private;
-                # recheck its identity around every exact known-name unlink.
-                for role in artifacts:
-                    try:
-                        require_staging_identity()
-                        child = staging / f"{role}.json"
-                        child_metadata = child.lstat()
-                        if not (
-                            stat.S_ISREG(child_metadata.st_mode)
-                            or stat.S_ISLNK(child_metadata.st_mode)
-                        ):
-                            break
-                        child.unlink()
-                        require_staging_identity()
-                    except FileNotFoundError:
-                        continue
-                    except (FeatureGraphError, OSError):
-                        break
-            if staging_descriptor >= 0:
-                os.close(staging_descriptor)
-            if not published and not staging_moved:
-                try:
-                    current = staging.lstat()
-                    if (
-                        stat.S_ISDIR(current.st_mode)
-                        and not stat.S_ISLNK(current.st_mode)
-                        and (current.st_dev, current.st_ino) == staging_identity
-                    ):
-                        staging.rmdir()
-                except OSError:
-                    pass
-            if reservation_created and reservation_identity is not None:
-                try:
-                    if parent_descriptor >= 0:
-                        current = os.stat(
-                            destination.name,
-                            dir_fd=parent_descriptor,
-                            follow_symlinks=False,
-                        )
-                        if (
-                            stat.S_ISDIR(current.st_mode)
-                            and (current.st_dev, current.st_ino)
-                            == reservation_identity
-                        ):
-                            os.rmdir(
-                                destination.name,
-                                dir_fd=parent_descriptor,
-                            )
-                    else:
-                        current = destination.lstat()
-                        if (
-                            stat.S_ISDIR(current.st_mode)
-                            and not stat.S_ISLNK(current.st_mode)
-                            and (current.st_dev, current.st_ino)
-                            == reservation_identity
-                        ):
-                            destination.rmdir()
-                except OSError:
-                    pass
-            if parent_descriptor >= 0:
-                os.close(parent_descriptor)
-        return {
-            role: destination / f"{role}.json" for role in artifacts
-        }
+        except V2Error as failure:
+            raise _fail(f"cannot encode feature-graph child: {failure}") from failure
+        return {role: paths[f"{role}.json"] for role in artifacts}
 
 
 def compile_feature_graph(

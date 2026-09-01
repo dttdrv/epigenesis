@@ -10,16 +10,17 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-import errno
 import json
-import os
 from pathlib import Path
-import secrets
-import stat
 import tempfile
 from typing import Any, Iterator
 
 from ._canonical import ContractError, artifact_digest, canonical_bytes, digest
+from ._publish import (
+    HAS_LINUX_DIRECTORY_PUBLICATION,
+    PublicationError,
+    publish_directory,
+)
 from .insdc import (
     AUTHORITY_MANIFEST_SHA256 as GENBANK_AUTHORITY_MANIFEST_SHA256,
     FORMAT as GENBANK_FORMAT,
@@ -55,13 +56,7 @@ RECORD_FORMAT = "brainc.bio.insdc-graph-compilation"
 BUNDLE_FORMAT = "brainc.bio.insdc-graph-bundle"
 
 MAX_U64 = 2**64 - 1
-_HAS_DIRECTORY_DESCRIPTOR = (
-    os.name == "posix"
-    and all(
-        operation in getattr(os, "supports_dir_fd", set())
-        for operation in (os.open, os.unlink, os.stat, os.mkdir, os.rmdir)
-    )
-)
+_HAS_DIRECTORY_DESCRIPTOR = HAS_LINUX_DIRECTORY_PUBLICATION
 KIND_BITS = (("between", 2), ("interval", 1), ("uncertain-point", 4))
 ORIENTATION_BITS = ((-1, 2), (1, 1))
 _KIND_BITS_CANONICAL = canonical_bytes(
@@ -86,6 +81,7 @@ CHILD_ROLES = (
 )
 BUNDLE_FILENAME = "bundle.json"
 CHILD_FILENAMES = tuple((role, f"{role}.json") for role in CHILD_ROLES)
+
 
 FEATURE_FIELD_SPECS: tuple[dict[str, Any], ...] = (
     {
@@ -466,126 +462,6 @@ def _preflight_child(artifact: dict[str, Any], role: str) -> None:
         raise _fail(f"{role} is outside the child wire contract: {failure}") from failure
     if len(raw) > MAX_CHILD_BYTES:
         raise _fail(f"{role} exceeds {MAX_CHILD_BYTES} bytes")
-
-
-def _save_staged_artifact(
-    artifact: dict[str, Any],
-    filename: str,
-    staging: Path,
-    directory_descriptor: int,
-) -> tuple[int, int, int, int, int]:
-    """Write one staged child without following a substituted POSIX path."""
-
-    if directory_descriptor < 0:
-        save(artifact, staging / filename)
-        metadata = (staging / filename).lstat()
-        if not stat.S_ISREG(metadata.st_mode):
-            raise V2Error(f"staged {filename} is not a regular file")
-        return (
-            metadata.st_dev,
-            metadata.st_ino,
-            metadata.st_size,
-            metadata.st_mtime_ns,
-            metadata.st_ctime_ns,
-        )
-    raw = pretty_bytes(artifact)
-    temporary_name = f".{filename}.{secrets.token_hex(12)}"
-    descriptor = -1
-    temporary_exists = False
-    final_exists = False
-    opened_identity: tuple[int, int] | None = None
-    try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        flags |= getattr(os, "O_NOFOLLOW", 0)
-        descriptor = os.open(
-            temporary_name,
-            flags,
-            0o600,
-            dir_fd=directory_descriptor,
-        )
-        temporary_exists = True
-        opened = os.fstat(descriptor)
-        if not stat.S_ISREG(opened.st_mode):
-            raise OSError(f"staged {filename} is not a regular file")
-        opened_identity = (opened.st_dev, opened.st_ino)
-        view = memoryview(raw)
-        while view:
-            written = os.write(descriptor, view)
-            if written <= 0:
-                raise OSError("artifact write made no progress")
-            view = view[written:]
-        os.fsync(descriptor)
-        finished = os.fstat(descriptor)
-        if (
-            not stat.S_ISREG(finished.st_mode)
-            or (finished.st_dev, finished.st_ino)
-            != (opened.st_dev, opened.st_ino)
-            or finished.st_size != len(raw)
-        ):
-            raise OSError(f"staged {filename} changed while writing")
-        os.close(descriptor)
-        descriptor = -1
-        try:
-            os.stat(
-                filename,
-                dir_fd=directory_descriptor,
-                follow_symlinks=False,
-            )
-        except FileNotFoundError:
-            pass
-        else:
-            raise OSError(f"staged artifact already exists: {filename}")
-        os.rename(
-            temporary_name,
-            filename,
-            src_dir_fd=directory_descriptor,
-            dst_dir_fd=directory_descriptor,
-        )
-        temporary_exists = False
-        final_exists = True
-        published = os.stat(
-            filename,
-            dir_fd=directory_descriptor,
-            follow_symlinks=False,
-        )
-        if (
-            not stat.S_ISREG(published.st_mode)
-            or (published.st_dev, published.st_ino) != opened_identity
-            or published.st_size != len(raw)
-        ):
-            raise OSError(f"staged {filename} changed while publishing")
-        final_exists = False
-        return (
-            published.st_dev,
-            published.st_ino,
-            published.st_size,
-            published.st_mtime_ns,
-            published.st_ctime_ns,
-        )
-    except V2Error:
-        raise
-    except OSError as failure:
-        raise V2Error(f"cannot write staged {filename}: {failure}") from failure
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        if temporary_exists:
-            try:
-                os.unlink(temporary_name, dir_fd=directory_descriptor)
-            except OSError:
-                pass
-        if final_exists and opened_identity is not None:
-            try:
-                current = os.stat(
-                    filename,
-                    dir_fd=directory_descriptor,
-                    follow_symlinks=False,
-                )
-                if (current.st_dev, current.st_ino) == opened_identity:
-                    os.unlink(filename, dir_fd=directory_descriptor)
-            except OSError:
-                pass
 
 
 def _source_payload(
@@ -988,9 +864,6 @@ class INSDCGraphBundle:
     def save(self, directory: str | Path) -> dict[str, Path]:
         """Publish the reference-only index and nine children as one directory."""
 
-        destination = Path(directory)
-        if destination.name in {"", ".", ".."}:
-            raise _fail("bundle output must name a new child directory")
         artifacts = {
             **{role: self.artifact(role) for role in CHILD_ROLES},
             "bundle": self.to_dict(),
@@ -999,384 +872,26 @@ class INSDCGraphBundle:
             **dict(CHILD_FILENAMES),
             "bundle": BUNDLE_FILENAME,
         }
-        destination.parent.mkdir(parents=True, exist_ok=True)
         try:
-            existing = destination.lstat()
-        except FileNotFoundError:
-            existing = None
-        except OSError as failure:
-            raise _fail(f"cannot inspect bundle output: {failure}") from failure
-        if existing is not None:
-            raise _fail("bundle output directory must not already exist")
-
-        parent_descriptor = -1
-        parent_identity: tuple[int, int] | None = None
-        if _HAS_DIRECTORY_DESCRIPTOR:
-            try:
-                parent_inspected = destination.parent.lstat()
-                if stat.S_ISLNK(parent_inspected.st_mode) or not stat.S_ISDIR(
-                    parent_inspected.st_mode
-                ):
-                    raise _fail("bundle output parent must be a non-linked directory")
-                directory_flags = os.O_RDONLY
-                directory_flags |= getattr(os, "O_CLOEXEC", 0)
-                directory_flags |= getattr(os, "O_DIRECTORY", 0)
-                directory_flags |= getattr(os, "O_NOFOLLOW", 0)
-                parent_descriptor = os.open(destination.parent, directory_flags)
-                parent_opened = os.fstat(parent_descriptor)
-                parent_identity = (parent_opened.st_dev, parent_opened.st_ino)
-                if (
-                    not stat.S_ISDIR(parent_opened.st_mode)
-                    or parent_identity
-                    != (parent_inspected.st_dev, parent_inspected.st_ino)
-                ):
-                    raise _fail("bundle output parent changed while opening")
-            except (INSDCGraphError, OSError) as failure:
-                if parent_descriptor >= 0:
-                    os.close(parent_descriptor)
-                if isinstance(failure, INSDCGraphError):
-                    raise
-                raise _fail(f"cannot open bundle output parent: {failure}") from failure
-
-        try:
-            staging = Path(
-                tempfile.mkdtemp(
-                    prefix=f".{destination.name}.",
-                    dir=destination.parent,
-                )
+            paths = publish_directory(
+                directory,
+                {
+                    filenames[role]: artifact
+                    for role, artifact in artifacts.items()
+                },
+                pretty_bytes,
             )
-        except OSError as failure:
-            if parent_descriptor >= 0:
-                os.close(parent_descriptor)
-            raise _fail(f"cannot create bundle staging directory: {failure}") from failure
-        staging_metadata = staging.lstat()
-        staging_identity = (staging_metadata.st_dev, staging_metadata.st_ino)
-        staging_descriptor = -1
-        snapshots: dict[str, tuple[int, int, int, int, int]] = {}
-        published = False
-        staging_moved = False
-        reservation_created = False
-        reservation_identity: tuple[int, int] | None = None
-
-        if _HAS_DIRECTORY_DESCRIPTOR:
-            directory_flags = os.O_RDONLY
-            directory_flags |= getattr(os, "O_CLOEXEC", 0)
-            directory_flags |= getattr(os, "O_DIRECTORY", 0)
-            directory_flags |= getattr(os, "O_NOFOLLOW", 0)
-            try:
-                staging_descriptor = os.open(staging, directory_flags)
-                opened = os.fstat(staging_descriptor)
-                if (
-                    not stat.S_ISDIR(opened.st_mode)
-                    or (opened.st_dev, opened.st_ino) != staging_identity
-                ):
-                    raise _fail("bundle staging directory changed while opening")
-                parent_entry = os.stat(
-                    staging.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-                if (
-                    not stat.S_ISDIR(parent_entry.st_mode)
-                    or (parent_entry.st_dev, parent_entry.st_ino)
-                    != staging_identity
-                ):
-                    raise _fail("bundle staging directory is outside output parent")
-            except (INSDCGraphError, OSError) as failure:
-                if staging_descriptor >= 0:
-                    os.close(staging_descriptor)
-                    staging_descriptor = -1
-                if parent_descriptor >= 0:
-                    os.close(parent_descriptor)
-                    parent_descriptor = -1
-                try:
-                    current = staging.lstat()
-                    if (
-                        stat.S_ISDIR(current.st_mode)
-                        and not stat.S_ISLNK(current.st_mode)
-                        and (current.st_dev, current.st_ino) == staging_identity
-                    ):
-                        staging.rmdir()
-                except OSError:
-                    pass
-                if isinstance(failure, INSDCGraphError):
-                    raise
-                raise _fail(f"cannot open bundle staging directory: {failure}") from failure
-
-        def live_directory() -> Path:
-            return destination if staging_moved else staging
-
-        def require_staging_identity() -> None:
-            current = live_directory().lstat()
-            if (
-                stat.S_ISLNK(current.st_mode)
-                or not stat.S_ISDIR(current.st_mode)
-                or (current.st_dev, current.st_ino) != staging_identity
-            ):
-                raise _fail("bundle staging directory changed identity")
-
-        def child_metadata(filename: str) -> os.stat_result:
-            if staging_descriptor >= 0:
-                return os.stat(
-                    filename,
-                    dir_fd=staging_descriptor,
-                    follow_symlinks=False,
-                )
-            return (live_directory() / filename).lstat()
-
-        def require_children() -> None:
-            expected_names = set(filenames.values())
-            if staging_descriptor >= 0:
-                actual_names = set(os.listdir(staging_descriptor))
-            else:
-                require_staging_identity()
-                actual_names = {entry.name for entry in live_directory().iterdir()}
-            if actual_names != expected_names:
-                raise _fail("bundle staging directory contents changed")
-            for filename, expected in snapshots.items():
-                current = child_metadata(filename)
-                observed = (
-                    current.st_dev,
-                    current.st_ino,
-                    current.st_size,
-                    current.st_mtime_ns,
-                    current.st_ctime_ns,
-                )
-                if not stat.S_ISREG(current.st_mode) or observed != expected:
-                    raise _fail(f"bundle output {filename} changed during publication")
-
-        try:
-            for role, artifact in artifacts.items():
-                filename = filenames[role]
-                require_staging_identity()
-                try:
-                    snapshots[filename] = _save_staged_artifact(
-                        artifact,
-                        filename,
-                        staging,
-                        staging_descriptor,
-                    )
-                except V2Error as failure:
-                    raise _fail(f"cannot save {filename}: {failure}") from failure
-                require_staging_identity()
-                current = child_metadata(filename)
-                if (
-                    not stat.S_ISREG(current.st_mode)
-                    or (
-                        current.st_dev,
-                        current.st_ino,
-                        current.st_size,
-                        current.st_mtime_ns,
-                        current.st_ctime_ns,
-                    )
-                    != snapshots[filename]
-                ):
-                    raise _fail(f"bundle output {filename} changed during publication")
-
-            require_children()
-            if staging_descriptor >= 0:
-                try:
-                    os.fsync(staging_descriptor)
-                except OSError as failure:
-                    unsupported = {
-                        errno.EBADF,
-                        errno.EINVAL,
-                        getattr(errno, "ENOTSUP", errno.EINVAL),
-                        getattr(errno, "EOPNOTSUPP", errno.EINVAL),
-                    }
-                    if failure.errno not in unsupported:
-                        raise
-            require_staging_identity()
-            require_children()
-
-            if parent_descriptor >= 0:
-                try:
-                    os.mkdir(destination.name, 0o700, dir_fd=parent_descriptor)
-                except FileExistsError as failure:
-                    raise _fail("bundle output path appeared during staging") from failure
-                reserved = os.stat(
-                    destination.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-                reservation_created = True
-                reservation_identity = (reserved.st_dev, reserved.st_ino)
-                if not stat.S_ISDIR(reserved.st_mode) or stat.S_ISLNK(
-                    reserved.st_mode
-                ):
-                    raise _fail("bundle output reservation is not a directory")
-                require_staging_identity()
-                require_children()
-                current_reservation = os.stat(
-                    destination.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-                if (
-                    not stat.S_ISDIR(current_reservation.st_mode)
-                    or (current_reservation.st_dev, current_reservation.st_ino)
-                    != reservation_identity
-                ):
-                    raise _fail("bundle output reservation changed before publication")
-                os.replace(
-                    staging.name,
-                    destination.name,
-                    src_dir_fd=parent_descriptor,
-                    dst_dir_fd=parent_descriptor,
-                )
-                staging_moved = True
-                reservation_created = False
-                published_entry = os.stat(
-                    destination.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-            else:
-                try:
-                    os.rename(staging, destination)
-                except FileExistsError as failure:
-                    raise _fail("bundle output path appeared during staging") from failure
-                staging_moved = True
-                published_entry = destination.lstat()
-
-            if (
-                not stat.S_ISDIR(published_entry.st_mode)
-                or stat.S_ISLNK(published_entry.st_mode)
-                or (published_entry.st_dev, published_entry.st_ino)
-                != staging_identity
-            ):
-                raise _fail("bundle staging identity changed during publication")
-            require_children()
-            if parent_descriptor >= 0:
-                current_parent = destination.parent.lstat()
-                if (
-                    stat.S_ISLNK(current_parent.st_mode)
-                    or not stat.S_ISDIR(current_parent.st_mode)
-                    or (current_parent.st_dev, current_parent.st_ino)
-                    != parent_identity
-                ):
-                    raise _fail("bundle output parent changed during publication")
-                try:
-                    os.fsync(parent_descriptor)
-                except OSError as failure:
-                    unsupported = {
-                        errno.EBADF,
-                        errno.EINVAL,
-                        getattr(errno, "ENOTSUP", errno.EINVAL),
-                        getattr(errno, "EOPNOTSUPP", errno.EINVAL),
-                    }
-                    if failure.errno not in unsupported:
-                        raise
-                final_entry = os.stat(
-                    destination.name,
-                    dir_fd=parent_descriptor,
-                    follow_symlinks=False,
-                )
-                final_parent = destination.parent.lstat()
-                if (
-                    not stat.S_ISDIR(final_entry.st_mode)
-                    or (final_entry.st_dev, final_entry.st_ino) != staging_identity
-                    or stat.S_ISLNK(final_parent.st_mode)
-                    or not stat.S_ISDIR(final_parent.st_mode)
-                    or (final_parent.st_dev, final_parent.st_ino) != parent_identity
-                ):
-                    raise _fail("bundle output path changed during publication")
-                require_children()
-            published = True
-        except INSDCGraphError:
-            raise
-        except OSError as failure:
-            raise _fail(f"cannot publish bundle directory: {failure}") from failure
-        finally:
-            if not published and staging_descriptor >= 0:
-                for filename, expected in reversed(tuple(snapshots.items())):
-                    try:
-                        current = os.stat(
-                            filename,
-                            dir_fd=staging_descriptor,
-                            follow_symlinks=False,
-                        )
-                        if (current.st_dev, current.st_ino) == expected[:2]:
-                            os.unlink(filename, dir_fd=staging_descriptor)
-                    except OSError:
-                        pass
-            elif not published:
-                for filename, expected in reversed(tuple(snapshots.items())):
-                    try:
-                        require_staging_identity()
-                        child = live_directory() / filename
-                        current = child.lstat()
-                        if (current.st_dev, current.st_ino) == expected[:2]:
-                            child.unlink()
-                    except (FileNotFoundError, INSDCGraphError, OSError):
-                        pass
-            if staging_descriptor >= 0:
-                os.close(staging_descriptor)
-            if not published and staging_moved:
-                try:
-                    if parent_descriptor >= 0:
-                        current = os.stat(
-                            destination.name,
-                            dir_fd=parent_descriptor,
-                            follow_symlinks=False,
-                        )
-                        if (
-                            stat.S_ISDIR(current.st_mode)
-                            and (current.st_dev, current.st_ino) == staging_identity
-                        ):
-                            os.rmdir(destination.name, dir_fd=parent_descriptor)
-                    else:
-                        current = destination.lstat()
-                        if (
-                            stat.S_ISDIR(current.st_mode)
-                            and not stat.S_ISLNK(current.st_mode)
-                            and (current.st_dev, current.st_ino) == staging_identity
-                        ):
-                            destination.rmdir()
-                except OSError:
-                    pass
-            elif not published:
-                try:
-                    current = staging.lstat()
-                    if (
-                        stat.S_ISDIR(current.st_mode)
-                        and not stat.S_ISLNK(current.st_mode)
-                        and (current.st_dev, current.st_ino) == staging_identity
-                    ):
-                        staging.rmdir()
-                except OSError:
-                    pass
-            if reservation_created and reservation_identity is not None:
-                try:
-                    if parent_descriptor >= 0:
-                        current = os.stat(
-                            destination.name,
-                            dir_fd=parent_descriptor,
-                            follow_symlinks=False,
-                        )
-                        if (
-                            stat.S_ISDIR(current.st_mode)
-                            and (current.st_dev, current.st_ino)
-                            == reservation_identity
-                        ):
-                            os.rmdir(destination.name, dir_fd=parent_descriptor)
-                    else:
-                        current = destination.lstat()
-                        if (
-                            stat.S_ISDIR(current.st_mode)
-                            and not stat.S_ISLNK(current.st_mode)
-                            and (current.st_dev, current.st_ino)
-                            == reservation_identity
-                        ):
-                            destination.rmdir()
-                except OSError:
-                    pass
-            if parent_descriptor >= 0:
-                os.close(parent_descriptor)
+        except PublicationError as failure:
+            state = " after commit" if failure.committed else ""
+            raise _fail(
+                f"cannot publish bundle directory{state}: {failure.strerror}"
+            ) from failure
+        except V2Error as failure:
+            raise _fail(f"cannot encode bundle child: {failure}") from failure
         return {
-            "bundle": destination / BUNDLE_FILENAME,
+            "bundle": paths[BUNDLE_FILENAME],
             **{
-                role: destination / filename
+                role: paths[filename]
                 for role, filename in CHILD_FILENAMES
             },
         }

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 import errno
+import functools
 import hashlib
 import json
 import math
@@ -135,6 +136,19 @@ def _fail(detail: str) -> INSDCGraphValidationError:
     return INSDCGraphValidationError(f"INSDCGRAPHVAL001: {detail}")
 
 
+def _bounded_validation(function: Any) -> Any:
+    @functools.wraps(function)
+    def guarded(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return function(*args, **kwargs)
+        except INSDCGraphValidationError:
+            raise
+        except MemoryError as failure:
+            raise _fail("validation memory ceiling exceeded") from failure
+
+    return guarded
+
+
 def _jcs_string(value: str) -> str:
     if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
         raise ValueError("lone Unicode surrogate")
@@ -202,6 +216,10 @@ def canonical_bytes(value: Any) -> bytes:
 
     try:
         return _jcs(value).encode("utf-8")
+    except MemoryError as failure:
+        raise _fail(
+            "canonical JSON exceeds the validation memory ceiling"
+        ) from failure
     except (TypeError, ValueError, UnicodeError, RecursionError) as failure:
         raise _fail(f"value is not RFC 8785 canonical JSON: {failure}") from failure
 
@@ -257,93 +275,143 @@ def _sha(value: Any, label: str) -> str:
     return value
 
 
-def _validate_tree(value: Any, label: str, *, allow_float: bool = False) -> None:
+def _json_string_size(value: str, label: str) -> int:
+    try:
+        utf8_bytes = len(value.encode("utf-8"))
+    except UnicodeEncodeError as failure:
+        raise _fail(f"{label} contains a lone Unicode surrogate") from failure
+    if utf8_bytes > MAX_TEXT_BYTES:
+        raise _fail(f"{label} exceeds the text byte ceiling")
+    return len(
+        json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    )
+
+
+def _validate_tree(
+    value: Any,
+    label: str,
+    *,
+    allow_float: bool = False,
+    maximum_bytes: int | None = None,
+) -> int:
     members = 0
-    stack: list[tuple[Any, int]] = [(value, 0)]
-    while stack:
-        current, depth = stack.pop()
+    total_bytes = 0
+
+    def add(size: int) -> None:
+        nonlocal total_bytes
+        total_bytes += size
+        if maximum_bytes is not None and total_bytes > maximum_bytes:
+            raise _fail(f"{label} exceeds {maximum_bytes} canonical JSON bytes")
+
+    def visit(current: Any, depth: int) -> None:
+        nonlocal members
         if depth > MAX_JSON_DEPTH:
             raise _fail(f"{label} exceeds JSON depth {MAX_JSON_DEPTH}")
-        if current is None or type(current) is bool:
-            continue
-        if type(current) is int:
+        if current is None:
+            add(4)
+        elif type(current) is bool:
+            add(4 if current else 5)
+        elif type(current) is int:
             if not -SAFE_INTEGER <= current <= SAFE_INTEGER:
                 raise _fail(f"{label} contains an unsafe JSON integer")
-            continue
-        if type(current) is float:
+            add(len(str(current)))
+        elif type(current) is float:
             if not math.isfinite(current):
                 raise _fail(f"{label} contains a non-finite number")
             if not allow_float:
                 raise _fail(f"{label} contains a floating-point JSON number")
-            continue
-        if type(current) is str:
-            _text(current, label) if current else None
-            continue
-        if type(current) is list:
+            add(len(_jcs_number(current)))
+        elif type(current) is str:
+            add(_json_string_size(current, label))
+        elif type(current) is list:
             members += len(current)
-            stack.extend((item, depth + 1) for item in reversed(current))
+            if members > MAX_JSON_MEMBERS:
+                raise _fail(f"{label} exceeds JSON member ceiling {MAX_JSON_MEMBERS}")
+            add(2 + max(0, len(current) - 1))
+            for item in current:
+                visit(item, depth + 1)
         elif type(current) is dict:
             members += len(current)
-            for key, item in reversed(list(current.items())):
+            if members > MAX_JSON_MEMBERS:
+                raise _fail(f"{label} exceeds JSON member ceiling {MAX_JSON_MEMBERS}")
+            add(2 + max(0, len(current) - 1) + len(current))
+            for key, item in current.items():
                 if type(key) is not str:
                     raise _fail(f"{label} contains a non-string key")
-                stack.append((key, depth + 1))
-                stack.append((item, depth + 1))
+                if depth + 1 > MAX_JSON_DEPTH:
+                    raise _fail(f"{label} exceeds JSON depth {MAX_JSON_DEPTH}")
+                add(_json_string_size(key, label))
+                visit(item, depth + 1)
         else:
             raise _fail(f"{label} contains unsupported type {type(current).__name__}")
-        if members > MAX_JSON_MEMBERS:
-            raise _fail(f"{label} exceeds JSON member ceiling {MAX_JSON_MEMBERS}")
+
+    try:
+        visit(value, 0)
+    except MemoryError as failure:
+        raise _fail(f"{label} exceeds the validation memory ceiling") from failure
+    return total_bytes
 
 
 def _artifact(value: Any, label: str) -> dict[str, Any]:
     if type(value) is not dict:
         raise _fail(f"{label} must be an object")
-    _validate_tree(value, label)
-    if len(canonical_bytes(value)) > MAX_CHILD_BYTES:
-        raise _fail(f"{label} exceeds {MAX_CHILD_BYTES} canonical JSON bytes")
-    stored = _sha(value.get("artifact_sha256"), f"{label}.artifact_sha256")
-    expected = digest(
-        {key: item for key, item in value.items() if key != "artifact_sha256"}
-    )
+    try:
+        _validate_tree(value, label, maximum_bytes=MAX_CHILD_BYTES)
+        stored = _sha(value.get("artifact_sha256"), f"{label}.artifact_sha256")
+        expected = digest(
+            {key: item for key, item in value.items() if key != "artifact_sha256"}
+        )
+    except MemoryError as failure:
+        raise _fail(f"{label} exceeds the validation memory ceiling") from failure
     if stored != expected:
         raise _fail(f"{label}.artifact_sha256 does not match canonical content")
     return value
 
 
 def _source_artifact(value: Any) -> dict[str, Any]:
-    source = _keys(
-        value,
-        {
-            "format",
-            "version",
-            "profile",
-            "authority",
-            "compiler",
-            "sequence_collection",
-            "bio_ir",
-            "bio_ir_sha256",
-            "artifact_sha256",
-        },
-        "GenBank source",
-    )
-    _validate_tree(source, "GenBank source", allow_float=True)
-    if (
-        source["format"] != "brainc.bio.insdc-genbank-ir"
-        or type(source["version"]) is not int
-        or source["version"] != 2
-    ):
-        raise _fail("unsupported GenBank source artifact identity")
-    stored_bio = _sha(source["bio_ir_sha256"], "GenBank source.bio_ir_sha256")
-    if stored_bio != digest(source["bio_ir"]):
-        raise _fail("GenBank source.bio_ir_sha256 does not match BioIR")
-    stored_artifact = _sha(
-        source["artifact_sha256"], "GenBank source.artifact_sha256"
-    )
-    if stored_artifact != digest(
-        {key: item for key, item in source.items() if key != "artifact_sha256"}
-    ):
-        raise _fail("GenBank source.artifact_sha256 does not match canonical content")
-    return source
+    if type(value) is not dict:
+        raise _fail("GenBank source must be an object")
+    try:
+        _validate_tree(
+            value,
+            "GenBank source",
+            allow_float=True,
+            maximum_bytes=MAX_SOURCE_ARTIFACT_BYTES,
+        )
+        source = _keys(
+            value,
+            {
+                "format",
+                "version",
+                "profile",
+                "authority",
+                "compiler",
+                "sequence_collection",
+                "bio_ir",
+                "bio_ir_sha256",
+                "artifact_sha256",
+            },
+            "GenBank source",
+        )
+        if (
+            source["format"] != "brainc.bio.insdc-genbank-ir"
+            or type(source["version"]) is not int
+            or source["version"] != 2
+        ):
+            raise _fail("unsupported GenBank source artifact identity")
+        stored_bio = _sha(source["bio_ir_sha256"], "GenBank source.bio_ir_sha256")
+        if stored_bio != digest(source["bio_ir"]):
+            raise _fail("GenBank source.bio_ir_sha256 does not match BioIR")
+        stored_artifact = _sha(
+            source["artifact_sha256"], "GenBank source.artifact_sha256"
+        )
+        if stored_artifact != digest(
+            {key: item for key, item in source.items() if key != "artifact_sha256"}
+        ):
+            raise _fail("GenBank source.artifact_sha256 does not match canonical content")
+        return source
+    except MemoryError as failure:
+        raise _fail("GenBank source exceeds the validation memory ceiling") from failure
 
 
 def _backend_spec(value: Any) -> dict[str, Any]:
@@ -849,6 +917,7 @@ def _expected_bundle_index(
     )
 
 
+@_bounded_validation
 def validate_insdc_graph_bundle(
     bundle_index: dict[str, Any],
     artifacts_by_role: dict[str, dict[str, Any]],
@@ -859,8 +928,12 @@ def validate_insdc_graph_bundle(
     """Replay one reference-only GenBank feature-state bundle independently."""
 
     source = _source_artifact(genbank_artifact)
-    if genbank_source is not None and type(genbank_source) is not bytes:
-        raise _fail("GenBank source evidence must be bytes")
+    if genbank_source is not None and (
+        type(genbank_source) is not bytes or len(genbank_source) > MAX_GENBANK_BYTES
+    ):
+        raise _fail(
+            f"GenBank source evidence must be bytes at most {MAX_GENBANK_BYTES} bytes"
+        )
     try:
         from . import validator_v2
 
@@ -871,8 +944,10 @@ def validate_insdc_graph_bundle(
     except (OSError, ValueError) as failure:
         raise _fail(f"independent GenBank source replay failed: {failure}") from failure
 
-    if type(artifacts_by_role) is not dict or set(artifacts_by_role) != set(
-        CHILD_ROLES
+    if (
+        type(artifacts_by_role) is not dict
+        or len(artifacts_by_role) != len(CHILD_ROLES)
+        or any(role not in artifacts_by_role for role in CHILD_ROLES)
     ):
         raise _fail("child artifact roles are incomplete or unknown")
     supplied_artifacts = {
@@ -1178,6 +1253,8 @@ def _json_object(raw: bytes, label: str) -> dict[str, Any]:
         )
     except INSDCGraphValidationError:
         raise
+    except MemoryError as failure:
+        raise _fail(f"invalid {label} JSON: memory ceiling exceeded") from failure
     except (
         UnicodeDecodeError,
         json.JSONDecodeError,
@@ -1190,6 +1267,7 @@ def _json_object(raw: bytes, label: str) -> dict[str, Any]:
     return value
 
 
+@_bounded_validation
 def validate_insdc_graph_report(report: dict[str, Any]) -> dict[str, Any]:
     """Validate the exact sealed success-report contract."""
 
@@ -1256,6 +1334,7 @@ def validate_insdc_graph_report(report: dict[str, Any]) -> dict[str, Any]:
     return root
 
 
+@_bounded_validation
 def _report_bytes(report: dict[str, Any]) -> bytes:
     validate_insdc_graph_report(report)
     try:
@@ -1554,6 +1633,7 @@ def _atomic_write_report(path: str | Path, raw: bytes) -> None:
             os.close(parent_descriptor)
 
 
+@_bounded_validation
 def load_insdc_graph_bundle_directory(
     path: str | Path,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
@@ -1568,6 +1648,7 @@ def load_insdc_graph_bundle_directory(
     return index, artifacts
 
 
+@_bounded_validation
 def validate_insdc_graph_paths(
     genbank_path: str | Path,
     genbank_artifact_path: str | Path,
