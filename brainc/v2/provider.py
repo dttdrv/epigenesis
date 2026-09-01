@@ -15,6 +15,7 @@ from brainc.sequence import SequenceCompilerError, _as_artifact
 from brainc.sequence_collection import SequenceCollectionError, _as_collection
 from brainc.source import (
     FORMAT as SOURCE_DESCRIPTOR_FORMAT,
+    PROFILES as SOURCE_DESCRIPTOR_PROFILES,
     VERSION as SOURCE_DESCRIPTOR_VERSION,
     SourceBundle,
     SourceError,
@@ -87,6 +88,23 @@ def _source_binding(source: dict[str, Any]) -> dict[str, Any]:
         "artifact_sha256": source["artifact_sha256"],
         "ir_sha256": source[ir_field],
     }
+
+
+def _source_acceptance_tag(source: dict[str, Any]) -> str:
+    """Name the exact source language a provider promises to interpret."""
+
+    identity = _source_identity(source, "sequence source")
+    source_tag = f"{identity[0]}/v{identity[1]}"
+    if identity != (SOURCE_DESCRIPTOR_FORMAT, SOURCE_DESCRIPTOR_VERSION):
+        return source_tag
+
+    source_ir = source.get("source_ir")
+    if type(source_ir) is not dict:
+        raise V2Error("source descriptor is missing its source IR")
+    profile = source_ir.get("profile")
+    if type(profile) is not str or profile not in SOURCE_DESCRIPTOR_PROFILES:
+        raise V2Error("source descriptor profile is unsupported")
+    return f"{source_tag};profile={profile}"
 
 
 def load_source(path: str | Path) -> tuple[dict[str, Any], dict[str, int]]:
@@ -276,7 +294,7 @@ def _make_request(
     manifest: dict[str, Any],
     output_ids: list[str],
 ) -> dict[str, Any]:
-    source_tag = f'{source["format"]}/v{source["version"]}'
+    source_tag = _source_acceptance_tag(source)
     if source_tag not in manifest["accepts"]:
         raise V2Error(f"provider does not declare support for {source_tag}")
     if type(output_ids) is not list or not output_ids:
@@ -441,7 +459,7 @@ def _validate_binding(
         raise V2Error("prediction request is not bound to the supplied sequence source")
     if request["provider_manifest_sha256"] != manifest["artifact_sha256"]:
         raise V2Error("prediction request is not bound to the supplied provider manifest")
-    source_tag = f'{source["format"]}/v{source["version"]}'
+    source_tag = _source_acceptance_tag(source)
     if source_tag not in manifest["accepts"]:
         raise V2Error(f"provider does not declare support for {source_tag}")
     declared = {value["id"]: value for value in manifest["outputs"]}

@@ -14,7 +14,7 @@ from brainc.development_bundle import (
     DevelopmentBundleError,
     compile_development,
 )
-from brainc.source import FASTA_PROFILE, compile_source
+from brainc.source import FASTA_PROFILE, RAW_PROFILE, compile_source
 from brainc.v2 import (
     V2Error,
     inline_storage,
@@ -89,7 +89,9 @@ class _Chain:
                     "kind": "content-sha256",
                     "value": digest({"algorithm": "caller-supplied", "version": 1}),
                 },
-                "accepts": ["brainc.source-descriptor/v1"],
+                "accepts": [
+                    f"brainc.source-descriptor/v1;profile={FASTA_PROFILE}"
+                ],
                 "outputs": [
                     {key: deepcopy(output[key]) for key in ("id", "type", "unit", "axes")}
                 ],
@@ -217,6 +219,63 @@ class DevelopmentBundleTests(unittest.TestCase):
                 self.chain.manifest_path,
                 ["t.value"],
             )
+
+    def test_provider_must_accept_the_exact_descriptor_profile(self) -> None:
+        exact_tag = f"brainc.source-descriptor/v1;profile={FASTA_PROFILE}"
+        self.assertEqual(self.chain.manifest["accepts"], [exact_tag])
+
+        rejected_tags = (
+            "brainc.source-descriptor/v1",
+            f"brainc.source-descriptor/v1;profile={RAW_PROFILE}",
+        )
+        for index, rejected_tag in enumerate(rejected_tags):
+            with self.subTest(accepts=rejected_tag):
+                manifest = deepcopy(self.chain.manifest)
+                manifest["accepts"] = [rejected_tag]
+                manifest = _seal(
+                    {
+                        key: value
+                        for key, value in manifest.items()
+                        if key != "artifact_sha256"
+                    }
+                )
+                manifest_path = self.chain._write(f"wrong-profile-manifest-{index}", manifest)
+
+                with self.assertRaisesRegex(V2Error, exact_tag):
+                    make_development_request(
+                        self.chain.source_directory,
+                        manifest_path,
+                        ["t.value"],
+                    )
+
+                request = deepcopy(self.chain.request)
+                request["provider_manifest_sha256"] = manifest["artifact_sha256"]
+                request = _seal(
+                    {
+                        key: value
+                        for key, value in request.items()
+                        if key != "artifact_sha256"
+                    }
+                )
+                request_path = self.chain._write(f"wrong-profile-request-{index}", request)
+                response = deepcopy(self.chain.response)
+                response["request_artifact_sha256"] = request["artifact_sha256"]
+                response = _seal(
+                    {
+                        key: value
+                        for key, value in response.items()
+                        if key != "artifact_sha256"
+                    }
+                )
+                response_path = self.chain._write(
+                    f"wrong-profile-response-{index}", response
+                )
+                with self.assertRaisesRegex(DevelopmentBundleError, exact_tag):
+                    self.chain.compile(
+                        manifest=manifest_path,
+                        request=request_path,
+                        response=response_path,
+                    )
 
     def test_bundle_publication_contains_only_index_and_seven_children(self) -> None:
         compiled = self.chain.compile(source_bundle=self.chain.source)

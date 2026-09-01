@@ -84,10 +84,20 @@ MODULE_PRODUCER = {
     ],
 }
 GENBANK_SOURCE = ("brainc.bio.insdc-genbank-ir", 2)
+SOURCE_DESCRIPTOR = ("brainc.source-descriptor", 1)
+SOURCE_DESCRIPTOR_PROFILES = frozenset(
+    {
+        "raw-iupac-dna/v1",
+        "fasta-dna/v1",
+        "genbank-273-traditional-dna-physical-structural/v2",
+        "gff3-external-sequence/v1",
+    }
+)
 SOURCE_IR_FIELDS = {
     ("brain01.sequence-ir", 2): "ir_sha256",
     ("brain01.sequence-collection-ir", 1): "collection_ir_sha256",
     GENBANK_SOURCE: "bio_ir_sha256",
+    SOURCE_DESCRIPTOR: "source_ir_sha256",
 }
 _DOMAIN_SEGMENT = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
 DOMAIN_RE = re.compile(rf"(?:{_DOMAIN_SEGMENT}\.)+{_DOMAIN_SEGMENT}\Z")
@@ -95,6 +105,47 @@ DOMAIN_RE = re.compile(rf"(?:{_DOMAIN_SEGMENT}\.)+{_DOMAIN_SEGMENT}\Z")
 
 class ValidationError(ValueError):
     """An independently evaluated compiler invariant failed."""
+
+
+class _ValidatedBlobCache:
+    """Bytes already authenticated by a stricter enclosing validator."""
+
+    __slots__ = ("_values",)
+
+    def __init__(self, values: dict[str, bytes]) -> None:
+        if type(values) is not dict or any(
+            type(key) is not str or type(value) is not bytes
+            for key, value in values.items()
+        ):
+            raise ValidationError("validated blob cache must map digests to bytes")
+        for digest_value, raw in values.items():
+            if (
+                SHA256_RE.fullmatch(digest_value) is None
+                or bytes_digest(raw) != digest_value
+            ):
+                raise ValidationError(
+                    "validated blob cache contains unauthenticated bytes"
+                )
+        self._values = dict(values)
+
+    def read(self, digest_value: str, expected_length: int, label: str) -> bytes:
+        try:
+            raw = self._values[digest_value]
+        except KeyError as failure:
+            raise ValidationError(
+                f"{label} is absent from the independently validated blob cache"
+            ) from failure
+        if len(raw) != expected_length:
+            raise ValidationError(
+                f"{label} length differs from the independently validated blob cache"
+            )
+        return raw
+
+
+def _validated_blob_cache(values: dict[str, bytes]) -> _ValidatedBlobCache:
+    """Wrap bytes authenticated by an enclosing independent trust boundary."""
+
+    return _ValidatedBlobCache(values)
 
 
 @dataclass(frozen=True)
@@ -736,9 +787,12 @@ def _storage(
     limits: ValidationLimits,
     *,
     blob_root: str | Path | None,
+    blob_cache: _ValidatedBlobCache | None = None,
 ) -> tuple[dict[str, Any], bytes]:
     if type(value) is not dict or "kind" not in value:
         raise ValidationError(f"{label} must be a storage descriptor")
+    if blob_cache is not None and type(blob_cache) is not _ValidatedBlobCache:
+        raise ValidationError("blob cache must be an exact validated cache")
     if expected_length > limits.tensor_bytes:
         raise ValidationError(f"{label} exceeds per-tensor byte ceiling")
     kind = value["kind"]
@@ -766,7 +820,11 @@ def _storage(
         if _integer(parsed["byte_length"], f"{label}.byte_length") != expected_length:
             raise ValidationError(f"{label}.byte_length does not match tensor type")
         stored = _sha256(parsed["sha256"], f"{label}.sha256")
-        raw = _read_blob(blob_root, stored, expected_length, label, limits)
+        raw = (
+            blob_cache.read(stored, expected_length, label)
+            if blob_cache is not None
+            else _read_blob(blob_root, stored, expected_length, label, limits)
+        )
     else:
         raise ValidationError(f"{label}.kind is unsupported")
     return parsed, raw
@@ -801,6 +859,7 @@ def _tensor_payload(
     sequence_sha256: str,
     records: dict[str, int] | None,
     blob_root: str | Path | None,
+    blob_cache: _ValidatedBlobCache | None = None,
     lineage: bool,
 ) -> dict[str, Any]:
     expected = {"id", "type", "unit", "axes", "storage"}
@@ -824,6 +883,7 @@ def _tensor_payload(
         f"{label}.storage",
         limits,
         blob_root=blob_root,
+        blob_cache=blob_cache,
     )
     _validate_tensor_elements(raw, tensor_type["dtype"], label)
     result = {
@@ -863,6 +923,20 @@ def _source_binding(value: dict[str, Any]) -> dict[str, Any]:
         "artifact_sha256": value["artifact_sha256"],
         "ir_sha256": value[ir_field],
     }
+
+
+def _source_acceptance_tag(value: dict[str, Any]) -> str:
+    identity = (value["format"], value["version"])
+    source_tag = f"{identity[0]}/v{identity[1]}"
+    if identity != SOURCE_DESCRIPTOR:
+        return source_tag
+    source_ir = value.get("source_ir")
+    if type(source_ir) is not dict:
+        raise ValidationError("source descriptor is missing its source IR")
+    profile = source_ir.get("profile")
+    if type(profile) is not str or profile not in SOURCE_DESCRIPTOR_PROFILES:
+        raise ValidationError("source descriptor profile is unsupported")
+    return f"{source_tag};profile={profile}"
 
 
 def _source_reference(value: Any, label: str) -> tuple[dict[str, Any], str]:
@@ -980,6 +1054,7 @@ def validate_response_artifact(
     sequence_sha256: str,
     records: dict[str, int] | None = None,
     blob_root: str | Path | None = None,
+    _blob_cache: _ValidatedBlobCache | None = None,
     limits: ValidationLimits = DEFAULT_LIMITS,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     top = _keys(
@@ -1015,6 +1090,7 @@ def validate_response_artifact(
             sequence_sha256=sequence_sha256,
             records=records,
             blob_root=blob_root,
+            blob_cache=_blob_cache,
             lineage=False,
         )
         for index, item in enumerate(outputs)
@@ -2704,6 +2780,7 @@ def _module_info(
     target_info: dict[str, Any],
     *,
     blob_root: str | Path | None,
+    blob_cache: _ValidatedBlobCache | None = None,
     limits: ValidationLimits,
 ) -> dict[str, Any]:
     top = _keys(
@@ -2788,6 +2865,7 @@ def _module_info(
             sequence_sha256=sequence_sha,
             records=None,
             blob_root=blob_root,
+            blob_cache=blob_cache,
             lineage=True,
         )
         for index, item in enumerate(tensors_raw)
@@ -2832,12 +2910,19 @@ def validate_module_artifact(
     target: dict[str, Any],
     *,
     blob_root: str | Path | None = None,
+    _blob_cache: _ValidatedBlobCache | None = None,
     limits: ValidationLimits = DEFAULT_LIMITS,
 ) -> dict[str, Any]:
     """Validate a module against a raw, closed target-contract artifact."""
 
     target_info = validate_target_artifact(target, limits=limits)
-    _module_info(value, target_info, blob_root=blob_root, limits=limits)
+    _module_info(
+        value,
+        target_info,
+        blob_root=blob_root,
+        blob_cache=_blob_cache,
+        limits=limits,
+    )
     return value
 
 
@@ -2861,6 +2946,7 @@ def _chain_replay(
     module: dict[str, Any],
     *,
     blob_root: str | Path | None,
+    blob_cache: _ValidatedBlobCache | None = None,
     limits: ValidationLimits,
 ) -> dict[str, Any]:
     source_binding = _source_binding(source)
@@ -2868,7 +2954,7 @@ def _chain_replay(
         raise ValidationError("prediction request is not bound to supplied sequence source")
     if request["provider_manifest_sha256"] != manifest["artifact_sha256"]:
         raise ValidationError("prediction request is not bound to provider manifest")
-    source_tag = f'{source["format"]}/v{source["version"]}'
+    source_tag = _source_acceptance_tag(source)
     if source_tag not in manifest["accepts"]:
         raise ValidationError("provider manifest does not declare source format support")
     declared_outputs = {item["id"]: item for item in manifest["outputs"]}
@@ -2961,7 +3047,11 @@ def _chain_replay(
         "target_contract": {"artifact_sha256": target["artifact_sha256"]},
     }
     module_info = _module_info(
-        module, target_info, blob_root=blob_root, limits=limits
+        module,
+        target_info,
+        blob_root=blob_root,
+        blob_cache=blob_cache,
+        limits=limits,
     )
     if module["producer"] != MODULE_PRODUCER:
         raise ValidationError("development module producer identity differs from compiler v0.5")

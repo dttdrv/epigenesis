@@ -19,7 +19,7 @@ from brainc.source import (
     load_source_bundle,
 )
 from brainc.v2 import V2Error, compile_module
-from tests.test_development_bundle import _Chain
+from tests.test_development_bundle import _Chain, _seal
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -329,6 +329,41 @@ class CompilerOneZeroCliTests(unittest.TestCase):
                 json.loads(request_output.read_text(encoding="utf-8")),
                 chain.request,
             )
+
+            generic_manifest = _seal(
+                {
+                    **{
+                        key: value
+                        for key, value in chain.manifest.items()
+                        if key not in {"accepts", "artifact_sha256"}
+                    },
+                    "accepts": ["brainc.source-descriptor/v1"],
+                }
+            )
+            generic_manifest_path = chain._write(
+                "generic-descriptor-manifest", generic_manifest
+            )
+            generic_output = root / "generic-descriptor-request.json"
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                result = main(
+                    [
+                        "make-development-request",
+                        str(chain.source_directory),
+                        "--manifest",
+                        str(generic_manifest_path),
+                        "--output-id",
+                        "t.value",
+                        "--output",
+                        str(generic_output),
+                    ]
+                )
+            self.assertEqual(result, 2)
+            self.assertIn(
+                f"brainc.source-descriptor/v1;profile={FASTA_PROFILE}",
+                stderr.getvalue(),
+            )
+            self.assertFalse(generic_output.exists())
 
 
 if __name__ == "__main__":
