@@ -1,14 +1,15 @@
 # Epigenesis
 
-Epigenesis 1.0 is a deterministic compiler from biological source programs to
-typed Development Module IR. It admits an explicitly selected DNA grammar,
-binds the exact source and native frontend evidence, checks a caller-supplied
-interpretation against a target ABI, lowers it to executable state operations,
-and links the complete compilation as a content-addressed bundle.
+Epigenesis 1.0 is a deterministic compiler from explicitly selected biological
+source profiles to typed Development Module IR. It binds exact source and native
+frontend evidence, checks a caller-supplied interpretation against a target ABI,
+lowers it to declarative target-authorized operations, and links the compilation
+as a content-addressed bundle.
 
 The compiler and its independent validators use only the Python 3.11+ standard
-library. Every artifact is a closed JSON contract sealed with RFC 8785
-canonical JSON and SHA-256.
+library. Every compiler contract artifact is closed JSON sealed with RFC 8785
+canonical JSON and SHA-256. Source bytes and tensor blobs remain
+content-addressed byte resources.
 
 ## Compile real DNA
 
@@ -66,7 +67,7 @@ and fixture identities never choose a frontend.
 | `fasta-reference-dna/v1` | Streaming chromosome/genome FASTA | Compact refget sequence catalog |
 | `genbank-273-traditional-dna-physical-structural/v2` | Physical-DNA GenBank records | Sequence authority plus structural INSDC BioIR |
 | `gff3-external-sequence/v1` | GFF3 plus an exact external sequence source | Collection-bound structural GFF3 BioIR |
-| `external-dna-source/v1` | Any declared external grammar with replay evidence | Manifest-qualified external source closure |
+| `external-dna-source/v1` | Manifest-declared DNA-bearing source plus validation evidence | Manifest-qualified external source closure |
 
 The reference FASTA frontend streams identity or strict concatenated-gzip
 input. Its default physical and logical budgets are 64 GiB, with explicit
@@ -84,31 +85,33 @@ brainc compile-source \
 
 ## Universal frontend ABI
 
-Additional DNA, read, alignment, variation, graph, and design grammars enter
+Additional DNA-bearing grammars and composite DNA-plus-overlay profiles enter
 through a data-only frontend ABI. A frontend publishes three sealed objects:
 
-1. a profile manifest naming its grammar, pinned authority, input roles,
-   native artifact schemas, validator identity, and finite limits;
+1. a profile manifest naming its grammar, authority binding, input roles,
+   native artifact schema identities, validator identity, and finite limits;
 2. a source descriptor containing exact input/native references and an ordered
    sequence-record catalog; and
-3. an independent replay report reproducing that descriptor.
+3. a manifest-qualified validation report reproducing that descriptor.
 
-The compiler loads no frontend plugin code. It streams and hashes the declared
-original inputs, validates bounded native JSON identities, binds the exact
-profile-manifest digest, and emits the standard source descriptor:
+The compiler loads no frontend plugin code and does not execute the declared
+external grammar or validator. It verifies the supplied report, streams and
+hashes the declared original inputs, validates bounded native JSON identities,
+binds the exact profile-manifest digest, and emits the standard source
+descriptor:
 
 ```bash
 brainc compile-external-source \
   --profile-manifest fastq.profile.json \
   --source-descriptor reads.frontend.json \
-  --validation-report reads.replay.json \
+  --validation-report reads.validation.json \
   --source-input reads=reads.fastq \
   --native-artifact read-index=reads.index.json \
   --output reads.source
 ```
 
 After lowering that source into a development bundle, the final validator
-replays the same original and native evidence explicitly:
+rehashes the original/native files and verifies the same closure explicitly:
 
 ```bash
 brainc-validate-development reads.source reads.development \
@@ -117,20 +120,25 @@ brainc-validate-development reads.source reads.development \
   --output reads.validation.json
 ```
 
-The ABI is format-neutral: role names, grammar identity, wrappers, native IR
-formats, limits, and validator distribution identities come from the manifest.
-Two profiles with the same display name and version remain distinct when their
-authority or schema changes because provider acceptance is qualified by the
-complete manifest SHA-256.
+The ABI is manifest-extensible and sequence-catalog-bound. Every external source
+provides at least one positive-length DNA record with SHA-256 and refget
+identity; annotation, alignment, variation, and assembly-graph overlays require
+an exact DNA-bearing input in the same composite profile. Role names, grammar
+identity, wrappers, native IR formats, limits, and validator distribution
+identities come from the manifest. Two otherwise matching profiles remain
+distinct when their authority or schema changes because provider acceptance is
+qualified by the complete manifest SHA-256.
 
 ## What the compiler checks
 
 Epigenesis performs linked static validation across the whole compilation:
 
-- source grammar, exact roles, wrappers, record order, sequence alphabet,
+- built-in grammar semantics, roles, wrappers, record order, sequence alphabet,
   coordinates, references, and native IR closure;
-- source SHA-256, byte lengths, sequence digests, refget identities, source
-  maps, canonical seals, and pinned profile authority;
+- external manifest, validation-report, original-byte, native-JSON, and record-
+  catalog closure without executing external frontend code;
+- source SHA-256, byte lengths, sequence digests, refget identities, canonical
+  seals, source maps where emitted, and authority digests where declared;
 - interpretation manifest, request, response, configuration identity, ordered
   outputs, tensor types, shapes, axes, storage, and exact source binding;
 - target ABI, opsets, unit and edge schemas, fields, rules, ports,
@@ -138,11 +146,12 @@ Epigenesis performs linked static validation across the whole compilation:
 - lowering-policy coverage, tensor use, state operations, conflicts, exact
   unit/edge/attachment/tensor budgets, and deterministic module identity; and
 - the flat bundle's exact child set, transitive references, unique external
-  blobs, compilation record, and final replay report.
+  blobs, compilation record, and final validation report.
 
-The result is `brainc.development-module/v1`: a typed state program containing
-unit, edge, rule-attachment, and port operations for a declared target. The
-compiler's product is the validated IR and its complete provenance/link bundle.
+The result is `brainc.development-module/v1`: typed Development Module IR
+containing unit, edge, rule-attachment, and port operations for a declared
+target. The compiler's product is the validated IR and its complete
+provenance/link bundle.
 
 ## Output contracts
 
@@ -159,9 +168,10 @@ provider_manifest.json
 target_contract.json
 ```
 
-`bundle.json` is reference-only. It does not copy source DNA, native source
-artifacts, tensor blobs, or child artifact bodies. Publication is atomic,
-no-clobber, and absent-to-complete on supported POSIX filesystems.
+`bundle.json` is a reference-only digest index over source/native artifacts,
+seven child contracts, and external tensor blobs. Publication is atomic,
+no-clobber, and absent-to-complete on supported Linux and Windows hosts;
+unsupported hosts fail closed.
 
 | Contract | Identity |
 |---|---|
@@ -169,7 +179,8 @@ no-clobber, and absent-to-complete on supported POSIX filesystems.
 | Reference catalog | `brainc.reference-sequence-catalog/v1` |
 | External frontend manifest | `brainc.external-frontend-profile/v1` |
 | External source closure | `brainc.external-source-closure/v1` |
-| Development target | `brainc.development-module/v1` |
+| Target contract | `brainc.target-contract/v1` |
+| Development module | `brainc.development-module/v1` |
 | Compilation bundle | `brainc.development-bundle/v1` |
 | Independent result | `brainc.development-validation-report/v1` |
 
@@ -193,8 +204,9 @@ brainc-validate-development source.bundle development.bundle \
   --source-input sequence=source.fasta -o report.json
 ```
 
-Validation failures return a sealed failure report with a stable error code and
-nonzero exit status.
+After successful argument parsing, semantic validation failures return a sealed
+failure report with a stable error code and exit status 1. Command-usage errors
+use the standard `argparse` exit status 2.
 
 ## Reproducibility and hardening
 
@@ -228,12 +240,11 @@ lowering, linking, reproducible builds, and independent validation.
 
 - [INSDC Feature Table Definition](https://www.insdc.org/submitting-standards/feature-table/)
 - [NCBI GenBank release format](https://www.ncbi.nlm.nih.gov/genbank/release/current)
-- [Sequence Ontology GFF3 specification](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md)
+- [Sequence Ontology GFF3 1.26 syntax basis](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md)
 - [GA4GH refget Sequences](https://ga4gh.github.io/refget/sequences/)
 - [GA4GH refget Sequence Collections](https://ga4gh.github.io/refget/seqcols/)
-- [SBOL 3.1](https://sbolstandard.org/datamodel-specification/version-3.1.0/)
 - [RFC 8785 JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
-- [Cai et al., 2009 DNA-to-model compiler](https://doi.org/10.1371/journal.pcbi.1000529)
+- [Cai et al., 2009 DNA attribute-grammar compiler](https://doi.org/10.1371/journal.pcbi.1000529)
 
 [SPEC.md](SPEC.md) is normative. [docs/STANDARDS.md](docs/STANDARDS.md) traces
 the standards mapping, and [docs/PRIOR_ART.md](docs/PRIOR_ART.md) places the

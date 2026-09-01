@@ -323,6 +323,37 @@ class DevelopmentValidatorTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    def test_closed_mapping_rejects_wrong_count_before_key_difference(self) -> None:
+        with mock.patch.object(
+            independent,
+            "_key_summary",
+            side_effect=AssertionError("wrong-size object must not be diffed"),
+        ):
+            with self.assertRaisesRegex(
+                DevelopmentValidationError,
+                "expected=1, observed=2",
+            ):
+                independent._keys(
+                    {"reads": object(), "unexpected": object()},
+                    {"reads"},
+                    "external original source inputs",
+                )
+
+    def test_untrusted_surrogate_key_is_a_validation_failure(self) -> None:
+        with self.assertRaisesRegex(DevelopmentValidationError, "keys invalid"):
+            validate_development_bundle(
+                {"\ud800": 1},
+                {},
+                {},
+                {},
+                source_inputs={},
+            )
+
+        report = independent._failure_report(DevelopmentValidationError("\ud800"))
+        self.assertFalse(report["valid"])
+        self.assertEqual(report["error"]["message"], "\\ud800")
+        self.assertIs(validate_development_report(report), report)
+
     def test_full_path_and_in_memory_replay_are_deterministic_and_sealed(self) -> None:
         first = self.fixture.validate_paths()
         second = self.fixture.validate_paths()
@@ -1036,6 +1067,51 @@ class DevelopmentValidatorTests(unittest.TestCase):
             json.loads(failed_output.read_text(encoding="utf-8")),
         )
         self.assertIs(validate_development_report(failure), failure)
+
+    def test_cli_bounds_failure_for_oversized_external_role_map(self) -> None:
+        source_bundle = self.root / "oversized-external-source"
+        source_bundle.mkdir()
+        roles = {
+            f"r{index:04d}" + "x" * 215: None
+            for index in range(5_000)
+        }
+        descriptor = {
+            "source_ir": {
+                "profile": EXTERNAL_PROFILE,
+                "parameters": {
+                    "profile_id": "org.example.fastq",
+                    "profile_version": 1,
+                    "profile_manifest_sha256": "0" * 64,
+                },
+                "inputs": roles,
+                "artifacts": {},
+                "records": [],
+            }
+        }
+        (source_bundle / "source.json").write_text(
+            json.dumps(descriptor, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        (source_bundle / "external.json").write_text("{}", encoding="utf-8")
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            status = main(
+                [
+                    str(source_bundle),
+                    str(self.root / "unused-development-bundle"),
+                    "--source-input",
+                    f"reads={self.root / 'unused.fastq'}",
+                ]
+            )
+        self.assertEqual(status, 1)
+        report = json.loads(stdout.getvalue())
+        self.assertFalse(report["valid"])
+        self.assertLessEqual(
+            len(report["error"]["message"].encode("utf-8")),
+            independent.MAX_STRING_BYTES,
+        )
+        self.assertIs(validate_development_report(report), report)
 
     def test_original_input_roles_and_paths_are_exact_and_nonlinked(self) -> None:
         with self.assertRaisesRegex(DevelopmentValidationError, "keys invalid"):

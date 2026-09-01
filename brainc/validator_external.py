@@ -31,7 +31,7 @@ MAX_CLOSURE_BYTES = MAX_PROFILE_BYTES + 2 * MAX_EVIDENCE_BYTES + 1024 * 1024
 MAX_REPORT_BYTES = 1024 * 1024
 MAX_ROLES = 64
 MAX_RECORDS = 100_000
-MAX_RECORD_ID_BYTES = 4096
+MAX_RECORD_ID_BYTES = MAX_IDENTIFIER_BYTES
 CHUNK_BYTES = 64 * 1024
 
 ABI = "brainc.external-frontend-data/v1"
@@ -675,6 +675,7 @@ def _record_catalog(
             record["record_id"],
             f"{label}.record_id",
             maximum_bytes=limits["maximum_record_id_bytes"],
+            identifier=True,
         )
         if record_id in record_ids:
             raise _fail("frontend_ir.record_catalog contains duplicate record ids")
@@ -995,17 +996,19 @@ def _path_mapping(value: Any, expected: set[str], label: str) -> dict[str, Path]
     if not isinstance(value, Mapping):
         raise _fail(f"{label} must be a mapping")
     try:
-        roles = set(value)
-    except (TypeError, ValueError) as failure:
+        observed_roles = len(value)
+    except (TypeError, ValueError, OverflowError) as failure:
         raise _fail(f"{label} is not a valid role mapping") from failure
-    if any(type(role) is not str for role in roles):
-        raise _fail(f"{label} role names must be strings")
-    if roles != expected:
+    if observed_roles != len(expected):
         raise _fail(f"{label} role closure does not match the descriptor")
     result: dict[str, Path] = {}
     for role in sorted(expected):
         try:
-            raw = os.fspath(value[role])
+            raw_value = value[role]
+        except KeyError as failure:
+            raise _fail(f"{label} role closure does not match the descriptor") from failure
+        try:
+            raw = os.fspath(raw_value)
         except (TypeError, ValueError, OSError) as failure:
             raise _fail(f"{label}.{role} must be a filesystem path") from failure
         if type(raw) is not str or not raw or "\0" in raw:

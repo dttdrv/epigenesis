@@ -4,7 +4,7 @@
 
 This document specifies Epigenesis 1.0: biological source admission, exact
 source provenance, typed Development Module lowering, reference-only linking,
-and independent compilation replay.
+and independent compilation verification.
 
 The words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
 RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are interpreted as described by
@@ -20,13 +20,15 @@ An Epigenesis compilation has five inputs:
 
 Its primary output is `brainc.development-module/v1`. The linker publishes that
 module with the complete interpretation chain and a compilation record under
-`brainc.development-bundle/v1`. An independent implementation MUST be able to
-replay the result from the original source evidence.
+`brainc.development-bundle/v1`. An independent implementation MUST reparse
+built-in source profiles and MUST verify external source closures against their
+manifest-qualified validation evidence and exact original/native bytes.
 
 ## 2. Common wire rules
 
-Every artifact is a closed JSON object. Missing or unknown members are errors at
-every defined level. A decoder MUST reject:
+Every compiler contract artifact is a closed JSON object. Referenced source
+bytes and external blobs are content-addressed byte resources. Missing or
+unknown members are errors at every defined JSON level. A decoder MUST reject:
 
 - duplicate object keys;
 - non-UTF-8 JSON;
@@ -167,16 +169,17 @@ traditional physical-DNA records into exact Sequence Collection v2 and
 references, feature keys, qualifiers, location ASTs, normalized coordinates,
 ORIGIN sequence, and source positions.
 
-The GFF3 profile compiles Sequence Ontology GFF3 under an explicitly supplied
-raw or FASTA sequence profile. It validates sequence-region bounds, feature
-coordinates, circular origin crossing, phase, score, attributes, ordered
-relationships, reference closure, and exact binding to the sequence
-collection. Embedded FASTA is outside this profile.
+The GFF3 profile is a bounded structural profile derived from Sequence Ontology
+GFF3 1.26 and compiled under an explicitly supplied raw or FASTA sequence
+profile. It validates sequence-region bounds, feature coordinates, circular
+origin crossing, phase, score, attributes, ordered relationships, reference
+closure, and exact binding to the sequence collection. Feature types and
+ontology claims remain opaque. Embedded FASTA is outside this profile.
 
 ## 4. External frontend data ABI
 
-The external ABI admits new source grammars without loading frontend code into
-the compiler. It consists of:
+The external ABI admits evidence produced by new DNA-bearing source grammars
+without loading frontend code into the compiler. It consists of:
 
 - `brainc.external-frontend-profile/v1`;
 - `brainc.external-source-descriptor/v1`;
@@ -195,12 +198,16 @@ The manifest MUST declare:
 - one to 64 ordered native JSON artifact declarations with media type, format,
   version, schema SHA-256, IR-digest field, and maximum byte length;
 - record catalog schema `brainc.sequence-record-catalog/v1`;
-- total input/native byte, record, base, and record-identifier limits; and
+- total input/native byte, record, base, and portable record-identifier limits,
+  with record identifiers capped at 256 UTF-8 bytes; and
 - validator protocol, distribution identity, distribution digest, executable
   identity, and executable digest.
 
-The complete manifest digest is the external language identity. A provider
-accepting an external source MUST declare:
+The complete manifest digest is the external language identity. Every accepted
+external source MUST provide a nonempty sequence-record catalog with positive
+base counts, sequence SHA-256 values, and refget identities. Overlay formats
+MUST enter through a composite profile that also binds their exact DNA-bearing
+input. A provider accepting an external source MUST declare:
 
 ```text
 brainc.source-descriptor/v1;profile=external-dna-source/v1;manifest=<sha256>
@@ -208,7 +215,7 @@ brainc.source-descriptor/v1;profile=external-dna-source/v1;manifest=<sha256>
 
 A generic external-profile acceptance tag is insufficient.
 
-### 4.2 Frontend descriptor and replay
+### 4.2 Frontend descriptor and validation evidence
 
 The frontend descriptor MUST bind the manifest, exact input roles and byte
 identities, exact native roles/formats/versions/schemas/IR identities and byte
@@ -216,12 +223,17 @@ identities, and an ordered record catalog. Record identifiers MUST be unique;
 ordinals MUST be contiguous from zero; every record MUST name a declared input
 role and carry positive bases, sequence SHA-256, and refget identity.
 
-The validation report MUST name the exact validator declared by the manifest
-and reproduce the input references, native references, and record catalog. The
-compiler MUST stream every original path, compare its SHA-256 and length, load
-each bounded native JSON artifact, check its declared format/version and IR
-digest field, and seal only the manifest/descriptor/report closure. Original
-and native bytes MUST NOT be embedded in the compiler closure.
+The manifest-qualified validation report MUST name the exact validator declared
+by the manifest and reproduce the input references, native references, and
+record catalog. The external integration is responsible for running that
+validator outside Epigenesis and supplying its report. The compiler binds the
+declared distribution/executable identities but does not launch the validator
+or authenticate its execution. It MUST stream every original path, compare its
+SHA-256 and length, load each bounded native JSON artifact, check its declared
+format/version and IR-digest field, and seal only the
+manifest/descriptor/report closure. `schema_sha256` binds the declared schema
+identity; the core does not apply the schema body. Original and native bytes
+MUST NOT be embedded in the compiler closure.
 
 ## 5. Interpretation and target contracts
 
@@ -293,7 +305,7 @@ outside the producer trust boundary. It MUST:
 1. snapshot the exact source and development directory closures;
 2. replay each built-in original source through an independently implemented
    frontend, and independently verify every external closure against its exact
-   original/native paths and manifest-qualified replay evidence;
+   original/native paths and manifest-qualified validation evidence;
 3. validate descriptor/native/input/record equality;
 4. replay manifest, request, response, tensors, target, policy, operations, and
    budgets;
@@ -311,8 +323,9 @@ files, unknown or missing children, duplicate JSON keys, path replacement,
 directory replacement, oversized children, decompression overflow, allocation
 failure, and coherently resealed semantic changes.
 
-Success exits zero. Validation failure exits one and emits a sealed report with
-`valid: false` and code `DEVVAL001`.
+Success exits zero. After successful command-line parsing, semantic validation
+failure exits one and emits a sealed report with `valid: false` and code
+`DEVVAL001`. Command-line usage errors follow `argparse` and exit two.
 
 The standalone command receives original roles as repeated
 `--source-input ROLE=PATH` arguments. External profiles additionally receive
@@ -340,8 +353,9 @@ not converted to successful diagnostics.
 
 All public input and output paths are bounded before untrusted allocation.
 Accepted paths MUST resolve to one stable regular object of the required kind.
-Secure directory validation requires descriptor-relative POSIX primitives; a
-platform without the required primitives MUST fail closed for that operation.
+Secure directory publication and validation use descriptor-relative primitives
+on Linux and platform-specific identity checks on Windows; a platform without
+the required primitives MUST fail closed for that operation.
 
 Every reader enforces per-role bytes, JSON depth, JSON member count, string
 length, record count, and relevant decompressed/logical limits. Whole-chain

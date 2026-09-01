@@ -45,6 +45,15 @@ class GFF3CompilerTests(unittest.TestCase):
                     artifact, collection, gff3_source=source
                 )
 
+    def test_structural_profile_preserves_opaque_feature_types(self) -> None:
+        collection = self.collection(("x", "ACGT"))
+        source = (
+            b"##gff-version 3\n"
+            b"x\t.\tnot_an_SO_term\t1\t4\t.\t+\t.\tID=opaque\n"
+        )
+        artifact = GFF3Compiler().compile_bytes(source, collection).to_dict()
+        self.assertEqual(artifact["bio_ir"]["features"][0]["type"], "not_an_SO_term")
+
     def test_forward_links_discontinuous_ids_and_opaque_extensions(self) -> None:
         collection = self.collection(("chr,1", "ACGT" * 8), ("unused", "NNNN"))
         source = (

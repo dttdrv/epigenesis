@@ -125,13 +125,18 @@ def build_external_source_closure(
 def _path_mapping(value: Any, expected: set[str], label: str) -> dict[str, Path]:
     if not isinstance(value, Mapping):
         raise _fail(f"{label} must be a mapping")
-    if any(type(role) is not str for role in value):
-        raise _fail(f"{label} role names must be strings")
-    if set(value) != expected:
+    try:
+        observed_roles = len(value)
+    except (TypeError, ValueError, OverflowError) as failure:
+        raise _fail(f"{label} is not a valid role mapping") from failure
+    if observed_roles != len(expected):
         raise _fail(f"{label} role closure does not match the descriptor")
     result: dict[str, Path] = {}
     for role in sorted(expected):
-        raw_path = value[role]
+        try:
+            raw_path = value[role]
+        except (KeyError, TypeError, ValueError) as failure:
+            raise _fail(f"{label} role closure does not match the descriptor") from failure
         if not isinstance(raw_path, (str, Path)) or not os.fspath(raw_path):
             raise _fail(f"{label}.{role} must be a filesystem path")
         result[role] = Path(raw_path)

@@ -39,6 +39,7 @@ MAX_JSON_MEMBERS = 1_000_000
 MAX_GFF3_JSON_MEMBERS = 5_000_000
 MAX_STRING_BYTES = 1 * 1024 * 1024
 MAX_IDENTIFIER_BYTES = 256
+MAX_FAILURE_MESSAGE_BYTES = 16 * 1024
 MAX_SOURCE_RECORDS = 100_000
 MAX_EXTERNAL_BLOBS = 100_000
 MAX_EXTERNAL_BLOB_BYTES = 256 * 1024 * 1024
@@ -189,16 +190,54 @@ def _bounded(function: Any) -> Any:
 def _keys(value: Any, expected: set[str], label: str) -> dict[str, Any]:
     if type(value) is not dict:
         raise _fail(f"{label} must be an object")
+    if len(value) != len(expected):
+        raise _fail(
+            f"{label} keys invalid; missing/unknown or non-string object key; "
+            f"expected={len(expected)}, observed={len(value)}"
+        )
     if any(type(key) is not str for key in value):
         raise _fail(f"{label} contains a non-string object key")
-    missing = sorted(expected - value.keys())
-    extra = sorted(value.keys() - expected)
+    missing = expected - value.keys()
+    extra = value.keys() - expected
     if missing or extra:
         raise _fail(
-            f"{label} keys invalid; missing={missing or 'none'}, "
-            f"unknown={extra or 'none'}"
+            f"{label} keys invalid; missing={_key_summary(missing)}, "
+            f"unknown={_key_summary(extra)}"
         )
     return value
+
+
+def _key_summary(values: list[str] | set[str]) -> str:
+    if not values:
+        return "none"
+    if len(values) > 8:
+        return f"{len(values)} keys"
+    try:
+        oversized = any(len(value.encode("utf-8")) > 128 for value in values)
+    except UnicodeEncodeError:
+        return f"{len(values)} keys"
+    if oversized:
+        return f"{len(values)} keys"
+    rendered = repr(sorted(values))
+    if len(rendered.encode("utf-8")) > 1024:
+        return f"{len(values)} keys"
+    return rendered
+
+
+def _external_roles(value: Any, label: str) -> set[str]:
+    if type(value) is not dict:
+        raise _fail(f"{label} must be an object")
+    if not 1 <= len(value) <= validator_external.MAX_ROLES:
+        raise _fail(
+            f"{label} must contain 1..{validator_external.MAX_ROLES} roles"
+        )
+    roles = set(value)
+    if any(
+        type(role) is not str or EXTERNAL_ROLE_RE.fullmatch(role) is None
+        for role in roles
+    ):
+        raise _fail(f"{label} contains an invalid role identifier")
+    return roles
 
 
 def _integer(
@@ -258,8 +297,9 @@ def _first_difference(actual: Any, expected: Any, path: str = "$") -> str:
         actual_keys, expected_keys = set(actual), set(expected)
         if actual_keys != expected_keys:
             return (
-                f"{path} keys differ; missing={sorted(expected_keys - actual_keys)}, "
-                f"unknown={sorted(actual_keys - expected_keys)}"
+                f"{path} keys differ; "
+                f"missing={_key_summary(expected_keys - actual_keys)}, "
+                f"unknown={_key_summary(actual_keys - expected_keys)}"
             )
         for key in sorted(actual, key=lambda item: item.encode("utf-8")):
             if not _exact_equal(actual[key], expected[key]):
@@ -820,7 +860,15 @@ def _validate_source_descriptor(
     if source_ir["profile"] == EXTERNAL_PROFILE:
         if type(source_inputs_value) is not dict:
             raise _fail("external original source inputs must be a path mapping")
-        source_inputs = source_inputs_value
+        expected_input_roles = _external_roles(
+            source_ir["inputs"],
+            "external source descriptor inputs",
+        )
+        source_inputs = _keys(
+            source_inputs_value,
+            expected_input_roles,
+            "external original source inputs",
+        )
     else:
         source_inputs = _keys(
             source_inputs_value,
@@ -1532,6 +1580,11 @@ def load_source_bundle_directory(
         {"profile", "parameters", "inputs", "artifacts", "records"},
         "source descriptor.source_ir",
     )
+    if source_ir["profile"] == EXTERNAL_PROFILE:
+        _external_roles(
+            source_ir["inputs"],
+            "external source descriptor inputs",
+        )
     _, artifact_roles = _route(source_ir["profile"], source_ir["parameters"])
     expected_names = {SOURCE_FILENAME, *(SOURCE_FILENAMES[role] for role in artifact_roles)}
     if set(raw) != expected_names:
@@ -1589,10 +1642,10 @@ def validate_development_paths(
     )
     input_roles, _ = _route(source_ir["profile"], source_ir["parameters"])
     if source_ir["profile"] == EXTERNAL_PROFILE:
-        descriptor_inputs = source_ir["inputs"]
-        if type(descriptor_inputs) is not dict:
-            raise _fail("external source descriptor inputs must be an object")
-        expected_input_roles = set(descriptor_inputs)
+        expected_input_roles = _external_roles(
+            source_ir["inputs"],
+            "external source descriptor inputs",
+        )
     else:
         expected_input_roles = set(input_roles)
     paths = _keys(
@@ -1624,6 +1677,15 @@ def validate_development_paths(
 
 
 def _failure_report(failure: DevelopmentValidationError) -> dict[str, Any]:
+    message = str(failure)
+    try:
+        encoded = message.encode("utf-8")
+    except UnicodeEncodeError:
+        encoded = message.encode("utf-8", "backslashreplace")
+    suffix = b"... [truncated]"
+    if len(encoded) > MAX_FAILURE_MESSAGE_BYTES:
+        encoded = encoded[: MAX_FAILURE_MESSAGE_BYTES - len(suffix)] + suffix
+    message = encoded.decode("utf-8", "ignore")
     core = {
         "format": REPORT_FORMAT,
         "version": REPORT_VERSION,
@@ -1631,7 +1693,7 @@ def _failure_report(failure: DevelopmentValidationError) -> dict[str, Any]:
         "valid": False,
         "error": {
             "code": "DEVVAL001",
-            "message": str(failure),
+            "message": message,
         },
     }
     return {**core, "report_sha256": _digest(core)}

@@ -30,7 +30,7 @@ MAX_PROFILE_BYTES = 1 * 1024 * 1024
 MAX_EVIDENCE_BYTES = MAX_JSON_BYTES
 MAX_ROLES = 64
 MAX_RECORDS = 100_000
-MAX_RECORD_ID_BYTES = 4096
+MAX_RECORD_ID_BYTES = MAX_IDENTIFIER_BYTES
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 _REFGET_RE = re.compile(r"SQ\.[A-Za-z0-9_-]{32}\Z")
@@ -472,6 +472,7 @@ def _record_catalog(
             record["record_id"],
             f"{label}.record_id",
             maximum_bytes=limits["maximum_record_id_bytes"],
+            identifier=True,
         )
         if record_id in record_ids:
             raise _fail("frontend_ir.record_catalog contains duplicate record ids")
@@ -729,14 +730,28 @@ def validate_validation_report(
     return copy.deepcopy(item)
 
 
-def _payload_mapping(value: Any, label: str) -> dict[str, bytes]:
+def _payload_mapping(
+    value: Any,
+    expected_roles: set[str],
+    label: str,
+) -> dict[str, bytes]:
     if not isinstance(value, Mapping):
         raise _fail(f"{label} must be a mapping")
-    result = dict(value)
-    if any(type(role) is not str for role in result):
-        raise _fail(f"{label} role names must be strings")
-    if any(type(raw) is not bytes for raw in result.values()):
-        raise _fail(f"{label} values must be immutable bytes")
+    try:
+        observed_roles = len(value)
+    except (TypeError, ValueError, OverflowError) as failure:
+        raise _fail(f"{label} is not a valid role mapping") from failure
+    if observed_roles != len(expected_roles):
+        raise _fail(f"{label} role closure does not match the descriptor")
+    result: dict[str, bytes] = {}
+    for role in sorted(expected_roles):
+        try:
+            raw = value[role]
+        except (KeyError, TypeError, ValueError) as failure:
+            raise _fail(f"{label} role closure does not match the descriptor") from failure
+        if type(raw) is not bytes:
+            raise _fail(f"{label} values must be immutable bytes")
+        result[role] = raw
     return result
 
 
@@ -746,10 +761,8 @@ def _verify_payloads(
     label: str,
     declarations: list[dict[str, Any]] | None = None,
 ) -> None:
-    payloads = _payload_mapping(value, label)
     expected_roles = [reference["role"] for reference in references]
-    if set(payloads) != set(expected_roles) or len(payloads) != len(expected_roles):
-        raise _fail(f"{label} role closure does not match the descriptor")
+    payloads = _payload_mapping(value, set(expected_roles), label)
     for index, reference in enumerate(references):
         raw = payloads[reference["role"]]
         if len(raw) != reference["byte_length"] or hashlib.sha256(raw).hexdigest() != reference["sha256"]:

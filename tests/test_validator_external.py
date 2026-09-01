@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Mapping
 from copy import deepcopy
 import hashlib
 import json
@@ -13,7 +14,10 @@ import tempfile
 import unittest
 from unittest import mock
 
+import brainc.external_profile as external_profile
+import brainc.external_source as external_source
 from brainc.external_profile import (
+    ExternalProfileError,
     seal_profile_manifest,
     seal_source_descriptor,
     seal_validation_report,
@@ -93,6 +97,160 @@ def _refget(sequence: bytes) -> str:
 
 
 class IndependentExternalValidatorTests(unittest.TestCase):
+    def test_role_mappings_reject_wrong_count_before_iteration(self) -> None:
+        class WrongSizedMapping(Mapping[str, object]):
+            def __getitem__(self, key: str) -> object:
+                raise AssertionError("wrong-size mapping must not be inspected")
+
+            def __iter__(self):
+                raise AssertionError("wrong-size mapping must not be iterated")
+
+            def __len__(self) -> int:
+                return 2
+
+        value = WrongSizedMapping()
+        cases = (
+            (
+                "producer payloads",
+                lambda: external_profile._payload_mapping(
+                    value,
+                    {"reads"},
+                    "original_payloads",
+                ),
+                external_profile.ExternalProfileError,
+            ),
+            (
+                "source paths",
+                lambda: external_source._path_mapping(
+                    value,
+                    {"reads"},
+                    "original_paths",
+                ),
+                external_source.ExternalSourceError,
+            ),
+            (
+                "validator paths",
+                lambda: validator._path_mapping(
+                    value,
+                    {"reads"},
+                    "original_paths",
+                ),
+                validator.ExternalValidationError,
+            ),
+        )
+        for label, operation, error_type in cases:
+            with self.subTest(label=label), self.assertRaisesRegex(
+                error_type,
+                "role closure",
+            ):
+                operation()
+
+    def test_external_record_ids_match_the_downstream_source_contract(self) -> None:
+        profile = _profile_ir()
+        profile["limits"]["maximum_record_id_bytes"] = 257
+        with self.subTest(boundary="producer-limit"), self.assertRaisesRegex(
+            ExternalProfileError,
+            "maximum_record_id_bytes",
+        ):
+            seal_profile_manifest(profile)
+
+        manifest = seal_profile_manifest(_profile_ir())
+        records = _records()
+        records[0]["record_id"] = "read one"
+        with self.subTest(boundary="producer-whitespace"), self.assertRaisesRegex(
+            ExternalProfileError,
+            "record_id",
+        ):
+            seal_source_descriptor(
+                manifest,
+                input_references=[_input_reference(FASTQ)],
+                native_artifact_references=[_native_reference()],
+                records=records,
+            )
+
+        def coherently_reseal(attacked: dict) -> dict:
+            closure_ir = attacked["closure_ir"]
+            attacked_manifest = closure_ir["profile_manifest"]
+            attacked_manifest["profile_ir_sha256"] = validator.digest(
+                attacked_manifest["profile_ir"]
+            )
+            attacked_manifest["artifact_sha256"] = validator.digest(
+                {
+                    key: member
+                    for key, member in attacked_manifest.items()
+                    if key != "artifact_sha256"
+                }
+            )
+            profile_identity = attacked_manifest["profile_ir"]["profile"]
+            profile_reference = {
+                "id": profile_identity["id"],
+                "version": profile_identity["version"],
+                "manifest_sha256": attacked_manifest["artifact_sha256"],
+            }
+
+            attacked_descriptor = closure_ir["source_descriptor"]
+            frontend_ir = attacked_descriptor["frontend_ir"]
+            frontend_ir["profile"] = deepcopy(profile_reference)
+            catalog = frontend_ir["record_catalog"]
+            catalog["catalog_sha256"] = validator.digest(
+                {
+                    key: member
+                    for key, member in catalog.items()
+                    if key != "catalog_sha256"
+                }
+            )
+            attacked_descriptor["frontend_ir_sha256"] = validator.digest(frontend_ir)
+            attacked_descriptor["artifact_sha256"] = validator.digest(
+                {
+                    key: member
+                    for key, member in attacked_descriptor.items()
+                    if key != "artifact_sha256"
+                }
+            )
+
+            frontend_report = closure_ir["validation_report"]
+            validation_ir = frontend_report["validation_ir"]
+            validation_ir["profile"] = deepcopy(profile_reference)
+            validation_ir["frontend_output_sha256"] = attacked_descriptor[
+                "artifact_sha256"
+            ]
+            validation_ir["replay"] = {
+                "inputs": deepcopy(frontend_ir["inputs"]),
+                "native_artifacts": deepcopy(frontend_ir["native_artifacts"]),
+                "record_catalog_sha256": catalog["catalog_sha256"],
+                "frontend_ir_sha256": attacked_descriptor["frontend_ir_sha256"],
+            }
+            frontend_report["validation_ir_sha256"] = validator.digest(validation_ir)
+            frontend_report["artifact_sha256"] = validator.digest(
+                {
+                    key: member
+                    for key, member in frontend_report.items()
+                    if key != "artifact_sha256"
+                }
+            )
+            return _seal_closure(
+                attacked_manifest,
+                attacked_descriptor,
+                frontend_report,
+            )
+
+        for boundary in ("validator-limit", "validator-whitespace"):
+            attacked = deepcopy(_fixture()[3])
+            if boundary == "validator-limit":
+                attacked["closure_ir"]["profile_manifest"]["profile_ir"]["limits"][
+                    "maximum_record_id_bytes"
+                ] = 257
+            else:
+                attacked["closure_ir"]["source_descriptor"]["frontend_ir"][
+                    "record_catalog"
+                ]["records"][0]["record_id"] = "read one"
+            attacked = coherently_reseal(attacked)
+            with self.subTest(boundary=boundary), self.assertRaisesRegex(
+                validator.ExternalValidationError,
+                "record_id|maximum_record_id_bytes",
+            ):
+                validator.validate_external_source_closure(attacked)
+
     def test_real_fastq_paths_validate_and_report_is_exact_and_deterministic(self) -> None:
         manifest, descriptor, frontend_report, closure = _fixture()
         self.assertEqual(

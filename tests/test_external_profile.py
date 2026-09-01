@@ -470,31 +470,47 @@ class ExternalProfileTests(unittest.TestCase):
                         native_artifact_payloads={"read-index": raw},
                     )
 
-    def test_profile_selection_never_depends_on_payload_content(self) -> None:
+    def test_external_core_verifies_evidence_without_executing_the_grammar(self) -> None:
         profile = _profile_ir()
         profile["profile"]["id"] = "org.example.explicit-profile"
         manifest = seal_profile_manifest(profile)
         arbitrary = b"this is deliberately not FASTQ"
         inputs = [_input_reference(arbitrary)]
+        records = [
+            {
+                "ordinal": 0,
+                "input_role": "reads",
+                "record_id": "external-record",
+                "bases": 1,
+                "sequence_sha256": _sha(b"N"),
+                "refget_id": _refget(b"N"),
+            }
+        ]
         descriptor = seal_source_descriptor(
             manifest,
             input_references=inputs,
             native_artifact_references=[_native_reference()],
-            records=[
-                {
-                    "ordinal": 0,
-                    "input_role": "reads",
-                    "record_id": "external-record",
-                    "bases": 1,
-                    "sequence_sha256": _sha(b"N"),
-                    "refget_id": _refget(b"N"),
-                }
-            ],
+            records=records,
+        )
+        report = seal_validation_report(
+            manifest,
+            descriptor,
+            replayed_input_references=inputs,
+            replayed_native_artifact_references=[_native_reference()],
+            replayed_records=records,
+        )
+        observed = validate_external_evidence(
+            manifest,
+            descriptor,
+            report,
+            original_payloads={"reads": arbitrary},
+            native_artifact_payloads={"read-index": NATIVE_INDEX},
         )
         self.assertEqual(
             descriptor["frontend_ir"]["profile"]["id"],
             "org.example.explicit-profile",
         )
+        self.assertEqual(observed["validation_report"], report)
 
     def test_module_is_data_only(self) -> None:
         source = Path(external_profile.__file__).read_text(encoding="utf-8")

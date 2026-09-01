@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "epigenesis-compiler"
 version = "1.0.0"
-description = "Deterministic DNA compilation to independently verifiable biological state"
+description = "Deterministic biological-source compiler to verifiable Development Module IR"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
