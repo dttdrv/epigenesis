@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "epigenesis-compiler"
-version = "0.9.0"
+version = "1.0.0"
 description = "Deterministic DNA compilation to independently verifiable biological state"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,7 @@ brainc = "brainc.cli:main"
 brainc-validate-bio-chain = "brainc.validator_bio_chain:main"
 brainc-validate-genbank = "brainc.validator_insdc:main"
 brainc-validate-insdc-graph = "brainc.validator_insdc_graph:main"
+brainc-validate-development = "brainc.validator_development:main"
 
 [tool.setuptools]
 packages = ["brainc", "brainc.v2"]

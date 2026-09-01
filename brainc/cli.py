@@ -7,7 +7,7 @@ import json
 import sys
 from typing import Any
 
-from ._canonical import ContractError
+from ._canonical import ContractError, digest
 from ._io import load_json_object, read_regular_file
 from .bio import GFF3Compiler, load_gff3_artifact
 from .bio_graph import compile_feature_graph
@@ -96,6 +96,12 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="brainc",
         description="Deterministic compiler for content-bound biological sources",
+    )
+    parser.add_argument(
+        "--diagnostics",
+        choices=("text", "json"),
+        default="text",
+        help="render compilation failures as text or sealed JSON",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     source = sub.add_parser(
@@ -715,7 +721,38 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if report["valid"] else 3
         return 0
     except (OSError, ContractError, SequenceCompilerError, SequenceCollectionError, ValueError) as failure:
-        print(f"brainc: {failure}", file=sys.stderr)
+        if args.diagnostics == "json":
+            message = str(failure)
+            candidate, separator, _ = message.partition(":")
+            code = (
+                candidate
+                if (
+                    separator
+                    and candidate.isascii()
+                    and candidate.isalnum()
+                    and candidate.isupper()
+                )
+                else "CLI001"
+            )
+            core = {
+                "format": "brainc.compiler-diagnostic",
+                "version": 1,
+                "valid": False,
+                "command": args.command,
+                "error": {"code": code, "message": message},
+            }
+            diagnostic = {**core, "diagnostic_sha256": digest(core)}
+            print(
+                json.dumps(
+                    diagnostic,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+        else:
+            print(f"brainc: {failure}", file=sys.stderr)
         return 2
 
 

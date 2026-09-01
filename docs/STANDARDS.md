@@ -1,10 +1,10 @@
 # Standards and prior-art trace
 
-Epigenesis 0.9.0 treats each biological format as a source language with its own
-authority, grammar, identity rules, coordinate system, and versioned IR. Its
-GenBank 0.8 frontend accepts sequence and annotation together from a native
-archival record; the package's feature-state adapter lowers that BioIR to
-deterministic feature state.
+Epigenesis 1.0 treats each biological format as a source language with its own
+authority, grammar, identity rules, coordinate system, and versioned IR.
+Built-in raw DNA, FASTA, reference FASTA, GenBank, and GFF3 frontends feed one
+source-descriptor contract; a data-only external ABI admits additional exact
+grammars through manifest-qualified evidence.
 
 ## GenBank 0.8 authority chain
 
@@ -117,15 +117,15 @@ An API can transport or invoke these artifacts. The compiler is the language
 implementation that performs acceptance, static checks, normalization,
 lowering, emission, and rejection.
 
-## Frontend map and roadmap
+## Frontend and external-profile map
 
 | Biological language | Primary specification | Compiler unit |
 |---|---|---|
-| Assembled sequence | [NCBI nucleotide FASTA](https://www.ncbi.nlm.nih.gov/genbank/fastaformat) | Existing FASTA, multi-FASTA, raw IUPAC, and gzip frontend on Sequence IR v2 / Sequence Collection v1; a future native v2 adapter can share chunked storage and refget collection identity |
+| Assembled sequence | [NCBI nucleotide FASTA](https://www.ncbi.nlm.nih.gov/genbank/fastaformat) | Built-in exact Sequence Collection route and streaming `fasta-reference-dna/v1` refget catalog route |
 | Reads with qualities | [Cock et al. FASTQ description](https://pmc.ncbi.nlm.nih.gov/articles/PMC2847217/) and [HTS format registry](https://samtools.github.io/hts-specs/) | A named FASTQ dialect must bind the selected quality-score convention, read names, pairing, sequence, and quality arrays instead of treating reads as assembled sequence |
 | INSDC sibling records | [ENA EMBL flat file](https://ena-docs.readthedocs.io/en/latest/submit/fileprep/sequence-flatfile.html), [DDBJ flat file](https://www.ddbj.nig.ac.jp/ddbj/flat-file-e.html), and shared [INSDC Feature Table](https://www.insdc.org/submitting-standards/feature-table/) | EMBL and DDBJ outer-record frontends can lower their shared feature-table semantics into the same structural vocabulary while retaining each format's record grammar and source maps |
 | Reads and alignments | [SAM/BAM 1.6 and CRAM 3.1](https://samtools.github.io/hts-specs/) | Read templates, flags, CIGAR, qualities, optional tags, reference bindings, coordinate conventions, compression dependencies, and indexes as a read/alignment IR |
-| External feature annotation | [Sequence Ontology GFF3 1.26](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md) and [NCBI GFF3](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/reference-docs/file-formats/annotation-files/about-ncbi-gff3/) | Existing bounded GFF3 BioIR v1 over Sequence Collection v1; future dialects add embedded FASTA, pragmas, and ontology-pinned semantics |
+| External feature annotation | [Sequence Ontology GFF3 1.26](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md) and [NCBI GFF3](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/reference-docs/file-formats/annotation-files/about-ncbi-gff3/) | Built-in bounded GFF3 BioIR v1 over Sequence Collection v1; other dialects use exact external profiles |
 | Reference-relative variation | [VCF 4.5](https://samtools.github.io/hts-specs/VCFv4.5.pdf) | Header-defined fields, samples and genotypes, phasing, symbolic alleles, breakends, missingness, normalization state, and explicit reference binding |
 | Computable variation | [GA4GH VRS 2.0.1](https://vrs.ga4gh.org/en/2.0/releases/2.0.html) | Release-pinned normalized VRS objects and identifiers linked to exact reference sequences |
 | Synthetic design | [SBOL 3.1.0](https://sbolstandard.org/datamodel-specification/version-3.1.0/) | Components, sequences, features, constraints, interactions, models, and provenance as a design IR |
@@ -162,15 +162,14 @@ locates Epigenesis by source language and target rather than by the shared word
 | [BioCRNpyler](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009987) | Explicit components, mechanisms, and context to chemical reaction networks and SBML | Model compiler with biological semantics supplied in the source specification |
 | [DNA Chisel](https://academic.oup.com/bioinformatics/article/36/16/4508/5869515) | DNA plus constraints and objectives to optimized DNA | Sequence optimization and constraint validation |
 
-Epigenesis 0.9.0 takes a different implemented direction: real archival GenBank
-bytes compile into exact sequence authority and structural BioIR, then lower to
-an independently replayable feature-state development module.
+Epigenesis 1.0 compiles real biological source bytes through exact profile
+admission and typed lowering into an independently replayable Development
+Module and reference-only link bundle.
 
 ## Release statement
 
-Epigenesis 0.9.0 is a standards-pinned deterministic GenBank compiler and
-feature-state lowering. It translates physical-DNA records into Sequence
-Collection v2 and structural BioIR v2, then emits one constant development unit
-per ordered feature through a sealed, independently replayable artifact closure.
+Epigenesis 1.0 is a standards-pinned deterministic biological-source compiler.
+It binds exact DNA, native frontend IR, typed interpretation, target ABI,
+lowering, Development Module, and final link closure under independent replay.
 
 Licensed under Apache-2.0.

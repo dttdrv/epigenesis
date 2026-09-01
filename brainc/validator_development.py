@@ -18,7 +18,13 @@ import re
 import stat
 from typing import Any
 
-from . import validator_bio, validator_insdc, validator_reference, validator_v2
+from . import (
+    validator_bio,
+    validator_external,
+    validator_insdc,
+    validator_reference,
+    validator_v2,
+)
 
 
 SAFE_INTEGER = 2**53 - 1
@@ -42,6 +48,7 @@ SOURCE_VERSION = 1
 RAW_PROFILE = "raw-iupac-dna/v1"
 FASTA_PROFILE = "fasta-dna/v1"
 REFERENCE_FASTA_PROFILE = "fasta-reference-dna/v1"
+EXTERNAL_PROFILE = "external-dna-source/v1"
 GENBANK_PROFILE = "genbank-273-traditional-dna-physical-structural/v2"
 GFF3_PROFILE = "gff3-external-sequence/v1"
 PROFILES = frozenset(
@@ -49,6 +56,7 @@ PROFILES = frozenset(
         RAW_PROFILE,
         FASTA_PROFILE,
         REFERENCE_FASTA_PROFILE,
+        EXTERNAL_PROFILE,
         GENBANK_PROFILE,
         GFF3_PROFILE,
     }
@@ -67,6 +75,7 @@ SOURCE_FILENAME = "source.json"
 SOURCE_FILENAMES = {
     "sequence": "sequence.json",
     "reference": "reference.json",
+    "external": "external.json",
     "genbank": "genbank.json",
     "annotation": "annotation.json",
 }
@@ -74,6 +83,7 @@ SOURCE_FILE_LIMITS = {
     SOURCE_FILENAME: MAX_SOURCE_DESCRIPTOR_BYTES,
     "sequence.json": MAX_JSON_BYTES,
     "reference.json": validator_reference.MAX_ARTIFACT_BYTES,
+    "external.json": validator_external.MAX_CLOSURE_BYTES,
     "genbank.json": MAX_GENBANK_ARTIFACT_BYTES,
     "annotation.json": MAX_GFF3_ARTIFACT_BYTES,
 }
@@ -83,6 +93,11 @@ SOURCE_IDENTITIES = {
         validator_reference.FORMAT,
         validator_reference.VERSION,
         "catalog_sha256",
+    ),
+    "external": (
+        validator_external.CLOSURE_FORMAT,
+        validator_external.CLOSURE_VERSION,
+        "closure_ir_sha256",
     ),
     "genbank": ("brainc.bio.insdc-genbank-ir", 2, "bio_ir_sha256"),
     "annotation": ("brainc.bio.gff3-ir", 1, "bio_ir_sha256"),
@@ -137,6 +152,7 @@ REPORT_CHECKS = (
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 REFGET_RE = re.compile(r"SQ\.[A-Za-z0-9_-]{32}\Z")
+EXTERNAL_ROLE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+@-]{0,255}\Z")
 _HAS_DIRECTORY_DESCRIPTOR = (
     os.name == "posix"
     and os.listdir in getattr(os, "supports_fd", set())
@@ -556,6 +572,23 @@ def _route(profile: Any, parameters: Any) -> tuple[tuple[str, ...], tuple[str, .
     if profile == GENBANK_PROFILE:
         _keys(parameters, set(), "source parameters")
         return ("genbank",), ("genbank",)
+    if profile == EXTERNAL_PROFILE:
+        parsed = _keys(
+            parameters,
+            {"profile_id", "profile_version", "profile_manifest_sha256"},
+            "source parameters",
+        )
+        _text(parsed["profile_id"], "source parameters.profile_id", identifier=True)
+        _integer(
+            parsed["profile_version"],
+            "source parameters.profile_version",
+            minimum=1,
+        )
+        _sha(
+            parsed["profile_manifest_sha256"],
+            "source parameters.profile_manifest_sha256",
+        )
+        return (), ("external",)
 
     nested = _keys(
         parameters,
@@ -617,6 +650,19 @@ def _record_catalog(
         ]
     if profile == REFERENCE_FASTA_PROFILE:
         return artifacts["reference"]["sequence_catalog"]["records"]
+    if profile == EXTERNAL_PROFILE:
+        records = artifacts["external"]["closure_ir"]["source_descriptor"][
+            "frontend_ir"
+        ]["record_catalog"]["records"]
+        return [
+            {
+                "record_id": record["record_id"],
+                "bases": record["bases"],
+                "sequence_sha256": record["sequence_sha256"],
+                "refget_id": record["refget_id"],
+            }
+            for record in records
+        ]
     return [
         {
             "record_id": member["sequence_artifact"]["sequence_ir"]["record_id"],
@@ -651,10 +697,12 @@ def _validate_native_sources(
     descriptor: dict[str, Any],
     artifacts: dict[str, dict[str, Any]],
     source_inputs: dict[str, Any],
-) -> None:
+    native_artifact_paths: Any,
+) -> dict[str, Any] | None:
     source_ir = descriptor["source_ir"]
     profile = source_ir["profile"]
     parameters = source_ir["parameters"]
+    external_report: dict[str, Any] | None = None
     try:
         if profile in {RAW_PROFILE, FASTA_PROFILE}:
             validator_v2.validate_source_artifact(
@@ -683,6 +731,14 @@ def _validate_native_sources(
             )
             if artifacts["genbank"].get("profile") != GENBANK_PROFILE:
                 raise _fail("declared GenBank profile does not match native artifact")
+        elif profile == EXTERNAL_PROFILE:
+            if native_artifact_paths is None:
+                raise _fail("external native artifact paths are required")
+            external_report = validator_external.validate_external_source(
+                artifacts["external"],
+                original_paths=source_inputs,
+                native_artifact_paths=native_artifact_paths,
+            )
         else:
             nested_profile = parameters["sequence_profile"]
             nested_parameters = parameters["sequence_parameters"]
@@ -706,12 +762,14 @@ def _validate_native_sources(
         raise
     except (OSError, ValueError) as failure:
         raise _fail(f"independent native source replay failed: {failure}") from failure
+    return external_report
 
 
 def _validate_source_descriptor(
     descriptor_value: Any,
     artifacts_value: Any,
     source_inputs_value: Any,
+    native_artifact_paths_value: Any = None,
 ) -> tuple[
     dict[str, Any],
     dict[str, dict[str, Any]],
@@ -759,19 +817,62 @@ def _validate_source_descriptor(
                 MAX_GFF3_JSON_MEMBERS if role == "annotation" else MAX_JSON_MEMBERS
             ),
         )
-    source_inputs = _keys(source_inputs_value, set(input_roles), "original source inputs")
-    if source_ir["profile"] == REFERENCE_FASTA_PROFILE:
-        source_path = source_inputs["sequence"]
-        if not isinstance(source_path, (str, os.PathLike)):
-            raise _fail("reference FASTA original source input must be a path")
+    if source_ir["profile"] == EXTERNAL_PROFILE:
+        if type(source_inputs_value) is not dict:
+            raise _fail("external original source inputs must be a path mapping")
+        source_inputs = source_inputs_value
+    else:
+        source_inputs = _keys(
+            source_inputs_value,
+            set(input_roles),
+            "original source inputs",
+        )
+    if source_ir["profile"] in {REFERENCE_FASTA_PROFILE, EXTERNAL_PROFILE}:
+        if source_ir["profile"] == REFERENCE_FASTA_PROFILE:
+            path_items = {"sequence": source_inputs["sequence"]}
+        else:
+            path_items = source_inputs
+        for role, source_path in path_items.items():
+            if not isinstance(source_path, (str, os.PathLike)):
+                raise _fail(f"original source input {role} must be a path")
     else:
         for role in input_roles:
             raw = source_inputs[role]
             maximum = MAX_GFF3_BYTES if role == "annotation" else MAX_INPUT_BYTES
             if type(raw) is not bytes or len(raw) > maximum:
                 raise _fail(f"original source input {role} must be bounded bytes")
-    _validate_native_sources(descriptor, artifacts, source_inputs)
-    if source_ir["profile"] == REFERENCE_FASTA_PROFILE:
+    if source_ir["profile"] != EXTERNAL_PROFILE and native_artifact_paths_value is not None:
+        _keys(
+            native_artifact_paths_value,
+            set(),
+            "external native artifact paths",
+        )
+    external_report = _validate_native_sources(
+        descriptor,
+        artifacts,
+        source_inputs,
+        native_artifact_paths_value,
+    )
+    if source_ir["profile"] == EXTERNAL_PROFILE:
+        assert external_report is not None
+        profile_reference = external_report["profile"]
+        expected_parameters = {
+            "profile_id": profile_reference["id"],
+            "profile_version": profile_reference["version"],
+            "profile_manifest_sha256": profile_reference["manifest_sha256"],
+        }
+        if not _exact_equal(source_ir["parameters"], expected_parameters):
+            raise _fail(
+                "external source profile parameters differ from independent replay"
+            )
+        expected_inputs = {
+            reference["role"]: {
+                "sha256": reference["sha256"],
+                "byte_length": reference["byte_length"],
+            }
+            for reference in external_report["result"]["input_references"]
+        }
+    elif source_ir["profile"] == REFERENCE_FASTA_PROFILE:
         expected_inputs = {
             "sequence": artifacts["reference"]["inputs"]["source"]
         }
@@ -786,7 +887,8 @@ def _validate_source_descriptor(
     if not _exact_equal(source_ir["inputs"], expected_inputs):
         detail = (
             "source descriptor input identities differ from original source"
-            if source_ir["profile"] == REFERENCE_FASTA_PROFILE
+            if source_ir["profile"]
+            in {REFERENCE_FASTA_PROFILE, EXTERNAL_PROFILE}
             else "source descriptor input digests differ from original bytes"
         )
         raise _fail(detail)
@@ -1128,6 +1230,7 @@ def validate_development_bundle(
     native_artifacts: Any,
     *,
     source_inputs: Any,
+    native_artifact_paths: Any = None,
     blob_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Replay one compiler-only bundle from its original source evidence."""
@@ -1158,6 +1261,7 @@ def validate_development_bundle(
         source_descriptor,
         native_artifacts,
         source_inputs,
+        native_artifact_paths,
     )
     artifacts = _keys(
         artifacts_value,
@@ -1311,12 +1415,27 @@ def validate_development_report(report_value: Any) -> dict[str, Any]:
         "bundle_artifact_sha256",
     ):
         _sha(inputs[name], f"development validation report.inputs.{name}")
-    input_roles = _report_input_roles(inputs["source_profile"])
-    source_hashes = _keys(
-        inputs["source_inputs"],
-        set(input_roles),
-        "development validation report.inputs.source_inputs",
-    )
+    if inputs["source_profile"] == EXTERNAL_PROFILE:
+        source_hashes = inputs["source_inputs"]
+        if (
+            type(source_hashes) is not dict
+            or not source_hashes
+            or len(source_hashes) > validator_external.MAX_ROLES
+            or any(
+                type(role) is not str or EXTERNAL_ROLE_RE.fullmatch(role) is None
+                for role in source_hashes
+            )
+        ):
+            raise _fail(
+                "development validation report external source roles are invalid"
+            )
+    else:
+        input_roles = _report_input_roles(inputs["source_profile"])
+        source_hashes = _keys(
+            inputs["source_inputs"],
+            set(input_roles),
+            "development validation report.inputs.source_inputs",
+        )
     for role, value in source_hashes.items():
         reference = _keys(
             value,
@@ -1457,6 +1576,7 @@ def validate_development_paths(
     development_bundle: str | Path,
     *,
     source_inputs: dict[str, str | Path],
+    native_artifact_paths: dict[str, str | Path] | None = None,
     blob_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Snapshot both closed bundles and replay compilation from source paths."""
@@ -1468,9 +1588,20 @@ def validate_development_paths(
         "source descriptor.source_ir",
     )
     input_roles, _ = _route(source_ir["profile"], source_ir["parameters"])
-    paths = _keys(source_inputs, set(input_roles), "original source input paths")
-    if source_ir["profile"] == REFERENCE_FASTA_PROFILE:
-        original: dict[str, Any] = {"sequence": paths["sequence"]}
+    if source_ir["profile"] == EXTERNAL_PROFILE:
+        descriptor_inputs = source_ir["inputs"]
+        if type(descriptor_inputs) is not dict:
+            raise _fail("external source descriptor inputs must be an object")
+        expected_input_roles = set(descriptor_inputs)
+    else:
+        expected_input_roles = set(input_roles)
+    paths = _keys(
+        source_inputs,
+        expected_input_roles,
+        "original source input paths",
+    )
+    if source_ir["profile"] in {REFERENCE_FASTA_PROFILE, EXTERNAL_PROFILE}:
+        original: dict[str, Any] = dict(paths)
     else:
         original = {
             role: _read_regular(
@@ -1487,6 +1618,7 @@ def validate_development_paths(
         descriptor,
         natives,
         source_inputs=original,
+        native_artifact_paths=native_artifact_paths,
         blob_root=blob_root,
     )
 
@@ -1509,11 +1641,11 @@ def _source_input_argument(value: str) -> tuple[str, Path]:
     role, separator, raw_path = value.partition("=")
     if (
         not separator
-        or role not in {"sequence", "annotation", "genbank"}
+        or EXTERNAL_ROLE_RE.fullmatch(role) is None
         or not raw_path
     ):
         raise argparse.ArgumentTypeError(
-            "source input must be ROLE=PATH with ROLE sequence, annotation, or genbank"
+            "input must be ROLE=PATH with a portable role identifier"
         )
     return role, Path(raw_path)
 
@@ -1532,6 +1664,14 @@ def main(argv: list[str] | None = None) -> int:
         metavar="ROLE=PATH",
         help="original source path; repeat for each descriptor input role",
     )
+    parser.add_argument(
+        "--native-input",
+        action="append",
+        type=_source_input_argument,
+        default=[],
+        metavar="ROLE=PATH",
+        help="external native artifact path; repeat for each declared native role",
+    )
     parser.add_argument("--blob-root", type=Path)
     parser.add_argument("-o", "--output", type=Path)
     arguments = parser.parse_args(argv)
@@ -1541,11 +1681,17 @@ def main(argv: list[str] | None = None) -> int:
         if role in source_inputs:
             parser.error(f"source input role {role!r} was supplied more than once")
         source_inputs[role] = path
+    native_inputs: dict[str, Path] = {}
+    for role, path in arguments.native_input:
+        if role in native_inputs:
+            parser.error(f"native input role {role!r} was supplied more than once")
+        native_inputs[role] = path
     try:
         report = validate_development_paths(
             arguments.source_bundle,
             arguments.development_bundle,
             source_inputs=source_inputs,
+            native_artifact_paths=native_inputs or None,
             blob_root=arguments.blob_root,
         )
     except DevelopmentValidationError as failure:

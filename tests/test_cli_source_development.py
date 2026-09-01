@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 import brainc
+from brainc._canonical import digest
 from brainc.cli import main
 from brainc.development_bundle import CHILD_FILENAMES
 from brainc.source import (
@@ -371,6 +372,40 @@ class CompilerOneZeroCliTests(unittest.TestCase):
             self.assertIn("not a complete source", stderr.getvalue())
             self.assertNotIn("Traceback", stderr.getvalue())
             self.assertFalse(output.exists())
+
+            diagnostic_output = root / "diagnostic-source"
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                result = main(
+                    [
+                        "--diagnostics",
+                        "json",
+                        "compile-source",
+                        "--profile",
+                        FASTA_PROFILE,
+                        "--sequence",
+                        str(chain.source_path),
+                        "--wrapper",
+                        "identity",
+                        "--output",
+                        str(diagnostic_output),
+                    ]
+                )
+            self.assertEqual(result, 2)
+            diagnostic = json.loads(stderr.getvalue())
+            self.assertEqual(diagnostic["format"], "brainc.compiler-diagnostic")
+            self.assertEqual(diagnostic["error"]["code"], "SOURCE001")
+            self.assertEqual(
+                diagnostic["diagnostic_sha256"],
+                digest(
+                    {
+                        key: value
+                        for key, value in diagnostic.items()
+                        if key != "diagnostic_sha256"
+                    }
+                ),
+            )
+            self.assertFalse(diagnostic_output.exists())
 
             generic_request = root / "detached-request.json"
             stderr = io.StringIO()

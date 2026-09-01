@@ -17,11 +17,14 @@ from unittest import mock
 from brainc._canonical import digest
 from brainc.development_bundle import compile_development
 from brainc.source import (
+    EXTERNAL_PROFILE,
     FASTA_PROFILE,
     GFF3_PROFILE,
     GENBANK_PROFILE,
     RAW_PROFILE,
     REFERENCE_FASTA_PROFILE,
+    SourceBundle,
+    compile_external_source_paths,
     compile_source,
 )
 from brainc.v2 import (
@@ -43,6 +46,7 @@ from brainc.validator_development import (
     validate_development_paths,
     validate_development_report,
 )
+from tests.test_external_profile import FASTQ, NATIVE_INDEX, _closure
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,17 +89,19 @@ class _Fixture:
         parameters: dict | None = None,
         *,
         external_blob: bool = False,
+        source: SourceBundle | None = None,
+        native_inputs: dict[str, Path] | None = None,
     ) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         self.source_inputs = {"sequence": FASTA} if inputs is None else inputs
-        self.source = compile_source(
+        self.native_inputs = {} if native_inputs is None else native_inputs
+        self.source = source or compile_source(
             profile,
             self.source_inputs,
-            parameters=(
-                {"wrapper": "identity"} if parameters is None else parameters
-            ),
+            parameters={"wrapper": "identity"} if parameters is None else parameters,
         )
+        profile = self.source.profile
         self.source_directory = root / "source"
         self.source.save(self.source_directory)
         self.source_path = self.source_directory / "source.json"
@@ -146,6 +152,11 @@ class _Fixture:
             "axes": [],
             "storage": storage,
         }
+        acceptance = f"brainc.source-descriptor/v1;profile={profile}"
+        if profile == EXTERNAL_PROFILE:
+            acceptance += ";manifest=" + self.source.to_dict()["source_ir"][
+                "parameters"
+            ]["profile_manifest_sha256"]
         self.manifest = _seal(
             {
                 "format": "brainc.provider-manifest",
@@ -155,7 +166,7 @@ class _Fixture:
                     "kind": "content-sha256",
                     "value": digest({"algorithm": "caller-supplied", "version": 1}),
                 },
-                "accepts": [f"brainc.source-descriptor/v1;profile={profile}"],
+                "accepts": [acceptance],
                 "outputs": [
                     {
                         key: deepcopy(output[key])
@@ -229,8 +240,78 @@ class _Fixture:
             self.source_directory,
             self.development_directory,
             source_inputs=self.source_inputs,
+            native_artifact_paths=self.native_inputs or None,
             blob_root=self.blob_root,
         )
+
+
+def _external_fixture(root: Path) -> tuple[_Fixture, dict]:
+    root.mkdir(parents=True, exist_ok=True)
+    reads = root / "reads.fastq"
+    native = root / "read-index.json"
+    reads.write_bytes(FASTQ)
+    native.write_bytes(NATIVE_INDEX)
+    manifest, descriptor, frontend_report, _, _, _ = _closure()
+    original_paths = {"reads": reads}
+    native_paths = {"read-index": native}
+    source = compile_external_source_paths(
+        manifest,
+        descriptor,
+        frontend_report,
+        original_paths=original_paths,
+        native_artifact_paths=native_paths,
+    )
+    return (
+        _Fixture(
+            root,
+            inputs=original_paths,
+            source=source,
+            native_inputs=native_paths,
+        ),
+        manifest,
+    )
+
+
+def _with_provider_acceptance(fixture: _Fixture, acceptance: str) -> tuple[dict, dict]:
+    artifacts = deepcopy(fixture.compiled.artifacts)
+    manifest = artifacts["provider_manifest"]
+    manifest["accepts"] = [acceptance]
+    artifacts["provider_manifest"] = _reseal(manifest)
+    request = artifacts["prediction_request"]
+    request["provider_manifest_sha256"] = artifacts["provider_manifest"][
+        "artifact_sha256"
+    ]
+    artifacts["prediction_request"] = _reseal(request)
+    response = artifacts["prediction_response"]
+    response["request_artifact_sha256"] = artifacts["prediction_request"][
+        "artifact_sha256"
+    ]
+    artifacts["prediction_response"] = _reseal(response)
+    module = artifacts["development_module"]
+    for role in ("provider_manifest", "prediction_request", "prediction_response"):
+        module["sources"][role]["artifact_sha256"] = artifacts[role][
+            "artifact_sha256"
+        ]
+    artifacts["development_module"] = _reseal(module)
+    record = artifacts["compilation_record"]
+    for role in (
+        "provider_manifest",
+        "prediction_request",
+        "prediction_response",
+        "development_module",
+    ):
+        record["artifacts"][role] = _child_reference(artifacts[role])
+    artifacts["compilation_record"] = _reseal(record)
+    bundle = deepcopy(fixture.compiled.to_dict())
+    for role in (
+        "provider_manifest",
+        "prediction_request",
+        "prediction_response",
+        "development_module",
+        "compilation_record",
+    ):
+        bundle["artifacts"][role] = _child_reference(artifacts[role])
+    return _reseal(bundle), artifacts
 
 
 class DevelopmentValidatorTests(unittest.TestCase):
@@ -427,6 +508,168 @@ class DevelopmentValidatorTests(unittest.TestCase):
                 source_inputs={"sequence": reference},
             )
 
+    def test_external_profile_replays_memory_paths_and_cli_into_typed_development(self) -> None:
+        fixture, _ = _external_fixture(self.root / "external-route")
+        with (
+            mock.patch.object(
+                independent,
+                "_read_regular",
+                side_effect=AssertionError("external evidence must stream independently"),
+            ),
+            mock.patch.object(
+                independent.validator_external,
+                "_read_regular",
+                wraps=independent.validator_external._read_regular,
+            ) as reads,
+            mock.patch.object(
+                independent.validator_external,
+                "validate_external_source",
+                wraps=independent.validator_external.validate_external_source,
+            ) as replay,
+        ):
+            path_report = fixture.validate_paths()
+        replay.assert_called_once()
+        original_read = next(
+            call
+            for call in reads.call_args_list
+            if call.kwargs["label"].startswith("original source")
+        )
+        native_read = next(
+            call
+            for call in reads.call_args_list
+            if call.kwargs["label"].startswith("native artifact")
+        )
+        self.assertIs(original_read.kwargs["capture"], False)
+        self.assertIs(native_read.kwargs["capture"], True)
+
+        bundle, artifacts = load_development_bundle_directory(
+            fixture.development_directory
+        )
+        descriptor, natives = load_source_bundle_directory(fixture.source_directory)
+        memory_report = validate_development_bundle(
+            bundle,
+            artifacts,
+            descriptor,
+            natives,
+            source_inputs=fixture.source_inputs,
+            native_artifact_paths=fixture.native_inputs,
+        )
+        self.assertEqual(memory_report, path_report)
+        self.assertEqual(path_report["inputs"]["source_profile"], EXTERNAL_PROFILE)
+        self.assertEqual(
+            path_report["inputs"]["source_inputs"],
+            fixture.source.to_dict()["source_ir"]["inputs"],
+        )
+        self.assertEqual(path_report["result"]["budgets"]["units"], 1)
+        self.assertIs(validate_development_report(path_report), path_report)
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            status = main(
+                [
+                    str(fixture.source_directory),
+                    str(fixture.development_directory),
+                    "--source-input",
+                    f"reads={fixture.source_inputs['reads']}",
+                    "--native-input",
+                    f"read-index={fixture.native_inputs['read-index']}",
+                ]
+            )
+        self.assertEqual(status, 0)
+        self.assertEqual(json.loads(stdout.getvalue()), path_report)
+
+    def test_external_profile_rejects_missing_detached_and_tampered_evidence(self) -> None:
+        fixture, _ = _external_fixture(self.root / "external-attacks")
+        with self.assertRaisesRegex(DevelopmentValidationError, "keys invalid"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs={},
+                native_artifact_paths=fixture.native_inputs,
+            )
+        with self.assertRaisesRegex(
+            DevelopmentValidationError,
+            "native artifact paths are required",
+        ):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs=fixture.source_inputs,
+            )
+
+        wrong_source = self.root / "wrong.fastq"
+        wrong_source.write_bytes(FASTQ[:-1] + b"X")
+        with self.assertRaisesRegex(DevelopmentValidationError, "exact reference"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs={"reads": wrong_source},
+                native_artifact_paths=fixture.native_inputs,
+            )
+
+        wrong_native = self.root / "wrong-index.json"
+        wrong_native.write_bytes(NATIVE_INDEX + b" ")
+        with self.assertRaisesRegex(DevelopmentValidationError, "native artifact"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs=fixture.source_inputs,
+                native_artifact_paths={"read-index": wrong_native},
+            )
+
+        descriptor = deepcopy(fixture.source.to_dict())
+        descriptor["source_ir"]["parameters"]["profile_manifest_sha256"] = "0" * 64
+        descriptor["source_ir_sha256"] = digest(descriptor["source_ir"])
+        descriptor = _reseal(descriptor)
+        with self.assertRaisesRegex(DevelopmentValidationError, "profile parameters"):
+            validate_development_bundle(
+                fixture.compiled.to_dict(),
+                fixture.compiled.artifacts,
+                descriptor,
+                fixture.source.artifacts,
+                source_inputs=fixture.source_inputs,
+                native_artifact_paths=fixture.native_inputs,
+            )
+
+        natives = deepcopy(fixture.source.artifacts)
+        natives["external"]["artifact_sha256"] = "0" * 64
+        with self.assertRaisesRegex(DevelopmentValidationError, "independent native"):
+            validate_development_bundle(
+                fixture.compiled.to_dict(),
+                fixture.compiled.artifacts,
+                fixture.source.to_dict(),
+                natives,
+                source_inputs=fixture.source_inputs,
+                native_artifact_paths=fixture.native_inputs,
+            )
+
+    def test_external_provider_acceptance_requires_exact_manifest_digest(self) -> None:
+        fixture, manifest = _external_fixture(self.root / "external-acceptance")
+        exact = (
+            f"brainc.source-descriptor/v1;profile={EXTERNAL_PROFILE};manifest="
+            + manifest["artifact_sha256"]
+        )
+        self.assertEqual(fixture.manifest["accepts"], [exact])
+        self.assertTrue(fixture.validate_paths()["valid"])
+        for acceptance in (
+            f"brainc.source-descriptor/v1;profile={EXTERNAL_PROFILE}",
+            exact[:-64] + "0" * 64,
+        ):
+            with self.subTest(acceptance=acceptance):
+                bundle, artifacts = _with_provider_acceptance(fixture, acceptance)
+                with self.assertRaisesRegex(
+                    DevelopmentValidationError,
+                    "does not declare source format support",
+                ):
+                    validate_development_bundle(
+                        bundle,
+                        artifacts,
+                        fixture.source.to_dict(),
+                        fixture.source.artifacts,
+                        source_inputs=fixture.source_inputs,
+                        native_artifact_paths=fixture.native_inputs,
+                    )
+
     def test_path_loaders_require_exact_flat_nonlinked_closure_and_bounds(self) -> None:
         extra = self.fixture.development_directory / "extra.json"
         extra.write_text("{}", encoding="utf-8")
@@ -602,49 +845,10 @@ class DevelopmentValidatorTests(unittest.TestCase):
             f"brainc.source-descriptor/v1;profile={RAW_PROFILE}",
         ):
             with self.subTest(acceptance=acceptance):
-                artifacts = deepcopy(self.fixture.compiled.artifacts)
-                manifest = artifacts["provider_manifest"]
-                manifest["accepts"] = [acceptance]
-                artifacts["provider_manifest"] = _reseal(manifest)
-                request = artifacts["prediction_request"]
-                request["provider_manifest_sha256"] = artifacts[
-                    "provider_manifest"
-                ]["artifact_sha256"]
-                artifacts["prediction_request"] = _reseal(request)
-                response = artifacts["prediction_response"]
-                response["request_artifact_sha256"] = artifacts[
-                    "prediction_request"
-                ]["artifact_sha256"]
-                artifacts["prediction_response"] = _reseal(response)
-                module = artifacts["development_module"]
-                for role in (
-                    "provider_manifest",
-                    "prediction_request",
-                    "prediction_response",
-                ):
-                    module["sources"][role]["artifact_sha256"] = artifacts[role][
-                        "artifact_sha256"
-                    ]
-                artifacts["development_module"] = _reseal(module)
-                record = artifacts["compilation_record"]
-                for role in (
-                    "provider_manifest",
-                    "prediction_request",
-                    "prediction_response",
-                    "development_module",
-                ):
-                    record["artifacts"][role] = _child_reference(artifacts[role])
-                artifacts["compilation_record"] = _reseal(record)
-                bundle = deepcopy(self.fixture.compiled.to_dict())
-                for role in (
-                    "provider_manifest",
-                    "prediction_request",
-                    "prediction_response",
-                    "development_module",
-                    "compilation_record",
-                ):
-                    bundle["artifacts"][role] = _child_reference(artifacts[role])
-                bundle = _reseal(bundle)
+                bundle, artifacts = _with_provider_acceptance(
+                    self.fixture,
+                    acceptance,
+                )
 
                 with self.assertRaisesRegex(
                     DevelopmentValidationError,
@@ -859,7 +1063,7 @@ class DevelopmentValidatorIsolationTests(unittest.TestCase):
             "assert callable(validator.main); "
             "forbidden={'brainc.source','brainc.development_bundle','brainc.bio',"
             "'brainc.insdc','brainc.sequence','brainc.sequence_collection',"
-            "'brainc.source_scale',"
+            "'brainc.source_scale','brainc.external_profile','brainc.external_source',"
             "'brainc.sequence_collection_v2','brainc._canonical','brainc._io',"
             "'brainc.v2','brainc.v2.compiler','brainc.v2.provider',"
             "'brainc.v2.policy','brainc.v2.target','brainc.v2.tensor'}; "
@@ -889,6 +1093,7 @@ class DevelopmentValidatorIsolationTests(unittest.TestCase):
             relative,
             {
                 "validator_bio",
+                "validator_external",
                 "validator_insdc",
                 "validator_reference",
                 "validator_v2",

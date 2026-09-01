@@ -946,7 +946,7 @@ def _source_acceptance_tag(value: dict[str, Any]) -> str:
             if type(parameters) is dict
             else None
         )
-        _sha(manifest_sha256, "external profile manifest SHA-256")
+        _sha256(manifest_sha256, "external profile manifest SHA-256")
         acceptance += f";manifest={manifest_sha256}"
     return acceptance
 

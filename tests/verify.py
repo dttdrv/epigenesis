@@ -25,10 +25,23 @@ import zipfile
 ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT))
 
-from brainc._canonical import ContractError, canonical_bytes, digest, save_artifact
+from brainc._canonical import (
+    ContractError,
+    artifact_digest,
+    canonical_bytes,
+    digest,
+    save_artifact,
+)
+from brainc._io import MAX_INPUT_BYTES, MAX_JSON_BYTES
 from brainc.bio import GFF3Compiler
 from brainc.bio_graph import compile_feature_graph
 from brainc.compiler import CompilerError, compile_program, load_policy, load_program, save as save_program
+from brainc.development_bundle import (
+    BUNDLE_FILENAME as DEVELOPMENT_BUNDLE_FILENAME,
+    CHILD_FILENAMES as DEVELOPMENT_CHILD_FILENAMES,
+    DevelopmentBundleError,
+    compile_development,
+)
 from brainc.insdc import GenBankCompiler, load_genbank_artifact
 from brainc.provider import ProviderError, load_response, make_request, save as save_provider
 from brainc.sequence_collection import (
@@ -36,10 +49,25 @@ from brainc.sequence_collection import (
     SequenceCollectionError,
     load_sequence_collection,
 )
+from brainc.source import (
+    FASTA_PROFILE,
+    RAW_PROFILE,
+    REFERENCE_FASTA_PROFILE,
+    SourceError,
+    compile_source,
+    load_source_bundle,
+)
 from brainc.validator import validate_chain
 from brainc.validator_bio import validate_bio_chain
 from brainc.validator_bio_graph import validate_feature_graph_bundle
-from brainc.v2 import inline_storage, pack, policy_artifact, save as save_v2, target_artifact
+from brainc.v2 import (
+    inline_storage,
+    make_development_request,
+    pack,
+    policy_artifact,
+    save as save_v2,
+    target_artifact,
+)
 from brainc.v2._common import seal as seal_v2
 from brainc.v2.target import DEV_DOMAIN, OP_UNIT_CREATE
 
@@ -76,6 +104,131 @@ def _artifact(core: dict) -> dict:
 
 def _write_json(value: dict, path: Path) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _development_case(
+    root: Path,
+    source_bundle: object,
+    *,
+    node_count: int = 1,
+) -> dict[str, object]:
+    """Build the smallest caller-supplied interpretation over a source bundle."""
+
+    root.mkdir(parents=True)
+    source_profile = source_bundle.to_dict()["source_ir"]["profile"]
+    source_directory = root / "source"
+    source_bundle.save(source_directory)
+    source_path = source_directory / "source.json"
+    target = target_artifact(
+        {
+            "id": "org.epigenesis.verify",
+            "abi_major": 1,
+            "opsets": [{"domain": DEV_DOMAIN, "version": 1}],
+            "unit_schemas": [
+                {
+                    "id": "node",
+                    "fields": [
+                        {
+                            "id": "value",
+                            "type": {"dtype": "u64", "shape": []},
+                            "unit": None,
+                            "mutability": "state",
+                            "numeric": {"kind": "integer"},
+                        }
+                    ],
+                }
+            ],
+            "edge_schemas": [],
+            "ports": [],
+            "rules": [],
+        }
+    )
+    target_path = root / "target.json"
+    save_v2(target, target_path)
+    output = {
+        "id": "development.node-count",
+        "type": {"dtype": "u64", "shape": []},
+        "unit": None,
+        "axes": [],
+        "storage": inline_storage(pack("u64", [node_count])),
+    }
+    manifest = seal_v2(
+        {
+            "format": "brainc.provider-manifest",
+            "version": 2,
+            "provider": {"name": "org.epigenesis.verify", "version": "1"},
+            "model_identity": {
+                "kind": "content-sha256",
+                "value": digest({"algorithm": "caller-supplied-count", "version": 1}),
+            },
+            "accepts": [
+                f"brainc.source-descriptor/v1;profile={source_profile}"
+            ],
+            "outputs": [
+                {key: copy.deepcopy(output[key]) for key in ("id", "type", "unit", "axes")}
+            ],
+        }
+    )
+    manifest_path = root / "manifest.json"
+    save_v2(manifest, manifest_path)
+    request = make_development_request(
+        source_bundle,
+        manifest_path,
+        [output["id"]],
+    )
+    request_path = root / "request.json"
+    save_v2(request, request_path)
+    response = seal_v2(
+        {
+            "format": "brainc.prediction-response",
+            "version": 2,
+            "request_artifact_sha256": request["artifact_sha256"],
+            "provider": copy.deepcopy(manifest["provider"]),
+            "model_identity": copy.deepcopy(manifest["model_identity"]),
+            "outputs": [output],
+        }
+    )
+    response_path = root / "response.json"
+    save_v2(response, response_path)
+    policy = policy_artifact(
+        "org.epigenesis.verify",
+        {
+            "id": target["contract"]["id"],
+            "abi_major": target["contract"]["abi_major"],
+            "contract_sha256": target["contract_sha256"],
+        },
+        [{"id": output["id"], "from_output": output["id"]}],
+        [
+            {
+                "id": "create.nodes",
+                "op": OP_UNIT_CREATE,
+                "version": 1,
+                "schema": "node",
+                "count": output["id"],
+                "initializers": [{"field": "value", "tensor": output["id"]}],
+            }
+        ],
+    )
+    policy_path = root / "policy.json"
+    save_v2(policy, policy_path)
+    compiled = compile_development(
+        source_bundle,
+        manifest_path,
+        request_path,
+        response_path,
+        policy_path,
+        target_path,
+    )
+    return {
+        "compiled": compiled,
+        "source_directory": source_directory,
+        "source_path": source_path,
+        "manifest_path": manifest_path,
+        "request_path": request_path,
+        "response_path": response_path,
+        "policy_path": policy_path,
+        "target_path": target_path,
+    }
 
 
 def _build_real_chain(root: Path) -> dict[str, Path | dict]:
@@ -446,6 +599,98 @@ def tamper() -> None:
     print("TAMPER-E2E-PASSED")
 
 
+def source_causality() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        original_path = root / "original.dna"
+        copied_path = root / "copied-at-an-unrelated-path.dna"
+        changed_path = root / "changed.dna"
+        original_path.write_bytes(b"ACGTACGT")
+        copied_path.write_bytes(original_path.read_bytes())
+        changed_path.write_bytes(b"ACGTACGA")
+
+        original = compile_source(
+            RAW_PROFILE,
+            {"sequence": original_path},
+            parameters={"record_id": "arbitrary-one"},
+        )
+        copied = compile_source(
+            RAW_PROFILE,
+            {"sequence": copied_path},
+            parameters={"record_id": "arbitrary-one"},
+        )
+        changed = compile_source(
+            RAW_PROFILE,
+            {"sequence": changed_path},
+            parameters={"record_id": "arbitrary-one"},
+        )
+        renamed = compile_source(
+            RAW_PROFILE,
+            {"sequence": copied_path},
+            parameters={"record_id": "unrecognized-accession"},
+        )
+
+        original_descriptor = original.to_dict()
+        changed_descriptor = changed.to_dict()
+        renamed_descriptor = renamed.to_dict()
+        assert original_descriptor == copied.to_dict(), "filesystem paths affected source output"
+        assert original_descriptor["source_ir"]["profile"] == RAW_PROFILE
+        assert changed_descriptor["source_ir"]["profile"] == RAW_PROFILE
+        assert renamed_descriptor["source_ir"]["profile"] == RAW_PROFILE
+        assert (
+            original_descriptor["source_ir"]["artifacts"]["sequence"]["format"]
+            == changed_descriptor["source_ir"]["artifacts"]["sequence"]["format"]
+            == renamed_descriptor["source_ir"]["artifacts"]["sequence"]["format"]
+        )
+        assert (
+            original_descriptor["source_ir"]["inputs"]["sequence"]["sha256"]
+            != changed_descriptor["source_ir"]["inputs"]["sequence"]["sha256"]
+        )
+        assert (
+            original_descriptor["source_ir"]["records"][0]["sequence_sha256"]
+            != changed_descriptor["source_ir"]["records"][0]["sequence_sha256"]
+        )
+        assert original_descriptor["source_ir_sha256"] != changed_descriptor["source_ir_sha256"]
+        assert original_descriptor["artifact_sha256"] != changed_descriptor["artifact_sha256"]
+        assert renamed_descriptor["artifact_sha256"] != original_descriptor["artifact_sha256"]
+        assert original.profile == changed.profile == renamed.profile == RAW_PROFILE
+
+        original_case = _development_case(root / "original-case", original)
+        copied_case = _development_case(root / "copied-case", copied)
+        changed_case = _development_case(root / "changed-case", changed)
+        interpreted_case = _development_case(
+            root / "interpreted-case",
+            original,
+            node_count=2,
+        )
+        original_bundle = original_case["compiled"]
+        copied_bundle = copied_case["compiled"]
+        changed_bundle = changed_case["compiled"]
+        interpreted_bundle = interpreted_case["compiled"]
+        assert original_bundle.to_dict() == copied_bundle.to_dict()
+
+        original_module = original_bundle.artifacts["development_module"]
+        changed_module = changed_bundle.artifacts["development_module"]
+        interpreted_module = interpreted_bundle.artifacts["development_module"]
+        assert original_module["module"] == changed_module["module"], (
+            "source bytes selected compiler behavior despite identical caller interpretation"
+        )
+        assert original_module["module_sha256"] == changed_module["module_sha256"]
+        assert original_module["sources"]["sequence"] != changed_module["sources"]["sequence"]
+        assert original_module["artifact_sha256"] != changed_module["artifact_sha256"]
+        assert original_bundle.to_dict()["artifact_sha256"] != changed_bundle.to_dict()["artifact_sha256"]
+
+        assert original_module["sources"]["sequence"] == interpreted_module["sources"]["sequence"]
+        assert original_module["module_sha256"] != interpreted_module["module_sha256"]
+        assert original_module["module"]["budgets"]["units"] == 1
+        assert interpreted_module["module"]["budgets"]["units"] == 2
+        assert (
+            original_module["module"]["tensors"][0]["storage"]["sha256"]
+            != interpreted_module["module"]["tensors"][0]["storage"]["sha256"]
+        )
+    print("SOURCE-CAUSALITY-PASSED")
+
+
 def boundary() -> None:
     denied = {"socket", "urllib", "requests", "httpx", "aiohttp", "subprocess", "importlib",
               "torch", "tensorflow", "jax", "sklearn"}
@@ -472,7 +717,18 @@ def boundary() -> None:
         "5367765fa8310e0491ec39e8e496750a18b2a51b5f52daaab5ad681b7f929035",
         "447f3c4e32714ae9efc637657ed777f80a8faaceec2302c38c7ba4b9ecee5c0c",
     }
-    for path in (ROOT / "brainc").rglob("*.py"):
+    compiler_root = ROOT / "brainc"
+    forbidden_modules = {
+        "environment",
+        "learner",
+        "optimizer",
+        "runtime",
+        "simulation",
+        "trainer",
+        "world",
+    }
+    assert not {path.stem for path in compiler_root.rglob("*.py")} & forbidden_modules
+    for path in compiler_root.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         imports: set[str] = set()
         for node in ast.walk(tree):
@@ -484,7 +740,558 @@ def boundary() -> None:
             assert marker not in text, (path, marker)
         for marker in biological_fixtures:
             assert marker not in text, (path, marker)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes)):
+                literal = node.value.decode("ascii", "ignore") if isinstance(node.value, bytes) else node.value
+                normalized = "".join(literal.split()).upper()
+                assert not (
+                    len(normalized) >= 80 and set(normalized) <= set("ACGTUNRYKMSWBDHV-.?")
+                ), (path, "embedded biological sequence literal")
+
+    import tomllib
+
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert project["dependencies"] == [], "compiler distribution acquired runtime/model dependencies"
+    public = set(__import__("brainc").__all__)
+    assert not public & {
+        "DevelopmentRuntime",
+        "Environment",
+        "Learner",
+        "Simulation",
+        "Trainer",
+        "World",
+    }
     print("COMPILER-BOUNDARY-PASSED")
+
+
+def resource_path_safety() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        source_path = root / "input.dna"
+        source_path.write_bytes(b"ACGTACGT")
+        source = compile_source(
+            RAW_PROFILE,
+            {"sequence": source_path},
+            parameters={"record_id": "resource-case"},
+        )
+
+        oversized = root / "oversized.dna"
+        with oversized.open("xb") as stream:
+            stream.truncate(MAX_INPUT_BYTES + 1)
+        try:
+            compile_source(
+                RAW_PROFILE,
+                {"sequence": oversized},
+                parameters={"record_id": "oversized"},
+            )
+        except SourceError:
+            pass
+        else:
+            raise AssertionError("source reader accepted an input above its byte ceiling")
+
+        occupied_source = root / "occupied-source"
+        occupied_source.mkdir()
+        source_sentinel = occupied_source / "keep"
+        source_sentinel.write_bytes(b"unchanged")
+        try:
+            source.save(occupied_source)
+        except SourceError:
+            pass
+        else:
+            raise AssertionError("source publisher overwrote an existing directory")
+        assert source_sentinel.read_bytes() == b"unchanged"
+        assert {item.name for item in occupied_source.iterdir()} == {"keep"}
+
+        unknown_directory = root / "source-with-unknown-child"
+        source.save(unknown_directory)
+        (unknown_directory / "unknown.json").write_text("{}", encoding="utf-8")
+        try:
+            load_source_bundle(unknown_directory)
+        except SourceError:
+            pass
+        else:
+            raise AssertionError("source loader accepted an unknown bundle child")
+
+        if os.name == "posix":
+            linked_input = root / "linked-input.dna"
+            linked_input.symlink_to(source_path)
+            try:
+                compile_source(
+                    RAW_PROFILE,
+                    {"sequence": linked_input},
+                    parameters={"record_id": "linked"},
+                )
+            except SourceError:
+                pass
+            else:
+                raise AssertionError("source compiler followed an input symlink")
+
+            linked_bundle = root / "linked-source-bundle"
+            clean_bundle = root / "clean-source-bundle"
+            source.save(clean_bundle)
+            linked_bundle.symlink_to(clean_bundle, target_is_directory=True)
+            try:
+                load_source_bundle(linked_bundle)
+            except SourceError:
+                pass
+            else:
+                raise AssertionError("source loader followed a bundle-directory symlink")
+
+            linked_child_bundle = root / "linked-child-bundle"
+            source.save(linked_child_bundle)
+            child = linked_child_bundle / "sequence.json"
+            child.unlink()
+            child.symlink_to(clean_bundle / "sequence.json")
+            try:
+                load_source_bundle(linked_child_bundle)
+            except SourceError:
+                pass
+            else:
+                raise AssertionError("source loader followed a bundle-child symlink")
+
+            hardlinked_child_bundle = root / "hardlinked-child-bundle"
+            source.save(hardlinked_child_bundle)
+            hardlinked_child = hardlinked_child_bundle / "sequence.json"
+            external_child = root / "external-sequence.json"
+            shutil.copyfile(hardlinked_child, external_child)
+            hardlinked_child.unlink()
+            os.link(external_child, hardlinked_child)
+            try:
+                load_source_bundle(hardlinked_child_bundle)
+            except SourceError:
+                pass
+            else:
+                raise AssertionError("source loader accepted a multiply linked bundle child")
+
+            source_destination = root / "source-destination"
+            source_destination.mkdir()
+            destination_alias = root / "source-destination-alias"
+            destination_alias.symlink_to(source_destination, target_is_directory=True)
+            try:
+                source.save(destination_alias)
+            except SourceError:
+                pass
+            else:
+                raise AssertionError("source publisher accepted a linked destination")
+
+        case = _development_case(root / "development-case", source)
+        compiled = case["compiled"]
+        safe_output = root / "development-output"
+        compiled.save(safe_output)
+        assert {item.name for item in safe_output.iterdir()} == {
+            DEVELOPMENT_BUNDLE_FILENAME,
+            *DEVELOPMENT_CHILD_FILENAMES.values(),
+        }
+        published_text = "".join(
+            path.read_text(encoding="utf-8") for path in sorted(safe_output.iterdir())
+        )
+        assert "ACGTACGT" not in published_text
+        assert str(root) not in published_text
+
+        occupied_output = root / "occupied-development"
+        occupied_output.mkdir()
+        development_sentinel = occupied_output / "keep"
+        development_sentinel.write_bytes(b"unchanged")
+        try:
+            compiled.save(occupied_output)
+        except DevelopmentBundleError:
+            pass
+        else:
+            raise AssertionError("development publisher overwrote an existing directory")
+        assert development_sentinel.read_bytes() == b"unchanged"
+        assert {item.name for item in occupied_output.iterdir()} == {"keep"}
+
+        oversized_json = root / "oversized.json"
+        with oversized_json.open("xb") as stream:
+            stream.truncate(MAX_JSON_BYTES + 1)
+        try:
+            compile_development(
+                source,
+                oversized_json,
+                case["request_path"],
+                case["response_path"],
+                case["policy_path"],
+                case["target_path"],
+            )
+        except DevelopmentBundleError:
+            pass
+        else:
+            raise AssertionError("development compiler accepted an oversized chain artifact")
+
+        if os.name == "posix":
+            linked_response = root / "response-link.json"
+            linked_response.symlink_to(case["response_path"])
+            try:
+                compile_development(
+                    source,
+                    case["manifest_path"],
+                    case["request_path"],
+                    linked_response,
+                    case["policy_path"],
+                    case["target_path"],
+                )
+            except DevelopmentBundleError:
+                pass
+            else:
+                raise AssertionError("development compiler followed a chain-artifact symlink")
+    print("RESOURCE-PATH-SAFETY-PASSED")
+
+
+def development_real_dna() -> None:
+    """Compile pinned DNA and independently replay it from an isolated wheel install."""
+
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        wheels = root / "wheels"
+        installed = root / "installed"
+        wheels.mkdir()
+        installed.mkdir()
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "wheel",
+                "--no-index",
+                "--no-deps",
+                "--no-build-isolation",
+                "--wheel-dir",
+                str(wheels),
+                str(ROOT),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+        )
+        wheel_path, = wheels.glob("*.whl")
+        with zipfile.ZipFile(wheel_path) as archive:
+            names = set(archive.namelist())
+            metadata_name, = [name for name in names if name.endswith(".dist-info/METADATA")]
+            entry_points_name, = [
+                name for name in names if name.endswith(".dist-info/entry_points.txt")
+            ]
+            metadata = archive.read(metadata_name).decode("utf-8")
+            entry_points = archive.read(entry_points_name).decode("utf-8")
+            assert "Version: 1.0.0\n" in metadata
+            assert "brainc/source.py" in names
+            assert "brainc/development_bundle.py" in names
+            assert "brainc/validator_development.py" in names
+            assert "brainc = brainc.cli:main" in entry_points
+            assert (
+                "brainc-validate-development = brainc.validator_development:main"
+                in entry_points
+            )
+            assert not any("tests/data" in name for name in names)
+
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--no-index",
+                "--no-deps",
+                "--target",
+                str(installed),
+                str(wheel_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+        )
+        environment = dict(os.environ)
+        environment["PYTHONPATH"] = str(installed)
+        dna = root / "J02482.1.fasta"
+        shutil.copyfile(ROOT / "tests" / "data" / "J02482.1.fasta", dna)
+        raw = dna.read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == (
+            "2826ee08e3506154cdeb7ab734ec6f9ebbea6e5d16d0bec488030192faf492a7"
+        )
+
+        source_directory = root / "source"
+        source_result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "brainc",
+                "compile-source",
+                "--profile",
+                REFERENCE_FASTA_PROFILE,
+                "--sequence",
+                str(dna),
+                "--wrapper",
+                "identity",
+                "--output",
+                str(source_directory),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        assert json.loads(source_result.stdout)["source"] == str(
+            source_directory / "source.json"
+        )
+        assert {item.name for item in source_directory.iterdir()} == {
+            "source.json",
+            "reference.json",
+        }
+        descriptor = json.loads(
+            (source_directory / "source.json").read_text(encoding="utf-8")
+        )
+        assert artifact_digest(descriptor) == descriptor["artifact_sha256"]
+        assert descriptor["source_ir"]["profile"] == REFERENCE_FASTA_PROFILE
+        assert descriptor["source_ir"]["inputs"]["sequence"] == {
+            "sha256": "2826ee08e3506154cdeb7ab734ec6f9ebbea6e5d16d0bec488030192faf492a7",
+            "byte_length": len(raw),
+        }
+        assert descriptor["source_ir"]["records"] == [
+            {
+                "record_id": "J02482.1",
+                "bases": 5386,
+                "sequence_sha256": "97038c7e1edea2297667d7f0426ba942b322c74cb30e072ec66ba47f9c0448d0",
+                "refget_id": "SQ.IIXILYBQCpHdC4qpI3sOQ_HAeAm9bmeF",
+            }
+        ]
+
+        chain_root = root / "caller-chain"
+        chain_root.mkdir()
+        chain_script = r'''
+from copy import deepcopy
+import json
+from pathlib import Path
+import sys
+
+from brainc._canonical import digest
+from brainc.v2 import inline_storage, make_development_request, pack, policy_artifact, save, target_artifact
+from brainc.v2._common import seal
+from brainc.v2.target import DEV_DOMAIN, OP_UNIT_CREATE
+
+root = Path(sys.argv[1])
+source = Path(sys.argv[2])
+source_descriptor = json.loads((source / "source.json").read_text(encoding="utf-8"))
+source_profile = source_descriptor["source_ir"]["profile"]
+source_bases = sum(record["bases"] for record in source_descriptor["source_ir"]["records"])
+target = target_artifact({
+    "id": "org.epigenesis.installed-real-dna",
+    "abi_major": 1,
+    "opsets": [{"domain": DEV_DOMAIN, "version": 1}],
+    "unit_schemas": [{
+        "id": "dna-unit",
+        "fields": [{
+            "id": "source-bases",
+            "type": {"dtype": "u64", "shape": []},
+            "unit": "org.ga4gh.base",
+            "mutability": "constant",
+            "numeric": {"kind": "integer"},
+        }],
+    }],
+    "edge_schemas": [],
+    "ports": [],
+    "rules": [],
+})
+target_path = root / "target.json"
+save(target, target_path)
+source_output = {
+    "id": "dna.source-bases",
+    "type": {"dtype": "u64", "shape": []},
+    "unit": "org.ga4gh.base",
+    "axes": [],
+    "storage": inline_storage(pack("u64", [source_bases])),
+}
+count_output = {
+    "id": "dna.unit-count",
+    "type": {"dtype": "u64", "shape": []},
+    "unit": None,
+    "axes": [],
+    "storage": inline_storage(pack("u64", [source_bases])),
+}
+outputs = [source_output, count_output]
+manifest = seal({
+    "format": "brainc.provider-manifest",
+    "version": 2,
+    "provider": {"name": "org.epigenesis.installed-gate", "version": "1"},
+    "model_identity": {
+        "kind": "content-sha256",
+        "value": digest({"algorithm": "caller-supplied-base-count", "version": 1}),
+    },
+    "accepts": [f"brainc.source-descriptor/v1;profile={source_profile}"],
+    "outputs": [
+        {key: deepcopy(output[key]) for key in ("id", "type", "unit", "axes")}
+        for output in outputs
+    ],
+})
+manifest_path = root / "manifest.json"
+save(manifest, manifest_path)
+request = make_development_request(
+    source,
+    manifest_path,
+    [output["id"] for output in outputs],
+)
+request_path = root / "request.json"
+save(request, request_path)
+response = seal({
+    "format": "brainc.prediction-response",
+    "version": 2,
+    "request_artifact_sha256": request["artifact_sha256"],
+    "provider": deepcopy(manifest["provider"]),
+    "model_identity": deepcopy(manifest["model_identity"]),
+    "outputs": outputs,
+})
+response_path = root / "response.json"
+save(response, response_path)
+policy = policy_artifact(
+    "org.epigenesis.installed-real-dna",
+    {
+        "id": target["contract"]["id"],
+        "abi_major": target["contract"]["abi_major"],
+        "contract_sha256": target["contract_sha256"],
+    },
+    [
+        {"id": output["id"], "from_output": output["id"]}
+        for output in outputs
+    ],
+    [{
+        "id": "create.dna-units",
+        "op": OP_UNIT_CREATE,
+        "version": 1,
+        "schema": "dna-unit",
+        "count": count_output["id"],
+        "initializers": [
+            {"field": "source-bases", "tensor": source_output["id"]}
+        ],
+    }],
+)
+save(policy, root / "policy.json")
+'''
+        chain_result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                chain_script,
+                str(chain_root),
+                str(source_directory),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            env=environment,
+        )
+        assert chain_result.returncode == 0, chain_result.stdout + chain_result.stderr
+
+        compile_arguments = [
+            sys.executable,
+            "-m",
+            "brainc",
+            "compile-development",
+            str(source_directory),
+            "--manifest",
+            str(chain_root / "manifest.json"),
+            "--request",
+            str(chain_root / "request.json"),
+            "--response",
+            str(chain_root / "response.json"),
+            "--policy",
+            str(chain_root / "policy.json"),
+            "--target",
+            str(chain_root / "target.json"),
+        ]
+        development_one = root / "development-one"
+        development_two = root / "development-two"
+        for output in (development_one, development_two):
+            result = subprocess.run(
+                [*compile_arguments, "--output", str(output)],
+                check=False,
+                capture_output=True,
+                text=True,
+                cwd=root,
+                env=environment,
+            )
+            assert result.returncode == 0, result.stdout + result.stderr
+            assert json.loads(result.stdout)["bundle"] == str(
+                output / DEVELOPMENT_BUNDLE_FILENAME
+            )
+        first_bytes = {
+            path.name: path.read_bytes() for path in sorted(development_one.iterdir())
+        }
+        second_bytes = {
+            path.name: path.read_bytes() for path in sorted(development_two.iterdir())
+        }
+        assert first_bytes == second_bytes
+        assert set(first_bytes) == {
+            DEVELOPMENT_BUNDLE_FILENAME,
+            *DEVELOPMENT_CHILD_FILENAMES.values(),
+        }
+        assert b"J02482" not in b"".join(first_bytes.values())
+        normalized_dna = b"".join(raw.splitlines()[1:])
+        assert normalized_dna[:128] not in b"".join(first_bytes.values())
+
+        bundle = json.loads(first_bytes[DEVELOPMENT_BUNDLE_FILENAME])
+        artifacts = {
+            role: json.loads(first_bytes[filename])
+            for role, filename in DEVELOPMENT_CHILD_FILENAMES.items()
+        }
+        assert artifact_digest(bundle) == bundle["artifact_sha256"]
+        assert bundle["source"]["descriptor"]["artifact_sha256"] == descriptor[
+            "artifact_sha256"
+        ]
+        for role, artifact in artifacts.items():
+            assert artifact_digest(artifact) == artifact["artifact_sha256"], role
+            assert bundle["artifacts"][role]["artifact_sha256"] == artifact[
+                "artifact_sha256"
+            ]
+        module = artifacts["development_module"]
+        record = artifacts["compilation_record"]
+        assert module["module"]["budgets"] == {
+            "operations": 1,
+            "tensor_bytes": 16,
+            "units": 5386,
+            "edges": 0,
+            "attachments": 0,
+        }
+        assert module["sources"]["sequence"] == bundle["source"]["descriptor"]
+        assert record["result"]["module_sha256"] == module["module_sha256"]
+        assert record["result"]["budgets"] == module["module"]["budgets"]
+
+        scripts = installed / ("Scripts" if os.name == "nt" else "bin")
+        validator = scripts / (
+            "brainc-validate-development.exe"
+            if os.name == "nt"
+            else "brainc-validate-development"
+        )
+        assert validator.is_file(), validator
+        report_one = root / "validation-one.json"
+        report_two = root / "validation-two.json"
+        for report_path in (report_one, report_two):
+            subprocess.run(
+                [
+                    str(validator),
+                    str(source_directory),
+                    str(development_one),
+                    "--source-input",
+                    f"sequence={dna}",
+                    "-o",
+                    str(report_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                cwd=root,
+                env=environment,
+            )
+        assert report_one.read_bytes() == report_two.read_bytes()
+        report = json.loads(report_one.read_text(encoding="utf-8"))
+        assert report["format"] == "brainc.development-validation-report"
+        assert type(report["version"]) is int and report["version"] == 1
+        assert report["valid"] is True
+        assert digest(
+            {key: value for key, value in report.items() if key != "report_sha256"}
+        ) == report["report_sha256"]
+    print("DEVELOPMENT-REAL-DNA-PASSED")
 
 
 def wheel() -> None:
@@ -502,7 +1309,7 @@ def wheel() -> None:
                 name for name in names if name.endswith(".dist-info/entry_points.txt")
             ]
             entry_points_text = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 0.9.0\n" in metadata_text
+            assert "Version: 1.0.0\n" in metadata_text
             assert "License-Expression: Apache-2.0\n" in metadata_text
             assert "brainc/validator_bio_graph.py" in names
             for required_module in (
@@ -510,6 +1317,14 @@ def wheel() -> None:
                 "brainc/insdc_graph.py",
                 "brainc/sequence_collection_v2.py",
                 "brainc/validator_insdc.py",
+                "brainc/source.py",
+                "brainc/source_scale.py",
+                "brainc/external_profile.py",
+                "brainc/external_source.py",
+                "brainc/development_bundle.py",
+                "brainc/validator_reference.py",
+                "brainc/validator_external.py",
+                "brainc/validator_development.py",
                 "brainc/validator_insdc_graph.py",
                 "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
             ):
@@ -521,6 +1336,10 @@ def wheel() -> None:
             )
             assert (
                 "brainc-validate-insdc-graph = brainc.validator_insdc_graph:main"
+                in entry_points_text
+            )
+            assert (
+                "brainc-validate-development = brainc.validator_development:main"
                 in entry_points_text
             )
             assert not any(
@@ -546,6 +1365,9 @@ def wheel() -> None:
             "compile-genbank",
             "validate-genbank",
             "compile-insdc-graph",
+            "compile-source",
+            "compile-external-source",
+            "compile-development",
         ):
             assert command in result.stdout, (command, result.stdout)
         subprocess.run(
@@ -557,8 +1379,12 @@ def wheel() -> None:
                     "brainc.bio_graph, brainc.validator_bio, "
                     "brainc.validator_bio_graph, brainc.insdc, "
                     "brainc.insdc_graph, brainc.sequence_collection_v2, "
-                    "brainc.validator_insdc, brainc.validator_insdc_graph; "
-                    "assert brainc.__version__ == '0.9.0'"
+                    "brainc.validator_insdc, brainc.validator_insdc_graph, "
+                    "brainc.source_scale, brainc.external_profile, "
+                    "brainc.external_source, brainc.development_bundle, "
+                    "brainc.validator_reference, brainc.validator_external, "
+                    "brainc.validator_development; "
+                    "assert brainc.__version__ == '1.0.0'"
                 ),
             ],
             check=True,
@@ -916,6 +1742,7 @@ def sdist() -> None:
                 "LICENSE",
                 "README.md",
                 "SPEC.md",
+                "docs/PRIOR_ART.md",
                 "docs/STANDARDS.md",
                 "pyproject.toml",
                 "tests/verify.py",
@@ -927,6 +1754,20 @@ def sdist() -> None:
                 "brainc/insdc.py",
                 "brainc/sequence_collection_v2.py",
                 "brainc/validator_insdc.py",
+                "brainc/source.py",
+                "brainc/source_scale.py",
+                "brainc/external_profile.py",
+                "brainc/external_source.py",
+                "brainc/development_bundle.py",
+                "brainc/validator_reference.py",
+                "brainc/validator_external.py",
+                "brainc/validator_development.py",
+                "tests/test_source_scale.py",
+                "tests/test_validator_reference.py",
+                "tests/test_external_profile.py",
+                "tests/test_external_source.py",
+                "tests/test_validator_external.py",
+                "tests/test_validator_development.py",
                 "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
             }
             missing = sorted(
@@ -1006,7 +1847,13 @@ def sdist() -> None:
             cwd=root,
             env=installed_environment,
         )
-        for command in ("compile-genbank", "validate-genbank"):
+        for command in (
+            "compile-genbank",
+            "validate-genbank",
+            "compile-source",
+            "compile-external-source",
+            "compile-development",
+        ):
             assert command in help_result.stdout, (command, help_result.stdout)
         subprocess.run(
             [
@@ -1014,7 +1861,11 @@ def sdist() -> None:
                 "-c",
                 (
                     "import brainc, brainc.insdc, brainc.sequence_collection_v2, "
-                    "brainc.validator_insdc; assert brainc.__version__ == '0.9.0'"
+                    "brainc.validator_insdc, brainc.source_scale, "
+                    "brainc.external_profile, brainc.external_source, "
+                    "brainc.development_bundle, brainc.validator_reference, "
+                    "brainc.validator_external, brainc.validator_development; "
+                    "assert brainc.__version__ == '1.0.0'"
                 ),
             ],
             check=True,
@@ -1256,11 +2107,20 @@ def contract_attacks() -> None:
     print("CONTRACT-ATTACKS-PASSED")
 
 
-COMMANDS = {"real-dna": real_dna, "genbank-real-dna": genbank_real_dna,
-            "runtime-integration": runtime_integration,
-            "tamper": tamper, "boundary": boundary, "wheel": wheel,
-            "sdist": sdist,
-            "canonical": canonical, "contract-attacks": contract_attacks}
+COMMANDS = {
+    "boundary": boundary,
+    "canonical": canonical,
+    "contract-attacks": contract_attacks,
+    "development-real-dna": development_real_dna,
+    "genbank-real-dna": genbank_real_dna,
+    "real-dna": real_dna,
+    "resource-path-safety": resource_path_safety,
+    "runtime-integration": runtime_integration,
+    "sdist": sdist,
+    "source-causality": source_causality,
+    "tamper": tamper,
+    "wheel": wheel,
+}
 
 
 if __name__ == "__main__":

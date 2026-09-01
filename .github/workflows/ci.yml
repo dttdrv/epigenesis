@@ -32,17 +32,11 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Unit and integration tests
         run: python -m unittest discover -s tests -v
-      - name: Standalone real-DNA replay
-        run: python tests/verify.py real-dna
-      - name: GenBank compiler and independent validator replay
-        run: python tests/verify.py genbank-real-dna
       - name: Compiler-only boundary
         run: python tests/verify.py boundary
-      - name: Canonicalization vectors
-        run: python tests/verify.py canonical
 
   release-gates:
-    name: Source and wheel release gates
+    name: Compiler 1.0 release gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -51,10 +45,15 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Tamper and contract attacks
+      - name: Source causality and contract attacks
         run: |
-          python tests/verify.py tamper
+          python tests/verify.py source-causality
           python tests/verify.py contract-attacks
+          python tests/verify.py resource-path-safety
+      - name: Installed real-DNA compilation and replay
+        env:
+          PIP_NO_INDEX: "1"
+        run: python tests/verify.py development-real-dna
       - name: Installed wheel smoke test
         env:
           PIP_NO_INDEX: "1"
