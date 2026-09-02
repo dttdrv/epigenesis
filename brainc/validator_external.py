@@ -1,8 +1,9 @@
-"""Independent validator for data-only external DNA frontend closures.
+"""Producer-isolated validator for external DNA frontend closures.
 
 Only the Python standard library is inside this trust boundary.  The module
-does not import or execute the compiler, a frontend, a profile implementation,
-or shared Epigenesis helpers.
+does not import the compiler, a frontend, a profile implementation, or shared
+Epigenesis helpers. Version-2 closures rerun their explicitly supplied,
+digest-pinned validator executable.
 """
 
 from __future__ import annotations
@@ -17,6 +18,11 @@ import os
 from pathlib import Path
 import re
 import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import time
 from typing import Any
 
 
@@ -27,7 +33,7 @@ MAX_JSON_DEPTH = 64
 MAX_JSON_MEMBERS = 1_000_000
 MAX_PROFILE_BYTES = 1024 * 1024
 MAX_EVIDENCE_BYTES = 16 * 1024 * 1024
-MAX_CLOSURE_BYTES = MAX_PROFILE_BYTES + 2 * MAX_EVIDENCE_BYTES + 1024 * 1024
+MAX_CLOSURE_BYTES = MAX_PROFILE_BYTES + 3 * MAX_EVIDENCE_BYTES + 1024 * 1024
 MAX_REPORT_BYTES = 1024 * 1024
 MAX_ROLES = 64
 MAX_RECORDS = 100_000
@@ -35,17 +41,21 @@ MAX_RECORD_ID_BYTES = MAX_IDENTIFIER_BYTES
 CHUNK_BYTES = 64 * 1024
 
 ABI = "brainc.external-frontend-data/v1"
+EXECUTABLE_ABI = "brainc.external-frontend-executable/v2"
 PROFILE_FORMAT = "brainc.external-frontend-profile"
 PROFILE_VERSION = 1
+EXECUTABLE_PROFILE_VERSION = 2
 SOURCE_FORMAT = "brainc.external-source-descriptor"
 SOURCE_VERSION = 1
 FRONTEND_VALIDATION_FORMAT = "brainc.external-frontend-validation"
 FRONTEND_VALIDATION_VERSION = 1
 VALIDATOR_PROTOCOL = "brainc.external-frontend-validator/v1"
+FRONTEND_PROTOCOL = "brainc.external-frontend-execution/v1"
 RECORD_CATALOG_SCHEMA = "brainc.sequence-record-catalog/v1"
 
 CLOSURE_FORMAT = "brainc.external-source-closure"
 CLOSURE_VERSION = 1
+EXECUTABLE_CLOSURE_VERSION = 2
 CLOSURE_PRODUCER = {
     "name": "brainc-external-source",
     "version": "1.0.0",
@@ -56,6 +66,26 @@ CLOSURE_PRODUCER = {
         "emit-external-source-closure",
     ],
 }
+EXECUTABLE_CLOSURE_PRODUCER = {
+    "name": "brainc-external-source",
+    "version": "1.0.0",
+    "passes": [
+        "validate-profile-manifest",
+        "snapshot-exact-inputs",
+        "execute-pinned-frontend",
+        "execute-pinned-validator",
+        "bind-external-replay",
+        "emit-external-source-closure",
+    ],
+}
+
+VALIDATOR_REQUEST_FORMAT = "brainc.external-validator-execution-request"
+VALIDATOR_RESULT_FORMAT = "brainc.external-validator-execution-result"
+EXECUTION_PROTOCOL_VERSION = 1
+MAX_EXECUTION_SECONDS = 60
+MAX_STDERR_BYTES = 64 * 1024
+MAX_EXECUTABLE_BYTES = 256 * 1024 * 1024
+MAX_REQUEST_BYTES = 2 * MAX_PROFILE_BYTES + 2 * MAX_EVIDENCE_BYTES
 
 REPORT_FORMAT = "brainc.external-source-validation-report"
 REPORT_VERSION = 1
@@ -76,6 +106,10 @@ REPORT_CHECKS = (
     "stable-single-link-native-artifact-paths",
     "bounded-native-json-identities-and-ir-digests",
 )
+EXECUTABLE_REPORT_CHECKS = REPORT_CHECKS + (
+    "pinned-external-validator-execution",
+    "independent-source-and-native-semantic-replay",
+)
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 _REFGET_RE = re.compile(r"SQ\.[A-Za-z0-9_-]{32}\Z")
@@ -84,7 +118,7 @@ _FIELD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,255}\Z")
 
 
 class ExternalValidationError(ValueError):
-    """The external closure or its independently replayed files are invalid."""
+    """The external closure or its separately replayed files are invalid."""
 
 
 def _fail(detail: str) -> ExternalValidationError:
@@ -193,6 +227,13 @@ def digest(value: Any) -> str:
     except (TypeError, ValueError, UnicodeError, RecursionError) as failure:
         raise _fail(f"value is not RFC 8785 canonical JSON: {failure}") from failure
     return hasher.hexdigest()
+
+
+def _canonical_bytes(value: Any) -> bytes:
+    try:
+        return "".join(_jcs_chunks(value)).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError, RecursionError) as failure:
+        raise _fail(f"value is not RFC 8785 canonical JSON: {failure}") from failure
 
 
 def _same_json(left: Any, right: Any) -> bool:
@@ -398,22 +439,49 @@ def _role_declarations(value: Any, label: str) -> list[dict[str, Any]]:
     return result
 
 
-def _profile_ir(value: Any) -> dict[str, Any]:
+def _command(value: Any, label: str, *, executable: bool) -> dict[str, Any]:
+    expected = {
+        "id",
+        "distribution",
+        "version",
+        "distribution_sha256",
+        "executable_sha256",
+    }
+    if executable:
+        expected.add("runtime")
+    command = _keys(value, expected, label)
+    _text(command["id"], f"{label}.id", identifier=True)
+    _text(command["distribution"], f"{label}.distribution", identifier=True)
+    _text(command["version"], f"{label}.version")
+    _sha(command["distribution_sha256"], f"{label}.distribution_sha256")
+    _sha(command["executable_sha256"], f"{label}.executable_sha256")
+    if executable and command["runtime"] not in {"native", "python"}:
+        raise _fail(f"{label}.runtime must be native or python")
+    return command
+
+
+def _profile_ir(value: Any, manifest_version: int = PROFILE_VERSION) -> dict[str, Any]:
+    executable = manifest_version == EXECUTABLE_PROFILE_VERSION
+    expected = {
+        "abi",
+        "profile",
+        "grammar",
+        "inputs",
+        "native_artifacts",
+        "catalog",
+        "limits",
+        "validator",
+    }
+    if executable:
+        expected.add("frontend")
     item = _keys(
         value,
-        {
-            "abi",
-            "profile",
-            "grammar",
-            "inputs",
-            "native_artifacts",
-            "catalog",
-            "limits",
-            "validator",
-        },
+        expected,
         "profile_ir",
     )
-    if type(item["abi"]) is not str or item["abi"] != ABI:
+    if type(item["abi"]) is not str or item["abi"] != (
+        EXECUTABLE_ABI if executable else ABI
+    ):
         raise _fail("profile_ir.abi is unsupported")
 
     profile = _keys(item["profile"], {"id", "version"}, "profile_ir.profile")
@@ -482,38 +550,33 @@ def _profile_ir(value: Any) -> dict[str, Any]:
         raise _fail("an input role byte ceiling exceeds the cumulative input ceiling")
     if any(declaration["maximum_byte_length"] > total_native for declaration in native):
         raise _fail("a native role byte ceiling exceeds the cumulative native ceiling")
+    if executable and total_native > MAX_EVIDENCE_BYTES:
+        raise _fail("executable profile native bytes exceed the closure ceiling")
+
+    if executable:
+        frontend = _keys(
+            item["frontend"], {"protocol", "command"}, "profile_ir.frontend"
+        )
+        if frontend["protocol"] != FRONTEND_PROTOCOL:
+            raise _fail("profile_ir.frontend.protocol is unsupported")
+        frontend_command = _command(
+            frontend["command"], "profile_ir.frontend.command", executable=True
+        )
 
     validator = _keys(
         item["validator"], {"protocol", "command"}, "profile_ir.validator"
     )
     if type(validator["protocol"]) is not str or validator["protocol"] != VALIDATOR_PROTOCOL:
         raise _fail("profile_ir.validator.protocol is unsupported")
-    command = _keys(
+    validator_command = _command(
         validator["command"],
-        {
-            "id",
-            "distribution",
-            "version",
-            "distribution_sha256",
-            "executable_sha256",
-        },
         "profile_ir.validator.command",
+        executable=executable,
     )
-    _text(command["id"], "profile_ir.validator.command.id", identifier=True)
-    _text(
-        command["distribution"],
-        "profile_ir.validator.command.distribution",
-        identifier=True,
-    )
-    _text(command["version"], "profile_ir.validator.command.version")
-    _sha(
-        command["distribution_sha256"],
-        "profile_ir.validator.command.distribution_sha256",
-    )
-    _sha(
-        command["executable_sha256"],
-        "profile_ir.validator.command.executable_sha256",
-    )
+    if executable and frontend_command["executable_sha256"] == validator_command[
+        "executable_sha256"
+    ]:
+        raise _fail("frontend and validator executable digests must be distinct")
     _bounded_artifact(item, MAX_PROFILE_BYTES, "profile_ir")
     return item
 
@@ -534,10 +597,10 @@ def _validate_manifest(value: Any) -> dict[str, Any]:
         type(item["format"]) is not str
         or item["format"] != PROFILE_FORMAT
         or type(item["version"]) is not int
-        or item["version"] != PROFILE_VERSION
+        or item["version"] not in {PROFILE_VERSION, EXECUTABLE_PROFILE_VERSION}
     ):
         raise _fail("unsupported profile manifest format/version")
-    profile_ir = _profile_ir(item["profile_ir"])
+    profile_ir = _profile_ir(item["profile_ir"], item["version"])
     if _sha(item["profile_ir_sha256"], "profile_ir_sha256") != digest(profile_ir):
         raise _fail("profile_ir_sha256 does not match profile_ir")
     _artifact_seal(item, "profile manifest")
@@ -858,19 +921,56 @@ def _validate_closure(value: Any) -> dict[str, Any]:
         type(item["format"]) is not str
         or item["format"] != CLOSURE_FORMAT
         or type(item["version"]) is not int
-        or item["version"] != CLOSURE_VERSION
+        or item["version"] not in {CLOSURE_VERSION, EXECUTABLE_CLOSURE_VERSION}
     ):
         raise _fail("external source closure format/version is unsupported")
-    if not _same_json(item["producer"], CLOSURE_PRODUCER):
+    expected_producer = (
+        CLOSURE_PRODUCER
+        if item["version"] == CLOSURE_VERSION
+        else EXECUTABLE_CLOSURE_PRODUCER
+    )
+    if not _same_json(item["producer"], expected_producer):
         raise _fail("external source closure producer is unsupported")
+    closure_keys = {"profile_manifest", "source_descriptor", "validation_report"}
+    if item["version"] == EXECUTABLE_CLOSURE_VERSION:
+        closure_keys.add("native_artifacts")
     closure_ir = _keys(
         item["closure_ir"],
-        {"profile_manifest", "source_descriptor", "validation_report"},
+        closure_keys,
         "external source closure.closure_ir",
     )
     manifest = _validate_manifest(closure_ir["profile_manifest"])
     descriptor = _validate_descriptor(manifest, closure_ir["source_descriptor"])
     _validate_frontend_report(manifest, descriptor, closure_ir["validation_report"])
+    if item["version"] == EXECUTABLE_CLOSURE_VERSION:
+        if manifest["version"] != EXECUTABLE_PROFILE_VERSION:
+            raise _fail("executable closure requires a version-2 profile manifest")
+        declarations = manifest["profile_ir"]["native_artifacts"]
+        artifacts = _keys(
+            closure_ir["native_artifacts"],
+            {declaration["role"] for declaration in declarations},
+            "external source closure.native_artifacts",
+        )
+        references = descriptor["frontend_ir"]["native_artifacts"]
+        for declaration, reference in zip(declarations, references):
+            role = declaration["role"]
+            raw = _canonical_bytes(artifacts[role])
+            observed = {
+                "role": role,
+                "format": declaration["format"],
+                "version": declaration["version"],
+                "schema_sha256": declaration["schema_sha256"],
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "byte_length": len(raw),
+                "ir_sha256": artifacts[role].get(declaration["ir_digest_field"])
+                if type(artifacts[role]) is dict
+                else None,
+            }
+            _validate_native_json(raw, declaration, reference, f"native artifact {role}")
+            if not _same_json(observed, reference):
+                raise _fail("embedded native artifacts differ from the descriptor")
+    elif manifest["version"] != PROFILE_VERSION:
+        raise _fail("legacy closure requires a version-1 profile manifest")
     if _sha(item["closure_ir_sha256"], "closure_ir_sha256") != digest(closure_ir):
         raise _fail("closure_ir_sha256 does not match closure_ir")
     _artifact_seal(item, "external source closure")
@@ -1100,6 +1200,225 @@ def _read_regular(
                 pass
 
 
+def _copy_regular(
+    source: Path,
+    target: Path,
+    *,
+    label: str,
+    maximum_bytes: int,
+    executable: bool = False,
+) -> dict[str, Any]:
+    source_fd = target_fd = -1
+    try:
+        before = source.lstat()
+        if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+            raise _fail(f"{label} must be one regular single-link file")
+        if before.st_size > maximum_bytes:
+            raise _fail(f"{label} exceeds byte ceiling {maximum_bytes}")
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        source_fd = os.open(source, flags)
+        opened = os.fstat(source_fd)
+        stable = ("st_dev", "st_ino", "st_nlink", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1 or any(
+            getattr(before, field) != getattr(opened, field) for field in stable
+        ):
+            raise _fail(f"{label} changed while opening")
+        target_fd = os.open(
+            target,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o700 if executable else 0o600,
+        )
+        hasher = hashlib.sha256()
+        length = 0
+        while True:
+            chunk = os.read(source_fd, min(CHUNK_BYTES, maximum_bytes + 1 - length))
+            if not chunk:
+                break
+            length += len(chunk)
+            if length > maximum_bytes:
+                raise _fail(f"{label} exceeds byte ceiling {maximum_bytes}")
+            hasher.update(chunk)
+            view = memoryview(chunk)
+            while view:
+                written = os.write(target_fd, view)
+                if written <= 0:
+                    raise _fail(f"cannot snapshot {label}: short write")
+                view = view[written:]
+        os.fsync(target_fd)
+        finished = os.fstat(source_fd)
+        after = source.lstat()
+        if length != opened.st_size or stat.S_ISLNK(after.st_mode) or any(
+            getattr(opened, field) != getattr(finished, field) for field in stable
+        ) or any(getattr(opened, field) != getattr(after, field) for field in stable):
+            raise _fail(f"{label} changed while reading")
+        return {"sha256": hasher.hexdigest(), "byte_length": length}
+    except ExternalValidationError:
+        raise
+    except (OSError, TypeError, ValueError) as failure:
+        raise _fail(f"cannot snapshot {label}: {failure}") from failure
+    finally:
+        for descriptor in (target_fd, source_fd):
+            if descriptor >= 0:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+
+
+def _snapshot_sources(
+    manifest: dict[str, Any],
+    original_paths: Mapping[str, str | os.PathLike[str]],
+    root: Path,
+) -> tuple[list[dict[str, Any]], dict[str, Path]]:
+    declarations = manifest["profile_ir"]["inputs"]
+    paths = _path_mapping(
+        original_paths,
+        {declaration["role"] for declaration in declarations},
+        "original_paths",
+    )
+    references: list[dict[str, Any]] = []
+    snapshots: dict[str, Path] = {}
+    total = 0
+    for index, declaration in enumerate(declarations):
+        role = declaration["role"]
+        snapshot = root / f"input-{index}"
+        observed = _copy_regular(
+            paths[role],
+            snapshot,
+            label=f"original source {role}",
+            maximum_bytes=declaration["maximum_byte_length"],
+        )
+        total += observed["byte_length"]
+        if total > manifest["profile_ir"]["limits"]["maximum_total_input_bytes"]:
+            raise _fail("original inputs exceed their cumulative byte ceiling")
+        references.append({"role": role, **observed})
+        snapshots[role] = snapshot.resolve()
+    return references, snapshots
+
+
+def _drain_process_output(
+    stream: Any,
+    limit: int,
+    chunks: list[bytes],
+    overflow: threading.Event,
+) -> None:
+    total = 0
+    while True:
+        chunk = stream.read(CHUNK_BYTES)
+        if not chunk:
+            return
+        total += len(chunk)
+        if total > limit:
+            overflow.set()
+            return
+        chunks.append(chunk)
+
+
+def _run_external_validator(
+    command: dict[str, Any],
+    executable_path: str | os.PathLike[str],
+    request: dict[str, Any],
+) -> dict[str, Any]:
+    request_bytes = _canonical_bytes(request)
+    if len(request_bytes) > MAX_REQUEST_BYTES:
+        raise _fail("external validator request exceeds its byte ceiling")
+    with tempfile.TemporaryDirectory(prefix="brainc-independent-validator-") as temporary:
+        root = Path(temporary)
+        suffix = Path(executable_path).suffix if command["runtime"] == "native" else ".py"
+        executable = root / f"validator{suffix}"
+        observed = _copy_regular(
+            Path(executable_path),
+            executable,
+            label="external validator executable",
+            maximum_bytes=MAX_EXECUTABLE_BYTES,
+            executable=True,
+        )
+        if observed["sha256"] != command["executable_sha256"]:
+            raise _fail("external validator executable SHA-256 differs from the manifest")
+        request_path = root / "request.json"
+        request_path.write_bytes(request_bytes)
+        argv = (
+            [sys.executable, "-I", str(executable)]
+            if command["runtime"] == "python"
+            else [str(executable)]
+        )
+        environment = {"PATH": os.defpath, "PYTHONHASHSEED": "0", "TMPDIR": str(root)}
+        if "SystemRoot" in os.environ:
+            environment["SystemRoot"] = os.environ["SystemRoot"]
+        stdout_chunks: list[bytes] = []
+        stderr_chunks: list[bytes] = []
+        overflow = threading.Event()
+        try:
+            with request_path.open("rb") as request_stream:
+                process = subprocess.Popen(
+                    argv,
+                    stdin=request_stream,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=root,
+                    env=environment,
+                    shell=False,
+                )
+                assert process.stdout is not None and process.stderr is not None
+                stdout_thread = threading.Thread(
+                    target=_drain_process_output,
+                    args=(
+                        process.stdout,
+                        MAX_EVIDENCE_BYTES + MAX_PROFILE_BYTES,
+                        stdout_chunks,
+                        overflow,
+                    ),
+                    daemon=True,
+                )
+                stderr_thread = threading.Thread(
+                    target=_drain_process_output,
+                    args=(process.stderr, MAX_STDERR_BYTES, stderr_chunks, overflow),
+                    daemon=True,
+                )
+                stdout_thread.start()
+                stderr_thread.start()
+                try:
+                    deadline = time.monotonic() + MAX_EXECUTION_SECONDS
+                    while process.poll() is None and not overflow.is_set():
+                        if time.monotonic() >= deadline:
+                            process.kill()
+                            process.wait()
+                            raise _fail(
+                                f"external validator exceeded {MAX_EXECUTION_SECONDS} seconds"
+                            )
+                        time.sleep(0.01)
+                    if overflow.is_set():
+                        process.kill()
+                        process.wait()
+                        raise _fail("external validator exceeded its output byte ceiling")
+                    process.wait()
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait()
+                    stdout_thread.join(timeout=1)
+                    stderr_thread.join(timeout=1)
+                    process.stdout.close()
+                    process.stderr.close()
+                if overflow.is_set():
+                    raise _fail("external validator exceeded its output byte ceiling")
+        except ExternalValidationError:
+            raise
+        except (OSError, subprocess.SubprocessError) as failure:
+            raise _fail(f"cannot execute external validator: {failure}") from failure
+        stderr = b"".join(stderr_chunks).decode("utf-8", "replace").strip()
+        if process.returncode != 0:
+            detail = f": {stderr}" if stderr else ""
+            raise _fail(f"external validator exited with status {process.returncode}{detail}")
+        if stderr:
+            raise _fail(f"external validator wrote to standard error: {stderr}")
+        raw = b"".join(stdout_chunks)
+        if not raw:
+            raise _fail("external validator produced no JSON result")
+        return _load_json(raw, "external validator result")
+
+
 def _validate_native_json(
     raw: bytes,
     declaration: dict[str, Any],
@@ -1153,7 +1472,11 @@ def _validation_report(closure: dict[str, Any]) -> dict[str, Any]:
             "original_bytes": sum(reference["byte_length"] for reference in inputs),
             "native_bytes": sum(reference["byte_length"] for reference in native),
         },
-        "checks": list(REPORT_CHECKS),
+        "checks": list(
+            EXECUTABLE_REPORT_CHECKS
+            if closure["version"] == EXECUTABLE_CLOSURE_VERSION
+            else REPORT_CHECKS
+        ),
     }
     report = {**core, "report_sha256": digest(core)}
     _validate_report_schema(report)
@@ -1285,7 +1608,10 @@ def _validate_report_schema(value: Any) -> dict[str, Any]:
         raise _fail("report.result.original_bytes does not match input references")
     if native_bytes != sum(member["byte_length"] for member in native):
         raise _fail("report.result.native_bytes does not match native references")
-    if not _same_json(item["checks"], list(REPORT_CHECKS)):
+    if not any(
+        _same_json(item["checks"], list(checks))
+        for checks in (REPORT_CHECKS, EXECUTABLE_REPORT_CHECKS)
+    ):
         raise _fail("external validation report checks differ from the closed contract")
     claimed = _sha(item["report_sha256"], "report.report_sha256")
     expected = digest(
@@ -1316,7 +1642,8 @@ def validate_external_source(
     payload: dict[str, Any],
     *,
     original_paths: Mapping[str, str | os.PathLike[str]],
-    native_artifact_paths: Mapping[str, str | os.PathLike[str]],
+    native_artifact_paths: Mapping[str, str | os.PathLike[str]] | None = None,
+    validator_executable: str | os.PathLike[str] | None = None,
 ) -> dict[str, Any]:
     """Replay exact original/native files and return a sealed success report."""
 
@@ -1335,6 +1662,56 @@ def validate_external_source(
         declaration["role"]: declaration
         for declaration in manifest["profile_ir"]["native_artifacts"]
     }
+    if closure["version"] == EXECUTABLE_CLOSURE_VERSION:
+        if validator_executable is None:
+            raise _fail("version-2 external source requires its validator executable")
+        if native_artifact_paths:
+            raise _fail("version-2 external source embeds its native artifacts")
+        with tempfile.TemporaryDirectory(prefix="brainc-external-replay-") as temporary:
+            input_replay, snapshots = _snapshot_sources(
+                manifest, original_paths, Path(temporary)
+            )
+            expected_inputs = descriptor["frontend_ir"]["inputs"]
+            if not _same_json(input_replay, expected_inputs):
+                raise _fail("original source differs from its exact reference")
+            inputs = [
+                {**reference, "path": str(snapshots[reference["role"]])}
+                for reference in input_replay
+            ]
+            result = _run_external_validator(
+                manifest["profile_ir"]["validator"]["command"],
+                validator_executable,
+                {
+                    "format": VALIDATOR_REQUEST_FORMAT,
+                    "version": EXECUTION_PROTOCOL_VERSION,
+                    "profile_manifest": manifest,
+                    "source_descriptor": descriptor,
+                    "inputs": inputs,
+                    "native_artifacts": closure_ir["native_artifacts"],
+                },
+            )
+            expected_result = {
+                "format": VALIDATOR_RESULT_FORMAT,
+                "version": EXECUTION_PROTOCOL_VERSION,
+                "profile_manifest_sha256": manifest["artifact_sha256"],
+                "source_descriptor_sha256": descriptor["artifact_sha256"],
+                "input_references": expected_inputs,
+                "native_artifact_references": descriptor["frontend_ir"][
+                    "native_artifacts"
+                ],
+                "records": descriptor["frontend_ir"]["record_catalog"]["records"],
+                "valid": True,
+            }
+            if not _same_json(result, expected_result):
+                raise _fail("external validator did not exactly replay the source")
+        report = _validation_report(closure)
+        _validate_report_schema(report)
+        return report
+
+    if validator_executable is not None:
+        raise _fail("version-1 external source does not execute a validator")
+    if native_artifact_paths is None:
+        raise _fail("external native artifact paths are required for version 1")
     input_paths = _path_mapping(
         original_paths,
         {reference["role"] for reference in input_references},
@@ -1391,7 +1768,8 @@ def validate_external_paths(
     closure_path: str | os.PathLike[str],
     *,
     original_paths: Mapping[str, str | os.PathLike[str]],
-    native_artifact_paths: Mapping[str, str | os.PathLike[str]],
+    native_artifact_paths: Mapping[str, str | os.PathLike[str]] | None = None,
+    validator_executable: str | os.PathLike[str] | None = None,
     maximum_closure_bytes: int = MAX_CLOSURE_BYTES,
 ) -> dict[str, Any]:
     """Load a safe closure path, replay its files, and return a sealed report."""
@@ -1415,6 +1793,7 @@ def validate_external_paths(
         payload,
         original_paths=original_paths,
         native_artifact_paths=native_artifact_paths,
+        validator_executable=validator_executable,
     )
 
 
@@ -1422,6 +1801,9 @@ __all__ = [
     "CLOSURE_FORMAT",
     "CLOSURE_PRODUCER",
     "CLOSURE_VERSION",
+    "EXECUTABLE_CLOSURE_VERSION",
+    "EXECUTABLE_CLOSURE_PRODUCER",
+    "EXECUTABLE_REPORT_CHECKS",
     "ExternalValidationError",
     "MAX_CLOSURE_BYTES",
     "REPORT_CHECKS",

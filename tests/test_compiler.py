@@ -253,8 +253,9 @@ class CompilerTests(unittest.TestCase):
         }
         self.assertFalse(any(name == "brainc" or name.startswith("brainc.") for name in imports))
 
-    def test_core_has_no_network_dynamic_loading_or_process_execution(self) -> None:
-        denied_imports = {"socket", "urllib", "requests", "httpx", "aiohttp", "subprocess", "importlib"}
+    def test_core_has_no_network_dynamic_loading_or_unscoped_process_execution(self) -> None:
+        denied_imports = {"socket", "urllib", "requests", "httpx", "aiohttp", "importlib"}
+        process_owners = {"external_runtime.py", "validator_external.py"}
         for path in (Path(__file__).parents[1] / "brainc").glob("*.py"):
             tree = ast.parse(path.read_text())
             imports = set()
@@ -264,6 +265,8 @@ class CompilerTests(unittest.TestCase):
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     imports.add(node.module.split(".")[0])
             self.assertFalse(imports & denied_imports, (path, imports & denied_imports))
+            if "subprocess" in imports:
+                self.assertIn(path.name, process_owners)
 
     def test_cli_exposes_no_training_or_runtime_commands(self) -> None:
         result = subprocess.run([sys.executable, "-m", "brainc", "--help"], check=True,

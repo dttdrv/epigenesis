@@ -727,6 +727,7 @@ def boundary() -> None:
         "trainer",
         "world",
     }
+    process_modules = {"external_runtime.py", "validator_external.py"}
     assert not {path.stem for path in compiler_root.rglob("*.py")} & forbidden_modules
     for path in compiler_root.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -734,7 +735,8 @@ def boundary() -> None:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import): imports.update(alias.name.split(".")[0] for alias in node.names)
             elif isinstance(node, ast.ImportFrom) and node.module: imports.add(node.module.split(".")[0])
-        assert not imports & denied, (path, imports & denied)
+        denied_here = denied - ({"subprocess"} if path.name in process_modules else set())
+        assert not imports & denied_here, (path, imports & denied_here)
         text = path.read_text(encoding="utf-8").lower()
         for marker in ("train_model(", "optimizer.step(", "requests.get(", "subprocess.run("):
             assert marker not in text, (path, marker)
@@ -1312,7 +1314,7 @@ def wheel() -> None:
             assert "Version: 1.0.0\n" in metadata_text
             assert "License-Expression: Apache-2.0\n" in metadata_text
             assert (
-                "Epigenesis 1.0 is the universal DNA translation compiler"
+                "Universal DNA translation compiler targeting Development Module IR"
                 in metadata_text
             )
             assert "brainc/validator_bio_graph.py" in names
@@ -1324,6 +1326,7 @@ def wheel() -> None:
                 "brainc/source.py",
                 "brainc/source_scale.py",
                 "brainc/external_profile.py",
+                "brainc/external_runtime.py",
                 "brainc/external_source.py",
                 "brainc/development_bundle.py",
                 "brainc/validator_reference.py",
@@ -1748,6 +1751,19 @@ def sdist() -> None:
                 "SPEC.md",
                 "docs/PRIOR_ART.md",
                 "docs/STANDARDS.md",
+                "examples/minimal-development/sequence.fasta",
+                "examples/minimal-development/expected.json",
+                "examples/minimal-development/interpretation/manifest.json",
+                "examples/minimal-development/interpretation/request.json",
+                "examples/minimal-development/interpretation/response.json",
+                "examples/minimal-development/interpretation/lowering-policy.json",
+                "examples/minimal-development/interpretation/target-contract.json",
+                "examples/external-fastq/README.md",
+                "examples/external-fastq/GRAMMAR.md",
+                "examples/external-fastq/frontend.py",
+                "examples/external-fastq/validator.py",
+                "examples/external-fastq/profile.py",
+                "examples/external-fastq/reads.fastq",
                 "pyproject.toml",
                 "tests/verify.py",
                 "tests/data/J02482.1.fasta",
@@ -1762,6 +1778,7 @@ def sdist() -> None:
                 "brainc/source_scale.py",
                 "brainc/external_profile.py",
                 "brainc/external_source.py",
+                "brainc/external_runtime.py",
                 "brainc/development_bundle.py",
                 "brainc/validator_reference.py",
                 "brainc/validator_external.py",
@@ -1770,6 +1787,8 @@ def sdist() -> None:
                 "tests/test_validator_reference.py",
                 "tests/test_external_profile.py",
                 "tests/test_external_source.py",
+                "tests/test_external_execution.py",
+                "tests/test_universal_translation.py",
                 "tests/test_validator_external.py",
                 "tests/test_validator_development.py",
                 "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
@@ -1866,7 +1885,7 @@ def sdist() -> None:
                 (
                     "import brainc, brainc.insdc, brainc.sequence_collection_v2, "
                     "brainc.validator_insdc, brainc.source_scale, "
-                    "brainc.external_profile, brainc.external_source, "
+                    "brainc.external_profile, brainc.external_runtime, brainc.external_source, "
                     "brainc.development_bundle, brainc.validator_reference, "
                     "brainc.validator_external, brainc.validator_development; "
                     "assert brainc.__version__ == '1.0.0'"
@@ -2121,19 +2140,36 @@ def universal_translation() -> None:
     print("UNIVERSAL-TRANSLATION-PASSED")
 
 
+def minimal_example() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "unittest",
+            "tests.test_minimal_development_example",
+            "-v",
+        ],
+        check=False,
+        cwd=ROOT,
+    )
+    assert result.returncode == 0, result.returncode
+    print("MINIMAL-EXAMPLE-PASSED")
+
+
 COMMANDS = {
     "boundary": boundary,
     "canonical": canonical,
     "contract-attacks": contract_attacks,
     "development-real-dna": development_real_dna,
     "genbank-real-dna": genbank_real_dna,
+    "minimal-example": minimal_example,
+    "universal-translation": universal_translation,
     "real-dna": real_dna,
     "resource-path-safety": resource_path_safety,
     "runtime-integration": runtime_integration,
     "sdist": sdist,
     "source-causality": source_causality,
     "tamper": tamper,
-    "universal-translation": universal_translation,
     "wheel": wheel,
 }
 

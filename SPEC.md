@@ -1,15 +1,11 @@
-# Epigenesis universal DNA compiler contract 1.0.0
+# Epigenesis universal DNA translation compiler contract 1.0.0
 
 ## 1. Status and terminology
 
-This document specifies Epigenesis 1.0, the universal DNA translation compiler:
-profile-qualified biological source admission, exact source provenance, a
-common typed source boundary, Development Module lowering, reference-only
-linking, and producer-isolated compilation verification.
-
-"Universal" means that built-in and external DNA-bearing source profiles enter
-through one source contract and reach one Development Module target. It does
-not mean that this package parses every DNA grammar or models universal biology.
+This document specifies Epigenesis 1.0, a universal DNA translation compiler:
+profile-qualified biological source admission, executable external grammar
+extension, exact source provenance, a common typed source boundary, Development
+Module lowering, reference-only linking, and producer-isolated verification.
 
 The interpretation manifest, request, and response are caller-supplied. This
 contract does not specify biological prediction or derive an interpretation
@@ -29,9 +25,10 @@ An Epigenesis compilation has five inputs:
 
 Its primary output is `brainc.development-module/v1`. The linker publishes that
 module with the complete interpretation chain and a compilation record under
-`brainc.development-bundle/v1`. An independent implementation MUST reparse
-built-in source profiles and MUST verify external source closures against their
-manifest-qualified validation evidence and exact original/native bytes.
+`brainc.development-bundle/v1`. A producer-isolated implementation MUST reparse
+built-in source profiles. For a version-2 executable external profile, it MUST
+rerun the digest-pinned validator against fresh snapshots of the original
+source and embedded profile-native IR.
 
 ## 2. Common wire rules
 
@@ -192,21 +189,22 @@ origin crossing, phase, score, attributes, ordered relationships, reference
 closure, and exact binding to the sequence collection. Feature types and
 ontology claims remain opaque. Embedded FASTA is outside this profile.
 
-## 4. External frontend data ABI
+## 4. Universal external frontend ABI
 
-The external ABI admits evidence produced by new DNA-bearing source grammars
-without loading frontend code into the compiler. It consists of:
+The external ABI admits any DNA-bearing source grammar through an explicitly
+selected frontend and separate validator. Its current contracts are:
 
-- `brainc.external-frontend-profile/v1`;
+- `brainc.external-frontend-profile/v1` and `/v2`;
 - `brainc.external-source-descriptor/v1`;
 - `brainc.external-frontend-validation/v1`; and
-- compiler closure `brainc.external-source-closure/v1`.
+- compiler closure `brainc.external-source-closure/v1` and `/v2`.
 
 ### 4.1 Profile manifest
 
-The manifest MUST declare:
+Every manifest MUST declare:
 
-- ABI `brainc.external-frontend-data/v1`;
+- ABI `brainc.external-frontend-data/v1` for legacy data-only admission or
+  `brainc.external-frontend-executable/v2` for executable admission;
 - portable profile identifier and positive integer version;
 - grammar identifier, version, authority URI, and authority SHA-256;
 - one to 64 ordered input-role declarations with media type, wrapper, and
@@ -217,7 +215,14 @@ The manifest MUST declare:
 - total input/native byte, record, base, and portable record-identifier limits,
   with record identifiers capped at 256 UTF-8 bytes; and
 - validator protocol, distribution identity, distribution digest, executable
-  identity, and executable digest.
+  identity, and executable digest; and
+- for version 2, a frontend protocol and command plus `native` or `python`
+  runtime declarations for both commands.
+
+Version-2 frontend and validator executable digests MUST differ. Executable
+paths are explicit caller arguments and MUST NOT be discovered from manifest
+content. The implementation MUST verify a stable regular single-link program
+snapshot against the declared SHA-256 and MUST invoke it without a shell.
 
 The complete manifest digest is the external language identity. Every accepted
 external source MUST provide a nonempty sequence-record catalog with positive
@@ -231,7 +236,7 @@ brainc.source-descriptor/v1;profile=external-dna-source/v1;manifest=<sha256>
 
 A generic external-profile acceptance tag is insufficient.
 
-### 4.2 Frontend descriptor and validation evidence
+### 4.2 Executable frontend and replay
 
 The frontend descriptor MUST bind the manifest, exact input roles and byte
 identities, exact native roles/formats/versions/schemas/IR identities and byte
@@ -239,17 +244,96 @@ identities, and an ordered record catalog. Record identifiers MUST be unique;
 ordinals MUST be contiguous from zero; every record MUST name a declared input
 role and carry positive bases, sequence SHA-256, and refget identity.
 
-The manifest-qualified validation report MUST name the exact validator declared
-by the manifest and reproduce the input references, native references, and
-record catalog. The external integration is responsible for running that
-validator outside Epigenesis and supplying its report. The compiler binds the
-declared distribution/executable identities but does not launch the validator
-or authenticate its execution. It MUST stream every original path, compare its
-SHA-256 and length, load each bounded native JSON artifact, check its declared
-format/version and IR-digest field, and seal only the
-manifest/descriptor/report closure. `schema_sha256` binds the declared schema
-identity; the core does not apply the schema body. Original and native bytes
-MUST NOT be embedded in the compiler closure.
+For version 2, Epigenesis MUST snapshot every original source through a stable
+file descriptor while enforcing role and cumulative byte limits. It passes
+those private snapshots, exact references, and the sealed manifest to the
+frontend over closed JSON on standard input. The frontend returns profile-native
+JSON and ordered record entries. Epigenesis derives native byte references,
+checks declared format/version and IR-digest fields, and seals the descriptor.
+
+Epigenesis then invokes the separately digest-pinned validator with the same
+snapshots, manifest, descriptor, and native JSON. The validator MUST reparse the
+grammar, validate the native representation, and return exact input references,
+native references, and records. Any difference fails admission. Execution MUST
+have a finite wall timeout and bounded standard output and error. Nonzero exit,
+standard-error output, malformed or duplicate-key JSON, unknown fields, or a
+resource violation MUST fail before publication.
+
+Version-2 closure artifacts embed the bounded profile-native JSON with the
+manifest, descriptor, and replay report. Original source bytes remain external
+and content-addressed. The final Development Module validator MUST repeat the
+validator execution against fresh source snapshots and require the exact sealed
+result.
+
+Version-1 artifacts remain compatible. Their caller-attested data-only path
+continues to verify exact original and separately supplied native bytes, but
+does not establish grammar execution.
+
+### 4.3 Executable protocol envelopes
+
+Each command reads exactly one UTF-8, duplicate-free JSON object from standard
+input and writes exactly one JSON object to standard output. It MUST
+write nothing to standard error on success. Paths are ephemeral absolute paths
+to compiler-owned source snapshots; a command MUST read them during that
+invocation and MUST NOT persist them as source identities. The `inputs` array
+is in manifest role order and has this exact member shape:
+
+```text
+{role, sha256, byte_length, path}
+```
+
+The frontend receives:
+
+```text
+format = brainc.external-frontend-execution-request
+version = 1
+profile_manifest = complete sealed v2 profile manifest
+inputs = [{role, sha256, byte_length, path}, ...]
+```
+
+It returns:
+
+```text
+format = brainc.external-frontend-execution-result
+version = 1
+profile_manifest_sha256 = profile manifest artifact_sha256
+native_artifacts = {declared-role: complete profile-native JSON, ...}
+records = [{ordinal, input_role, record_id, bases,
+            sequence_sha256, refget_id}, ...]
+```
+
+The compiler validates and seals that result, then gives the validator:
+
+```text
+format = brainc.external-validator-execution-request
+version = 1
+profile_manifest = complete sealed v2 profile manifest
+source_descriptor = compiler-sealed external source descriptor
+inputs = [{role, sha256, byte_length, path}, ...]
+native_artifacts = {declared-role: complete profile-native JSON, ...}
+```
+
+The validator returns:
+
+```text
+format = brainc.external-validator-execution-result
+version = 1
+profile_manifest_sha256 = profile manifest artifact_sha256
+source_descriptor_sha256 = source descriptor artifact_sha256
+input_references = [{role, sha256, byte_length}, ...]
+native_artifact_references =
+  [{role, format, version, schema_sha256, sha256, byte_length, ir_sha256}, ...]
+records = [{ordinal, input_role, record_id, bases,
+            sequence_sha256, refget_id}, ...]
+valid = true
+```
+
+Every protocol object shown above is closed. Profile-native object shape is
+defined by its declared schema and enforced by the external validator. The
+validator result MUST be exactly equal by JSON type and value to the references
+and records derived and sealed by the compiler; `true` is not interchangeable
+with `1`. A conforming frontend or validator MAY be implemented in any language
+that can honor its manifest runtime and these process contracts.
 
 ## 5. Interpretation and target contracts
 
@@ -313,15 +397,16 @@ Publication is absent-to-complete and no-clobber. A destination that exists at
 commit time MUST be preserved. A committed directory MUST never be removed due
 to a later synchronization or verification error.
 
-## 7. Independent validation
+## 7. Producer-isolated validation
 
 `brainc.development-validation-report/v1` is produced by an implementation
-outside the producer trust boundary. It MUST:
+outside the producer module boundary. It MUST:
 
 1. snapshot the exact source and development directory closures;
-2. replay each built-in original source through an independently implemented
-   frontend, and independently verify every external closure against its exact
-   original/native paths and manifest-qualified validation evidence;
+2. replay each built-in original source through a separately implemented
+   frontend; for a version-2 external source, verify and execute the pinned
+   validator over fresh source snapshots and embedded native JSON; for version
+   1, verify the exact original/native paths and caller attestation;
 3. validate descriptor/native/input/record equality;
 4. replay manifest, request, response, tensors, target, policy, operations, and
    budgets;
@@ -344,8 +429,9 @@ failure exits one and emits a sealed report with `valid: false` and code
 `DEVVAL001`. Command-line usage errors follow `argparse` and exit two.
 
 The standalone command receives original roles as repeated
-`--source-input ROLE=PATH` arguments. External profiles additionally receive
-every declared native role as repeated `--native-input ROLE=PATH` arguments.
+`--source-input ROLE=PATH` arguments. Version-1 external profiles additionally
+receive every native role through `--native-input ROLE=PATH`; version-2
+profiles receive the explicit validator through `--external-validator PATH`.
 
 ## 8. Diagnostics
 
@@ -405,8 +491,10 @@ not an Epigenesis release version.
 A conforming distribution MUST pass:
 
 - complete unit and integration tests;
-- universal translation conformance across every built-in profile and the
-  external frontend data ABI;
+- universal translation convergence across every built-in profile and a real
+  executable external FASTQ frontend/validator pair for equivalent DNA;
+- rejection of malformed external grammar input, changed executable/source
+  bytes, lying frontends, timeouts, output overflow, and malformed process JSON;
 - generated unseen-source causality and no-content-dispatch checks;
 - direct and coherently resealed cross-artifact attacks;
 - path, resource, gzip, JSON, and allocation attacks;

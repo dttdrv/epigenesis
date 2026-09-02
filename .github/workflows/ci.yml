@@ -47,7 +47,7 @@ jobs:
         run: python -m unittest tests.test_io tests.test_publish.NativeDirectoryPublicationTests -v
 
   release-gates:
-    name: Universal DNA compiler 1.0 release gates
+    name: Epigenesis 1.0 release gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -60,6 +60,7 @@ jobs:
         run: |
           python tests/verify.py source-causality
           python tests/verify.py universal-translation
+          python tests/verify.py minimal-example
           python tests/verify.py contract-attacks
           python tests/verify.py resource-path-safety
       - name: Installed real-DNA compilation and replay

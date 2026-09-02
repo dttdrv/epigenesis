@@ -1,0 +1,32 @@
+{
+  "artifact_sha256": "77787ffa045ad5fbb323eec30cedb9e26610e1e86b738e7709ae2864876f69b9",
+  "format": "brainc.prediction-request",
+  "provider_manifest_sha256": "b04b1b93c5e52f279c0a8369506e2b74ce44f2dfe33f2a3aa03f61cad0e91abd",
+  "requested_outputs": [
+    {
+      "axes": [],
+      "id": "sequence.base-count",
+      "type": {
+        "dtype": "u64",
+        "shape": []
+      },
+      "unit": "org.ga4gh.base"
+    },
+    {
+      "axes": [],
+      "id": "sequence.unit-count",
+      "type": {
+        "dtype": "u64",
+        "shape": []
+      },
+      "unit": null
+    }
+  ],
+  "source": {
+    "artifact_sha256": "7199f7b99358c3c2fa8b8df8f44a5431dac722aefc1d5ff18de9fc52d4ac4ced",
+    "format": "brainc.source-descriptor",
+    "ir_sha256": "31d5029534286bb8d04768987fcaff37589c8e54283f48751f8093f698df21b2",
+    "version": 1
+  },
+  "version": 2
+}

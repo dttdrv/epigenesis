@@ -1,4 +1,4 @@
-"""Bind validated out-of-process frontend evidence into one compiler source."""
+"""Compile or admit an out-of-process DNA frontend into one typed source."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import stat
+import tempfile
 from typing import Any, Mapping
 
 from ._canonical import ContractError, artifact_digest, canonical_bytes, digest, loads
@@ -18,13 +19,21 @@ from .external_profile import (
     validate_profile_manifest,
     validate_source_descriptor,
     validate_validation_report,
+    seal_source_descriptor,
+    seal_validation_report,
+)
+from .external_runtime import (
+    ExternalExecutionError,
+    run_command,
+    snapshot_inputs,
 )
 
 
 FORMAT = "brainc.external-source-closure"
 VERSION = 1
+EXECUTABLE_VERSION = 2
 PROFILE = "external-dna-source/v1"
-MAX_CLOSURE_BYTES = MAX_PROFILE_BYTES + 2 * MAX_EVIDENCE_BYTES + 1024 * 1024
+MAX_CLOSURE_BYTES = MAX_PROFILE_BYTES + 3 * MAX_EVIDENCE_BYTES + 1024 * 1024
 PRODUCER = {
     "name": "brainc-external-source",
     "version": "1.0.0",
@@ -35,6 +44,24 @@ PRODUCER = {
         "emit-external-source-closure",
     ],
 }
+EXECUTABLE_PRODUCER = {
+    "name": "brainc-external-source",
+    "version": "1.0.0",
+    "passes": [
+        "validate-profile-manifest",
+        "snapshot-exact-inputs",
+        "execute-pinned-frontend",
+        "execute-pinned-validator",
+        "bind-external-replay",
+        "emit-external-source-closure",
+    ],
+}
+
+FRONTEND_REQUEST_FORMAT = "brainc.external-frontend-execution-request"
+FRONTEND_RESULT_FORMAT = "brainc.external-frontend-execution-result"
+VALIDATOR_REQUEST_FORMAT = "brainc.external-validator-execution-request"
+VALIDATOR_RESULT_FORMAT = "brainc.external-validator-execution-result"
+EXECUTION_PROTOCOL_VERSION = 1
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -95,6 +122,198 @@ def _seal_closure(evidence: dict[str, dict[str, Any]]) -> dict[str, Any]:
     )
 
 
+def _native_references(
+    manifest: dict[str, Any], native_artifacts: Any
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    declarations = manifest["profile_ir"]["native_artifacts"]
+    expected = {declaration["role"] for declaration in declarations}
+    artifacts = _keys(native_artifacts, expected, "frontend native_artifacts")
+    references: list[dict[str, Any]] = []
+    total = 0
+    normalized: dict[str, dict[str, Any]] = {}
+    for declaration in declarations:
+        role = declaration["role"]
+        artifact = artifacts[role]
+        if type(artifact) is not dict:
+            raise _fail(f"frontend native_artifacts.{role} must be an object")
+        raw = canonical_bytes(artifact)
+        total += len(raw)
+        if len(raw) > declaration["maximum_byte_length"]:
+            raise _fail(f"frontend native_artifacts.{role} exceeds its role ceiling")
+        if total > manifest["profile_ir"]["limits"]["maximum_total_native_bytes"]:
+            raise _fail("frontend native_artifacts exceed their cumulative byte ceiling")
+        if artifact.get("format") != declaration["format"] or (
+            type(artifact.get("version")) is not int
+            or artifact["version"] != declaration["version"]
+        ):
+            raise _fail(f"frontend native_artifacts.{role} has the wrong format/version")
+        ir_sha256 = _sha256(
+            artifact.get(declaration["ir_digest_field"]),
+            f"frontend native_artifacts.{role}.{declaration['ir_digest_field']}",
+        )
+        normalized[role] = copy.deepcopy(artifact)
+        references.append(
+            {
+                "role": role,
+                "format": declaration["format"],
+                "version": declaration["version"],
+                "schema_sha256": declaration["schema_sha256"],
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "byte_length": len(raw),
+                "ir_sha256": ir_sha256,
+            }
+        )
+    return references, normalized
+
+
+def _seal_executable_closure(
+    manifest: dict[str, Any],
+    descriptor: dict[str, Any],
+    report: dict[str, Any],
+    native_artifacts: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    closure_ir = {
+        "profile_manifest": manifest,
+        "source_descriptor": descriptor,
+        "validation_report": report,
+        "native_artifacts": native_artifacts,
+    }
+    core = {
+        "format": FORMAT,
+        "version": EXECUTABLE_VERSION,
+        "producer": copy.deepcopy(EXECUTABLE_PRODUCER),
+        "closure_ir": closure_ir,
+        "closure_ir_sha256": digest(closure_ir),
+    }
+    return validate_external_source_closure(
+        {**core, "artifact_sha256": digest(core)}
+    )
+
+
+def build_executable_external_source_closure(
+    profile_manifest: dict[str, Any],
+    *,
+    original_paths: Mapping[str, str | Path],
+    frontend_executable: str | Path,
+    validator_executable: str | Path,
+) -> dict[str, Any]:
+    """Execute a pinned frontend and validator over stable source snapshots."""
+
+    try:
+        manifest = validate_profile_manifest(profile_manifest)
+        if manifest["version"] != 2:
+            raise _fail("executable admission requires a version-2 profile manifest")
+        profile_ir = manifest["profile_ir"]
+        with tempfile.TemporaryDirectory(prefix="brainc-external-source-") as temporary:
+            references, snapshots = snapshot_inputs(
+                profile_ir["inputs"],
+                original_paths,
+                temporary,
+                maximum_total_bytes=profile_ir["limits"]["maximum_total_input_bytes"],
+            )
+            inputs = [
+                {**reference, "path": str(snapshots[reference["role"]])}
+                for reference in references
+            ]
+            frontend_result = run_command(
+                profile_ir["frontend"]["command"],
+                frontend_executable,
+                {
+                    "format": FRONTEND_REQUEST_FORMAT,
+                    "version": EXECUTION_PROTOCOL_VERSION,
+                    "profile_manifest": manifest,
+                    "inputs": inputs,
+                },
+                label="external frontend",
+                maximum_stdout_bytes=2 * MAX_EVIDENCE_BYTES,
+            )
+            frontend = _keys(
+                frontend_result,
+                {
+                    "format",
+                    "version",
+                    "profile_manifest_sha256",
+                    "native_artifacts",
+                    "records",
+                },
+                "external frontend result",
+            )
+            if (
+                frontend["format"] != FRONTEND_RESULT_FORMAT
+                or type(frontend["version"]) is not int
+                or frontend["version"] != EXECUTION_PROTOCOL_VERSION
+                or frontend["profile_manifest_sha256"] != manifest["artifact_sha256"]
+            ):
+                raise _fail("external frontend result identity is invalid")
+            native_references, native_artifacts = _native_references(
+                manifest, frontend["native_artifacts"]
+            )
+            descriptor = seal_source_descriptor(
+                manifest,
+                input_references=references,
+                native_artifact_references=native_references,
+                records=frontend["records"],
+            )
+            validator_result = run_command(
+                profile_ir["validator"]["command"],
+                validator_executable,
+                {
+                    "format": VALIDATOR_REQUEST_FORMAT,
+                    "version": EXECUTION_PROTOCOL_VERSION,
+                    "profile_manifest": manifest,
+                    "source_descriptor": descriptor,
+                    "inputs": inputs,
+                    "native_artifacts": native_artifacts,
+                },
+                label="external validator",
+                maximum_stdout_bytes=MAX_EVIDENCE_BYTES + MAX_PROFILE_BYTES,
+            )
+            validator = _keys(
+                validator_result,
+                {
+                    "format",
+                    "version",
+                    "profile_manifest_sha256",
+                    "source_descriptor_sha256",
+                    "input_references",
+                    "native_artifact_references",
+                    "records",
+                    "valid",
+                },
+                "external validator result",
+            )
+            expected_identity = {
+                "format": VALIDATOR_RESULT_FORMAT,
+                "version": EXECUTION_PROTOCOL_VERSION,
+                "profile_manifest_sha256": manifest["artifact_sha256"],
+                "source_descriptor_sha256": descriptor["artifact_sha256"],
+                "input_references": references,
+                "native_artifact_references": native_references,
+                "records": frontend["records"],
+                "valid": True,
+            }
+            if canonical_bytes(validator) != canonical_bytes(expected_identity):
+                raise _fail("external validator did not exactly replay the frontend result")
+            report = seal_validation_report(
+                manifest,
+                descriptor,
+                replayed_input_references=validator["input_references"],
+                replayed_native_artifact_references=validator[
+                    "native_artifact_references"
+                ],
+                replayed_records=validator["records"],
+            )
+            return _seal_executable_closure(
+                manifest, descriptor, report, native_artifacts
+            )
+    except ExternalSourceError:
+        raise
+    except (ContractError, ExternalExecutionError) as failure:
+        raise _fail(f"external executable profile failed: {failure}") from failure
+    except MemoryError as failure:
+        raise _fail("external executable profile exceeds the memory ceiling") from failure
+
+
 def build_external_source_closure(
     profile_manifest: dict[str, Any],
     source_descriptor: dict[str, Any],
@@ -103,7 +322,7 @@ def build_external_source_closure(
     original_payloads: Mapping[str, bytes],
     native_artifact_payloads: Mapping[str, bytes],
 ) -> dict[str, Any]:
-    """Validate exact evidence bytes and seal the portable compiler-side closure."""
+    """Validate exact attestation bytes and seal the compiler-side closure."""
 
     try:
         evidence = validate_external_evidence(
@@ -225,7 +444,7 @@ def build_external_source_closure_from_paths(
     original_paths: Mapping[str, str | Path],
     native_artifact_paths: Mapping[str, str | Path],
 ) -> dict[str, Any]:
-    """Stream exact external inputs and seal their data-only frontend evidence."""
+    """Stream exact external inputs and seal their data-only attestation."""
 
     try:
         manifest = validate_profile_manifest(profile_manifest)
@@ -322,13 +541,20 @@ def validate_external_source_closure(payload: dict[str, Any]) -> dict[str, Any]:
         },
         "external source closure",
     )
-    if item["format"] != FORMAT or type(item["version"]) is not int or item["version"] != VERSION:
+    if item["format"] != FORMAT or type(item["version"]) is not int or item["version"] not in {
+        VERSION,
+        EXECUTABLE_VERSION,
+    }:
         raise _fail("external source closure format/version is unsupported")
-    if type(item["producer"]) is not dict or item["producer"] != PRODUCER:
+    expected_producer = PRODUCER if item["version"] == VERSION else EXECUTABLE_PRODUCER
+    if type(item["producer"]) is not dict or item["producer"] != expected_producer:
         raise _fail("external source closure producer is unsupported")
+    closure_keys = {"profile_manifest", "source_descriptor", "validation_report"}
+    if item["version"] == EXECUTABLE_VERSION:
+        closure_keys.add("native_artifacts")
     closure = _keys(
         item["closure_ir"],
-        {"profile_manifest", "source_descriptor", "validation_report"},
+        closure_keys,
         "external source closure.closure_ir",
     )
     try:
@@ -342,6 +568,16 @@ def validate_external_source_closure(payload: dict[str, Any]) -> dict[str, Any]:
             descriptor,
             closure["validation_report"],
         )
+        if item["version"] == EXECUTABLE_VERSION:
+            if manifest["version"] != 2:
+                raise _fail("executable closure requires a version-2 profile manifest")
+            expected_native, _ = _native_references(
+                manifest, closure["native_artifacts"]
+            )
+            if expected_native != descriptor["frontend_ir"]["native_artifacts"]:
+                raise _fail("embedded native artifacts differ from the descriptor")
+        elif manifest["version"] != 1:
+            raise _fail("legacy closure requires a version-1 profile manifest")
     except ContractError as failure:
         raise _fail(f"external source closure evidence is invalid: {failure}") from failure
     if _sha256(item["closure_ir_sha256"], "closure_ir_sha256") != digest(closure):
@@ -395,6 +631,8 @@ def source_records(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
 __all__ = [
     "ExternalSourceError",
+    "EXECUTABLE_PRODUCER",
+    "EXECUTABLE_VERSION",
     "FORMAT",
     "MAX_CLOSURE_BYTES",
     "PRODUCER",
@@ -402,6 +640,7 @@ __all__ = [
     "VERSION",
     "build_external_source_closure",
     "build_external_source_closure_from_paths",
+    "build_executable_external_source_closure",
     "input_references",
     "profile_parameters",
     "source_records",

@@ -654,15 +654,26 @@ def _source_reference(descriptor: dict[str, Any]) -> dict[str, Any]:
 
 def _native_reference(role: str, artifact: dict[str, Any]) -> dict[str, Any]:
     expected_format, expected_version, ir_field = SOURCE_IDENTITIES[role]
+    valid_version = (
+        type(artifact.get("version")) is int
+        and (
+            artifact["version"]
+            in {
+                validator_external.CLOSURE_VERSION,
+                validator_external.EXECUTABLE_CLOSURE_VERSION,
+            }
+            if role == "external"
+            else artifact["version"] == expected_version
+        )
+    )
     if (
         artifact.get("format") != expected_format
-        or type(artifact.get("version")) is not int
-        or artifact["version"] != expected_version
+        or not valid_version
     ):
         raise _fail(f"native source artifact {role} has the wrong format/version")
     return {
         "format": expected_format,
-        "version": expected_version,
+        "version": artifact["version"],
         "artifact_sha256": _sha(
             artifact.get("artifact_sha256"),
             f"native source artifact {role}.artifact_sha256",
@@ -738,6 +749,7 @@ def _validate_native_sources(
     artifacts: dict[str, dict[str, Any]],
     source_inputs: dict[str, Any],
     native_artifact_paths: Any,
+    external_validator: Any,
 ) -> dict[str, Any] | None:
     source_ir = descriptor["source_ir"]
     profile = source_ir["profile"]
@@ -772,12 +784,11 @@ def _validate_native_sources(
             if artifacts["genbank"].get("profile") != GENBANK_PROFILE:
                 raise _fail("declared GenBank profile does not match native artifact")
         elif profile == EXTERNAL_PROFILE:
-            if native_artifact_paths is None:
-                raise _fail("external native artifact paths are required")
             external_report = validator_external.validate_external_source(
                 artifacts["external"],
                 original_paths=source_inputs,
                 native_artifact_paths=native_artifact_paths,
+                validator_executable=external_validator,
             )
         else:
             nested_profile = parameters["sequence_profile"]
@@ -810,6 +821,7 @@ def _validate_source_descriptor(
     artifacts_value: Any,
     source_inputs_value: Any,
     native_artifact_paths_value: Any = None,
+    external_validator_value: Any = None,
 ) -> tuple[
     dict[str, Any],
     dict[str, dict[str, Any]],
@@ -895,11 +907,14 @@ def _validate_source_descriptor(
             set(),
             "external native artifact paths",
         )
+    if source_ir["profile"] != EXTERNAL_PROFILE and external_validator_value is not None:
+        raise _fail("external validator is only valid for an external source profile")
     external_report = _validate_native_sources(
         descriptor,
         artifacts,
         source_inputs,
         native_artifact_paths_value,
+        external_validator_value,
     )
     if source_ir["profile"] == EXTERNAL_PROFILE:
         assert external_report is not None
@@ -1279,6 +1294,7 @@ def validate_development_bundle(
     *,
     source_inputs: Any,
     native_artifact_paths: Any = None,
+    external_validator: Any = None,
     blob_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Replay one compiler-only bundle from its original source evidence."""
@@ -1310,6 +1326,7 @@ def validate_development_bundle(
         native_artifacts,
         source_inputs,
         native_artifact_paths,
+        external_validator,
     )
     artifacts = _keys(
         artifacts_value,
@@ -1630,6 +1647,7 @@ def validate_development_paths(
     *,
     source_inputs: dict[str, str | Path],
     native_artifact_paths: dict[str, str | Path] | None = None,
+    external_validator: str | Path | None = None,
     blob_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Snapshot both closed bundles and replay compilation from source paths."""
@@ -1672,6 +1690,7 @@ def validate_development_paths(
         natives,
         source_inputs=original,
         native_artifact_paths=native_artifact_paths,
+        external_validator=external_validator,
         blob_root=blob_root,
     )
 
@@ -1735,6 +1754,11 @@ def main(argv: list[str] | None = None) -> int:
         help="external native artifact path; repeat for each declared native role",
     )
     parser.add_argument("--blob-root", type=Path)
+    parser.add_argument(
+        "--external-validator",
+        type=Path,
+        help="pinned validator executable required by a version-2 external source",
+    )
     parser.add_argument("-o", "--output", type=Path)
     arguments = parser.parse_args(argv)
 
@@ -1754,6 +1778,7 @@ def main(argv: list[str] | None = None) -> int:
             arguments.development_bundle,
             source_inputs=source_inputs,
             native_artifact_paths=native_inputs or None,
+            external_validator=arguments.external_validator,
             blob_root=arguments.blob_root,
         )
     except DevelopmentValidationError as failure:

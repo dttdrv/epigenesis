@@ -1,0 +1,38 @@
+{
+  "artifact_sha256": "d29df3c0880ae2488c4c2d722969ad6143992ee879bc3c16cd0be12a8a1138bd",
+  "contract": {
+    "abi_major": 1,
+    "edge_schemas": [],
+    "id": "org.epigenesis.example",
+    "opsets": [
+      {
+        "domain": "io.github.dttdrv.epigenesis.dev",
+        "version": 1
+      }
+    ],
+    "ports": [],
+    "rules": [],
+    "unit_schemas": [
+      {
+        "fields": [
+          {
+            "id": "base-count",
+            "mutability": "constant",
+            "numeric": {
+              "kind": "integer"
+            },
+            "type": {
+              "dtype": "u64",
+              "shape": []
+            },
+            "unit": "org.ga4gh.base"
+          }
+        ],
+        "id": "sequence-summary"
+      }
+    ]
+  },
+  "contract_sha256": "def8197720719182f2f6a0b58a010651ef9ac6ef77767e42dc823a81eeb6c3c0",
+  "format": "brainc.target-contract",
+  "version": 1
+}

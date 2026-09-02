@@ -24,6 +24,7 @@ from brainc.source import (
     RAW_PROFILE,
     REFERENCE_FASTA_PROFILE,
     SourceBundle,
+    compile_external_source_executable,
     compile_external_source_paths,
     compile_source,
 )
@@ -47,6 +48,7 @@ from brainc.validator_development import (
     validate_development_report,
 )
 from tests.test_external_profile import FASTQ, NATIVE_INDEX, _closure
+from tests.test_external_execution import FRONTEND, VALIDATOR, _manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,11 +93,13 @@ class _Fixture:
         external_blob: bool = False,
         source: SourceBundle | None = None,
         native_inputs: dict[str, Path] | None = None,
+        external_validator: Path | None = None,
     ) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         self.source_inputs = {"sequence": FASTA} if inputs is None else inputs
         self.native_inputs = {} if native_inputs is None else native_inputs
+        self.external_validator = external_validator
         self.source = source or compile_source(
             profile,
             self.source_inputs,
@@ -241,6 +245,7 @@ class _Fixture:
             self.development_directory,
             source_inputs=self.source_inputs,
             native_artifact_paths=self.native_inputs or None,
+            external_validator=self.external_validator,
             blob_root=self.blob_root,
         )
 
@@ -267,6 +272,29 @@ def _external_fixture(root: Path) -> tuple[_Fixture, dict]:
             inputs=original_paths,
             source=source,
             native_inputs=native_paths,
+        ),
+        manifest,
+    )
+
+
+def _executable_external_fixture(root: Path) -> tuple[_Fixture, dict]:
+    root.mkdir(parents=True, exist_ok=True)
+    reads = root / "reads.fastq"
+    reads.write_bytes(FASTQ)
+    manifest = _manifest()
+    original_paths = {"reads": reads}
+    source = compile_external_source_executable(
+        manifest,
+        original_paths=original_paths,
+        frontend_executable=FRONTEND,
+        validator_executable=VALIDATOR,
+    )
+    return (
+        _Fixture(
+            root,
+            inputs=original_paths,
+            source=source,
+            external_validator=VALIDATOR,
         ),
         manifest,
     )
@@ -608,6 +636,34 @@ class DevelopmentValidatorTests(unittest.TestCase):
             )
         self.assertEqual(status, 0)
         self.assertEqual(json.loads(stdout.getvalue()), path_report)
+
+    def test_executable_external_profile_is_rerun_for_final_validation(self) -> None:
+        fixture, _ = _executable_external_fixture(self.root / "external-executable")
+        report = fixture.validate_paths()
+        self.assertTrue(report["valid"])
+        self.assertEqual(report["inputs"]["source_profile"], EXTERNAL_PROFILE)
+
+        with self.assertRaisesRegex(DevelopmentValidationError, "requires"):
+            validate_development_paths(
+                fixture.source_directory,
+                fixture.development_directory,
+                source_inputs=fixture.source_inputs,
+            )
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            status = main(
+                [
+                    str(fixture.source_directory),
+                    str(fixture.development_directory),
+                    "--source-input",
+                    f"reads={fixture.source_inputs['reads']}",
+                    "--external-validator",
+                    str(VALIDATOR),
+                ]
+            )
+        self.assertEqual(status, 0)
+        self.assertTrue(json.loads(stdout.getvalue())["valid"])
 
     def test_external_profile_rejects_missing_detached_and_tampered_evidence(self) -> None:
         fixture, _ = _external_fixture(self.root / "external-attacks")

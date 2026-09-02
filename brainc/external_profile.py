@@ -1,7 +1,7 @@
-"""Closed data ABI for out-of-process DNA source frontends.
+"""Closed manifests and evidence for external DNA source frontends.
 
-This module validates evidence.  It never discovers, imports, or runs frontend
-or validator code; executable selection remains an explicit caller action.
+Version 1 is data-only. Version 2 binds explicitly selected frontend and
+validator executables; execution is implemented by :mod:`external_runtime`.
 """
 
 from __future__ import annotations
@@ -17,13 +17,16 @@ from ._io import MAX_IDENTIFIER_BYTES, MAX_JSON_BYTES, MAX_STRING_BYTES
 
 
 ABI = "brainc.external-frontend-data/v1"
+EXECUTABLE_ABI = "brainc.external-frontend-executable/v2"
 PROFILE_FORMAT = "brainc.external-frontend-profile"
 PROFILE_VERSION = 1
+EXECUTABLE_PROFILE_VERSION = 2
 SOURCE_FORMAT = "brainc.external-source-descriptor"
 SOURCE_VERSION = 1
 VALIDATION_FORMAT = "brainc.external-frontend-validation"
 VALIDATION_VERSION = 1
 VALIDATOR_PROTOCOL = "brainc.external-frontend-validator/v1"
+FRONTEND_PROTOCOL = "brainc.external-frontend-execution/v1"
 RECORD_CATALOG_SCHEMA = "brainc.sequence-record-catalog/v1"
 
 MAX_PROFILE_BYTES = 1 * 1024 * 1024
@@ -181,22 +184,47 @@ def _role_declarations(value: Any, label: str) -> list[dict[str, Any]]:
     return result
 
 
-def _profile_ir(value: Any) -> dict[str, Any]:
+def _command(value: Any, label: str, *, executable: bool) -> dict[str, Any]:
+    expected = {
+        "id",
+        "distribution",
+        "version",
+        "distribution_sha256",
+        "executable_sha256",
+    }
+    if executable:
+        expected.add("runtime")
+    command = _keys(value, expected, label)
+    _text(command["id"], f"{label}.id", identifier=True)
+    _text(command["distribution"], f"{label}.distribution", identifier=True)
+    _text(command["version"], f"{label}.version")
+    _sha256(command["distribution_sha256"], f"{label}.distribution_sha256")
+    _sha256(command["executable_sha256"], f"{label}.executable_sha256")
+    if executable and command["runtime"] not in {"native", "python"}:
+        raise _fail(f"{label}.runtime must be native or python")
+    return command
+
+
+def _profile_ir(value: Any, manifest_version: int = PROFILE_VERSION) -> dict[str, Any]:
+    executable = manifest_version == EXECUTABLE_PROFILE_VERSION
+    expected = {
+        "abi",
+        "profile",
+        "grammar",
+        "inputs",
+        "native_artifacts",
+        "catalog",
+        "limits",
+        "validator",
+    }
+    if executable:
+        expected.add("frontend")
     item = _keys(
         value,
-        {
-            "abi",
-            "profile",
-            "grammar",
-            "inputs",
-            "native_artifacts",
-            "catalog",
-            "limits",
-            "validator",
-        },
+        expected,
         "profile_ir",
     )
-    if item["abi"] != ABI:
+    if item["abi"] != (EXECUTABLE_ABI if executable else ABI):
         raise _fail("profile_ir.abi is unsupported")
 
     profile = _keys(item["profile"], {"id", "version"}, "profile_ir.profile")
@@ -265,52 +293,57 @@ def _profile_ir(value: Any) -> dict[str, Any]:
         raise _fail("an input role byte ceiling exceeds the cumulative input ceiling")
     if any(member["maximum_byte_length"] > total_native for member in native):
         raise _fail("a native role byte ceiling exceeds the cumulative native ceiling")
+    if executable and total_native > MAX_EVIDENCE_BYTES:
+        raise _fail("executable profile native bytes exceed the closure ceiling")
+
+    if executable:
+        frontend = _keys(
+            item["frontend"], {"protocol", "command"}, "profile_ir.frontend"
+        )
+        if frontend["protocol"] != FRONTEND_PROTOCOL:
+            raise _fail("profile_ir.frontend.protocol is unsupported")
+        frontend_command = _command(
+            frontend["command"],
+            "profile_ir.frontend.command",
+            executable=True,
+        )
 
     validator = _keys(
         item["validator"], {"protocol", "command"}, "profile_ir.validator"
     )
     if validator["protocol"] != VALIDATOR_PROTOCOL:
         raise _fail("profile_ir.validator.protocol is unsupported")
-    command = _keys(
+    validator_command = _command(
         validator["command"],
-        {
-            "id",
-            "distribution",
-            "version",
-            "distribution_sha256",
-            "executable_sha256",
-        },
         "profile_ir.validator.command",
+        executable=executable,
     )
-    _text(command["id"], "profile_ir.validator.command.id", identifier=True)
-    _text(
-        command["distribution"],
-        "profile_ir.validator.command.distribution",
-        identifier=True,
-    )
-    _text(command["version"], "profile_ir.validator.command.version")
-    _sha256(
-        command["distribution_sha256"],
-        "profile_ir.validator.command.distribution_sha256",
-    )
-    _sha256(
-        command["executable_sha256"],
-        "profile_ir.validator.command.executable_sha256",
-    )
+    if executable and (
+        frontend_command["executable_sha256"]
+        == validator_command["executable_sha256"]
+    ):
+        raise _fail("frontend and validator executable digests must be distinct")
     _bounded_artifact(item, MAX_PROFILE_BYTES, "profile_ir")
     return item
 
 
-def seal_profile_manifest(profile_ir: Mapping[str, Any]) -> dict[str, Any]:
+def seal_profile_manifest(
+    profile_ir: Mapping[str, Any], *, version: int = PROFILE_VERSION
+) -> dict[str, Any]:
     """Seal a caller-authored profile manifest after exact contract validation."""
 
     if not isinstance(profile_ir, Mapping):
         raise _fail("profile_ir must be a mapping")
+    if type(version) is not int or version not in {
+        PROFILE_VERSION,
+        EXECUTABLE_PROFILE_VERSION,
+    }:
+        raise _fail("unsupported profile manifest version")
     normalized = copy.deepcopy(dict(profile_ir))
-    _profile_ir(normalized)
+    _profile_ir(normalized, version)
     core = {
         "format": PROFILE_FORMAT,
-        "version": PROFILE_VERSION,
+        "version": version,
         "profile_ir": normalized,
         "profile_ir_sha256": digest(normalized),
     }
@@ -332,11 +365,11 @@ def validate_profile_manifest(payload: dict[str, Any]) -> dict[str, Any]:
         },
         "profile manifest",
     )
-    if item["format"] != PROFILE_FORMAT or (
-        type(item["version"]) is not int or item["version"] != PROFILE_VERSION
-    ):
+    if item["format"] != PROFILE_FORMAT or type(item["version"]) is not int or item[
+        "version"
+    ] not in {PROFILE_VERSION, EXECUTABLE_PROFILE_VERSION}:
         raise _fail("unsupported profile manifest format/version")
-    profile_ir = _profile_ir(item["profile_ir"])
+    profile_ir = _profile_ir(item["profile_ir"], item["version"])
     if _sha256(item["profile_ir_sha256"], "profile_ir_sha256") != digest(profile_ir):
         raise _fail("profile_ir_sha256 does not match profile_ir")
     _artifact_digest(item, "profile manifest")
@@ -656,7 +689,7 @@ def seal_validation_report(
     replayed_native_artifact_references: list[dict[str, Any]],
     replayed_records: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Seal the result of a separately run validator's original-byte replay."""
+    """Seal caller-attested references from an external validator run."""
 
     manifest = validate_profile_manifest(profile_manifest)
     descriptor = validate_source_descriptor(manifest, source_descriptor)
@@ -823,6 +856,8 @@ def validate_external_evidence(
 
 __all__ = [
     "ABI",
+    "EXECUTABLE_ABI",
+    "EXECUTABLE_PROFILE_VERSION",
     "ExternalProfileError",
     "MAX_EVIDENCE_BYTES",
     "MAX_PROFILE_BYTES",
@@ -831,6 +866,7 @@ __all__ = [
     "MAX_ROLES",
     "PROFILE_FORMAT",
     "PROFILE_VERSION",
+    "FRONTEND_PROTOCOL",
     "RECORD_CATALOG_SCHEMA",
     "SOURCE_FORMAT",
     "SOURCE_VERSION",

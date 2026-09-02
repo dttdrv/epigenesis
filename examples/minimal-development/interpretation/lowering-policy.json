@@ -1,0 +1,36 @@
+{
+  "artifact_sha256": "bbc44af7d5d3b11d7a12105d83d15126cf6a4d605820ac35c154f6438dcc1c65",
+  "format": "brainc.lowering-policy",
+  "id": "org.epigenesis.example",
+  "operations": [
+    {
+      "count": "sequence.unit-count",
+      "id": "create.sequence-summary",
+      "initializers": [
+        {
+          "field": "base-count",
+          "tensor": "sequence.base-count"
+        }
+      ],
+      "op": "io.github.dttdrv.epigenesis.dev.unit.create",
+      "schema": "sequence-summary",
+      "version": 1
+    }
+  ],
+  "target": {
+    "abi_major": 1,
+    "contract_sha256": "def8197720719182f2f6a0b58a010651ef9ac6ef77767e42dc823a81eeb6c3c0",
+    "id": "org.epigenesis.example"
+  },
+  "values": [
+    {
+      "from_output": "sequence.base-count",
+      "id": "sequence.base-count"
+    },
+    {
+      "from_output": "sequence.unit-count",
+      "id": "sequence.unit-count"
+    }
+  ],
+  "version": 2
+}

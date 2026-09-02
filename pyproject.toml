@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "epigenesis-compiler"
 version = "1.0.0"
-description = "Universal DNA translation compiler to Development Module IR"
+description = "Universal DNA translation compiler targeting Development Module IR"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []

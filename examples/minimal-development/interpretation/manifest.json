@@ -1,0 +1,36 @@
+{
+  "accepts": [
+    "brainc.source-descriptor/v1;profile=fasta-reference-dna/v1"
+  ],
+  "artifact_sha256": "b04b1b93c5e52f279c0a8369506e2b74ce44f2dfe33f2a3aa03f61cad0e91abd",
+  "format": "brainc.provider-manifest",
+  "model_identity": {
+    "kind": "content-sha256",
+    "value": "f3dcdf6e40e38f697cce41435e8e6c1a29d4c28520d5ca14ddffcb24ce6d1c99"
+  },
+  "outputs": [
+    {
+      "axes": [],
+      "id": "sequence.base-count",
+      "type": {
+        "dtype": "u64",
+        "shape": []
+      },
+      "unit": "org.ga4gh.base"
+    },
+    {
+      "axes": [],
+      "id": "sequence.unit-count",
+      "type": {
+        "dtype": "u64",
+        "shape": []
+      },
+      "unit": null
+    }
+  ],
+  "provider": {
+    "name": "org.epigenesis.example",
+    "version": "1"
+  },
+  "version": 2
+}

@@ -1,4 +1,4 @@
-"""Universal DNA source admission through explicit profile contracts."""
+"""DNA source admission through explicit profile contracts."""
 
 from __future__ import annotations
 
@@ -51,12 +51,14 @@ from .insdc import (
 )
 from .external_source import (
     FORMAT as EXTERNAL_FORMAT,
+    EXECUTABLE_VERSION as EXTERNAL_EXECUTABLE_VERSION,
     MAX_CLOSURE_BYTES as EXTERNAL_OUTPUT_BYTES,
     PROFILE as EXTERNAL_PROFILE,
     VERSION as EXTERNAL_VERSION,
     ExternalSourceError,
     build_external_source_closure,
     build_external_source_closure_from_paths,
+    build_executable_external_source_closure,
     input_references as external_input_references,
     profile_parameters as external_profile_parameters,
     source_records as external_source_records,
@@ -286,6 +288,7 @@ def _artifact_reference(payload: dict[str, Any]) -> dict[str, Any]:
         (COLLECTION_FORMAT, COLLECTION_VERSION): "collection_ir_sha256",
         (REFERENCE_FORMAT, REFERENCE_VERSION): "catalog_sha256",
         (EXTERNAL_FORMAT, EXTERNAL_VERSION): "closure_ir_sha256",
+        (EXTERNAL_FORMAT, EXTERNAL_EXECUTABLE_VERSION): "closure_ir_sha256",
         (GENBANK_FORMAT, GENBANK_VERSION): "bio_ir_sha256",
         (GFF3_FORMAT, GFF3_VERSION): "bio_ir_sha256",
     }
@@ -386,7 +389,10 @@ def _artifact_bytes(payload: dict[str, Any]) -> bytes:
         maximum, depth, members = GENBANK_OUTPUT_BYTES, GENBANK_JSON_DEPTH, MAX_JSON_MEMBERS
     elif identity == (REFERENCE_FORMAT, REFERENCE_VERSION):
         maximum, depth, members = GFF3_OUTPUT_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
-    elif identity == (EXTERNAL_FORMAT, EXTERNAL_VERSION):
+    elif identity in {
+        (EXTERNAL_FORMAT, EXTERNAL_VERSION),
+        (EXTERNAL_FORMAT, EXTERNAL_EXECUTABLE_VERSION),
+    }:
         maximum, depth, members = EXTERNAL_OUTPUT_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
     else:
         maximum, depth, members = MAX_JSON_BYTES, MAX_JSON_DEPTH, MAX_JSON_MEMBERS
@@ -542,7 +548,7 @@ def compile_external_source(
     original_payloads: Mapping[str, bytes],
     native_artifact_payloads: Mapping[str, bytes],
 ) -> SourceBundle:
-    """Admit one explicitly selected, independently replayed external frontend."""
+    """Admit one explicitly selected, caller-attested external frontend."""
 
     try:
         external = build_external_source_closure(
@@ -565,7 +571,7 @@ def compile_external_source_paths(
     original_paths: Mapping[str, str | Path],
     native_artifact_paths: Mapping[str, str | Path],
 ) -> SourceBundle:
-    """Admit external frontend evidence while streaming original source paths."""
+    """Admit a caller-attested frontend while streaming original source paths."""
 
     try:
         external = build_external_source_closure_from_paths(
@@ -574,6 +580,27 @@ def compile_external_source_paths(
             validation_report,
             original_paths=original_paths,
             native_artifact_paths=native_artifact_paths,
+        )
+    except ExternalSourceError as failure:
+        raise _fail(str(failure)) from failure
+    return _external_source_bundle(external)
+
+
+def compile_external_source_executable(
+    profile_manifest: dict[str, Any],
+    *,
+    original_paths: Mapping[str, str | Path],
+    frontend_executable: str | Path,
+    validator_executable: str | Path,
+) -> SourceBundle:
+    """Compile any conforming DNA grammar through two pinned executables."""
+
+    try:
+        external = build_executable_external_source_closure(
+            profile_manifest,
+            original_paths=original_paths,
+            frontend_executable=frontend_executable,
+            validator_executable=validator_executable,
         )
     except ExternalSourceError as failure:
         raise _fail(str(failure)) from failure
@@ -644,7 +671,16 @@ def _validate_artifact_references(value: Any, roles: tuple[str, ...]) -> None:
             "genbank": (GENBANK_FORMAT, GENBANK_VERSION),
             "annotation": (GFF3_FORMAT, GFF3_VERSION),
         }[role]
-        if item["format"] != expected[0] or type(item["version"]) is not int or item["version"] != expected[1]:
+        valid_identity = (
+            item["format"] == expected[0]
+            and type(item["version"]) is int
+            and (
+                item["version"] in {EXTERNAL_VERSION, EXTERNAL_EXECUTABLE_VERSION}
+                if role == "external"
+                else item["version"] == expected[1]
+            )
+        )
+        if not valid_identity:
             raise _fail(f"source_ir.artifacts.{role} has the wrong format/version")
         sha256(item["artifact_sha256"], f"source_ir.artifacts.{role}.artifact_sha256")
         sha256(item["ir_sha256"], f"source_ir.artifacts.{role}.ir_sha256")
@@ -1047,6 +1083,7 @@ __all__ = [
     "VERSION",
     "compile_source",
     "compile_external_source",
+    "compile_external_source_executable",
     "compile_external_source_paths",
     "load_source_bundle",
     "validate_source_bundle",

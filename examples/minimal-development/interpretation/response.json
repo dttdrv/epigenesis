@@ -1,0 +1,46 @@
+{
+  "artifact_sha256": "1adf34f288bf2817074256e3fe6c913b6e9eb4a441833b11e54c018bb03bcc03",
+  "format": "brainc.prediction-response",
+  "model_identity": {
+    "kind": "content-sha256",
+    "value": "f3dcdf6e40e38f697cce41435e8e6c1a29d4c28520d5ca14ddffcb24ce6d1c99"
+  },
+  "outputs": [
+    {
+      "axes": [],
+      "id": "sequence.base-count",
+      "storage": {
+        "byte_length": 8,
+        "data": "DwAAAAAAAAA=",
+        "kind": "inline-base64",
+        "sha256": "a4bd89d0c3e16ec03c5436d0b9b8eb1a934beeac808447459e5ee2f9a23e97d7"
+      },
+      "type": {
+        "dtype": "u64",
+        "shape": []
+      },
+      "unit": "org.ga4gh.base"
+    },
+    {
+      "axes": [],
+      "id": "sequence.unit-count",
+      "storage": {
+        "byte_length": 8,
+        "data": "AQAAAAAAAAA=",
+        "kind": "inline-base64",
+        "sha256": "7c9fa136d4413fa6173637e883b6998d32e1d675f88cddff9dcbcf331820f4b8"
+      },
+      "type": {
+        "dtype": "u64",
+        "shape": []
+      },
+      "unit": null
+    }
+  ],
+  "provider": {
+    "name": "org.epigenesis.example",
+    "version": "1"
+  },
+  "request_artifact_sha256": "77787ffa045ad5fbb323eec30cedb9e26610e1e86b738e7709ae2864876f69b9",
+  "version": 2
+}

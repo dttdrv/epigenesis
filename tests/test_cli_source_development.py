@@ -24,6 +24,7 @@ from brainc.source import (
 from brainc.v2 import V2Error, compile_module
 from tests.test_development_bundle import _Chain, _seal
 from tests.test_external_profile import FASTQ, NATIVE_INDEX, _closure
+from tests.test_external_execution import FRONTEND, VALIDATOR, _manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +45,10 @@ class SourceDevelopmentCliTests(unittest.TestCase):
         self.assertIs(
             brainc.compile_external_source_paths,
             source.compile_external_source_paths,
+        )
+        self.assertIs(
+            brainc.compile_external_source_executable,
+            source.compile_external_source_executable,
         )
         self.assertIs(
             brainc.compile_development,
@@ -273,6 +278,81 @@ class SourceDevelopmentCliTests(unittest.TestCase):
                 {path.name for path in output.iterdir()},
                 {"source.json", "external.json"},
             )
+
+    def test_compile_external_source_cli_executes_pinned_tools(self) -> None:
+        manifest = _manifest()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest_path = root / "profile.json"
+            source = root / "reads.fastq"
+            output = root / "external-source"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            source.write_bytes(FASTQ)
+            with redirect_stdout(io.StringIO()):
+                result = main(
+                    [
+                        "compile-external-source",
+                        "--profile-manifest",
+                        str(manifest_path),
+                        "--frontend-executable",
+                        str(FRONTEND),
+                        "--validator-executable",
+                        str(VALIDATOR),
+                        "--source-input",
+                        f"reads={source}",
+                        "--output",
+                        str(output),
+                    ]
+                )
+            self.assertEqual(result, 0)
+            self.assertEqual(load_source_bundle(output).profile, EXTERNAL_PROFILE)
+            self.assertEqual(
+                {path.name for path in output.iterdir()},
+                {"source.json", "external.json"},
+            )
+
+    def test_compile_external_source_cli_rejects_mixed_modes(self) -> None:
+        manifest, descriptor, report, _, _, _ = _closure()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest_path = root / "profile.json"
+            descriptor_path = root / "descriptor.json"
+            report_path = root / "report.json"
+            source = root / "reads.fastq"
+            native = root / "native.json"
+            for path, value in (
+                (manifest_path, manifest),
+                (descriptor_path, descriptor),
+                (report_path, report),
+            ):
+                path.write_text(json.dumps(value), encoding="utf-8")
+            source.write_bytes(FASTQ)
+            native.write_bytes(NATIVE_INDEX)
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                result = main(
+                    [
+                        "compile-external-source",
+                        "--profile-manifest",
+                        str(manifest_path),
+                        "--frontend-executable",
+                        str(FRONTEND),
+                        "--validator-executable",
+                        str(VALIDATOR),
+                        "--source-descriptor",
+                        str(descriptor_path),
+                        "--validation-report",
+                        str(report_path),
+                        "--native-artifact",
+                        f"read-index={native}",
+                        "--source-input",
+                        f"reads={source}",
+                        "--output",
+                        str(root / "rejected"),
+                    ]
+                )
+            self.assertEqual(result, 2)
+            self.assertIn("does not accept legacy", stderr.getvalue())
 
     def test_compile_development_publishes_the_exact_flat_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

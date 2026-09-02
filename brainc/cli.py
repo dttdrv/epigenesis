@@ -34,6 +34,7 @@ from .source import (
     RAW_PROFILE,
     REFERENCE_FASTA_PROFILE,
     ScaleLimits,
+    compile_external_source_executable,
     compile_external_source_paths,
     compile_source,
 )
@@ -135,11 +136,13 @@ def _parser() -> argparse.ArgumentParser:
     source.add_argument("-o", "--output", required=True)
     external_source = sub.add_parser(
         "compile-external-source",
-        help="admit an exact data-only frontend evidence closure",
+        help="compile a DNA grammar through pinned external tools",
     )
     external_source.add_argument("--profile-manifest", required=True)
-    external_source.add_argument("--source-descriptor", required=True)
-    external_source.add_argument("--validation-report", required=True)
+    external_source.add_argument("--frontend-executable")
+    external_source.add_argument("--validator-executable")
+    external_source.add_argument("--source-descriptor")
+    external_source.add_argument("--validation-report")
     external_source.add_argument(
         "--source-input",
         action="append",
@@ -151,7 +154,7 @@ def _parser() -> argparse.ArgumentParser:
         "--native-artifact",
         action="append",
         type=_role_path_argument,
-        required=True,
+        default=[],
         metavar="ROLE=PATH",
     )
     external_source.add_argument("-o", "--output", required=True)
@@ -502,28 +505,54 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
         elif args.command == "compile-external-source":
-            paths = compile_external_source_paths(
-                _external_json(
-                    args.profile_manifest,
-                    "external profile manifest",
-                    MAX_PROFILE_BYTES,
-                ),
-                _external_json(
-                    args.source_descriptor,
-                    "external source descriptor",
-                    MAX_EVIDENCE_BYTES,
-                ),
-                _external_json(
-                    args.validation_report,
-                    "external validation report",
-                    MAX_EVIDENCE_BYTES,
-                ),
-                original_paths=_role_paths(args.source_input, "source input"),
-                native_artifact_paths=_role_paths(
-                    args.native_artifact,
-                    "native artifact",
-                ),
-            ).save(args.output)
+            manifest = _external_json(
+                args.profile_manifest,
+                "external profile manifest",
+                MAX_PROFILE_BYTES,
+            )
+            source_inputs = _role_paths(args.source_input, "source input")
+            executable_mode = bool(
+                args.frontend_executable or args.validator_executable
+            )
+            if executable_mode:
+                if not args.frontend_executable or not args.validator_executable:
+                    raise ValueError(
+                        "executable mode requires both --frontend-executable and --validator-executable"
+                    )
+                if args.source_descriptor or args.validation_report or args.native_artifact:
+                    raise ValueError(
+                        "executable mode does not accept legacy descriptor, report, or native-artifact arguments"
+                    )
+                bundle = compile_external_source_executable(
+                    manifest,
+                    original_paths=source_inputs,
+                    frontend_executable=args.frontend_executable,
+                    validator_executable=args.validator_executable,
+                )
+            else:
+                if not args.source_descriptor or not args.validation_report or not args.native_artifact:
+                    raise ValueError(
+                        "legacy mode requires --source-descriptor, --validation-report, and --native-artifact"
+                    )
+                bundle = compile_external_source_paths(
+                    manifest,
+                    _external_json(
+                        args.source_descriptor,
+                        "external source descriptor",
+                        MAX_EVIDENCE_BYTES,
+                    ),
+                    _external_json(
+                        args.validation_report,
+                        "external validation report",
+                        MAX_EVIDENCE_BYTES,
+                    ),
+                    original_paths=source_inputs,
+                    native_artifact_paths=_role_paths(
+                        args.native_artifact,
+                        "native artifact",
+                    ),
+                )
+            paths = bundle.save(args.output)
             print(
                 json.dumps(
                     {

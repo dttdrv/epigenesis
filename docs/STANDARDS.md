@@ -5,8 +5,9 @@ source profile with defined grammar, identity rules, limits, and versioned IR.
 Built-in raw DNA, FASTA, reference FASTA, GenBank, and bounded structural GFF3
 frontends feed one source-descriptor contract. The GenBank profile carries a
 packaged authority pin; raw/FASTA/GFF3 grammars are project-defined profiles.
-The data-only external ABI binds caller-supplied grammar authorities and
-manifest-qualified validation evidence for additional DNA-bearing profiles.
+The version-2 executable external ABI binds caller-supplied grammar authorities
+to digest-pinned frontend and validator programs for additional DNA-bearing
+profiles. Version-1 data-only evidence remains a compatibility path.
 
 ## GenBank v2 authority chain
 
@@ -29,8 +30,8 @@ The packaged authority manifest records the exact retrieved bytes and digests:
 
 The manifest itself is sealed as
 `6dc3658a5f7d6a774ce9cd08ff6dc5327cbef8a9951c7679fd9a34650f912bf9`.
-Compilation and independent validation both verify that pin before accepting the
-profile.
+Compilation and producer-isolated validation both verify that pin before
+accepting the profile.
 
 ## Implemented standard mapping
 
@@ -98,14 +99,14 @@ identity algorithms in the GenBank frontend. Adapter artifact identities,
 dictionaries, and masks remain in the Epigenesis ABI. Refget retrieval and
 Sequence Collections service endpoints remain orthogonal transport services.
 
-## Universal compiler architecture
+## Extensible source-profile architecture
 
-“Universal” describes explicit profile dispatch: shipped built-ins and
-manifest-qualified external DNA-bearing profiles compile into closed IRs that
-can be linked and lowered through one target contract. Independent validation
-reparses built-in sources. For an external profile, Epigenesis verifies the
-manifest, supplied validation report, original/native bytes, sequence catalog,
-and digest closure without executing the external grammar or validator.
+Shipped built-ins and manifest-qualified external DNA-bearing profiles compile
+into closed IRs that can be linked and lowered through one target contract.
+Producer-isolated validation reparses built-in sources. For a version-2
+external profile, Epigenesis snapshots original bytes, executes the pinned
+frontend and separate validator, binds native JSON and the sequence catalog,
+and reruns the validator during final validation.
 
 A source frontend qualifies for this architecture when it provides:
 
@@ -117,7 +118,7 @@ A source frontend qualifies for this architecture when it provides:
    applicable;
 5. a nonempty ordered sequence catalog with lengths, SHA-256, and refget IDs;
 6. data-independent dispatch and finite resource limits; and
-7. deterministic native artifacts plus validation evidence independently
+7. deterministic native artifacts plus a caller attestation whose integrity is
    checkable from exact bytes.
 
 ## Shipped and external-profile formats
@@ -150,7 +151,8 @@ GFF3 and retained feature-graph paths consume Sequence Collection v1.
 Epigenesis 1.0 is a deterministic biological-source compiler. Its GenBank
 profile is packaged-authority-pinned; other built-ins use project-defined
 grammar versions; external profiles bind declared authorities and
-manifest-qualified validation evidence. The independent validator reparses
-built-in sources and verifies external source closures from exact evidence.
+manifest-qualified caller attestations. The producer-isolated validator
+reparses built-in sources and verifies external source closures from exact
+bytes and attestation integrity.
 
 Licensed under Apache-2.0.

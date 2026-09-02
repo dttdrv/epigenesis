@@ -3,9 +3,9 @@
 Epigenesis treats biological records as source programs. Each built-in source
 profile owns a finite grammar and native IR; the compiler then checks a declared
 interpretation, target contract, and lowering policy before linking a typed
-Development Module bundle. Independent validation reparses built-in source
-bytes. External profiles instead supply a manifest-qualified validation report,
-and Epigenesis independently verifies its exact manifest, original/native bytes,
+Development Module bundle. Producer-isolated validation reparses built-in
+source bytes. External profiles instead supply a manifest-qualified caller
+attestation, and Epigenesis verifies its exact manifest, original/native bytes,
 sequence catalog, and digest closure.
 
 The closest direct precedent is Cai et al. (2009). Their compiler lexed and
@@ -17,8 +17,8 @@ Epigenesis's contribution is the combination of:
 
 > Multiple explicit DNA-bearing source profiles, content-identified
 > interpretation inputs, one typed Development Module contract, exact
-> reference-only linking, independent built-in reparse, and manifest-qualified
-> external evidence verification.
+> reference-only linking, producer-isolated built-in reparse, and
+> manifest-qualified external attestation verification.
 
 In the primary works reviewed below, no system combines those boundaries in one
 compiler. This is a scoped comparison of the cited corpus, not an exhaustive
@@ -44,27 +44,27 @@ Epigenesis separates five compiler concerns:
 2. **Native representation.** Parsing binds exact source identity, ordering,
    normalized sequence or annotation structure, and source maps where the
    selected profile emits them.
-3. **External evidence boundary.** An external frontend runs outside Epigenesis
-   and supplies a validation report. The core verifies the report and exact byte
-   closure without loading frontend code or executing the declared grammar.
+3. **Executable external grammar boundary.** Epigenesis runs an explicitly
+   selected, digest-pinned frontend and a separate validator over stable source
+   snapshots, then preserves their native JSON and common sequence catalog.
 4. **Typed lowering and linking.** Interpretation output lowers through one
    closed Development Module IR. Units, edges, rules, and ports are type-checked;
    the final bundle binds exact transitive reference closure without duplicating
    large children.
-5. **Independent validation.** A separate implementation reparses built-ins,
-   verifies external closures, recomputes lowering, checks canonical identities,
-   and compares the complete compilation without importing producer modules.
+5. **Producer-isolated validation.** A separate implementation reparses
+   built-ins, reruns version-2 external validators, recomputes lowering, checks
+   canonical identities, and compares the complete compilation without
+   importing producer modules.
 
 This separation keeps source parsing, interpretation, target semantics, and
 linking independently replaceable while preserving deterministic identities.
 
-## Meaning of “universal”
+## Source-profile scope
 
-Universal describes the architecture, not a claim that every biological format
-ships in 1.0. The built-in profiles are enumerated in the compiler contract.
-Another DNA-bearing grammar enters through a versioned profile only when it can
-produce a closed native IR, a nonempty sequence-record catalog, exact source and
-native identities, finite limits, and manifest-qualified validation evidence.
+The built-in profiles are enumerated in the compiler contract. Another
+DNA-bearing grammar enters through a versioned profile when its frontend and
+validator can produce and independently replay a closed native IR, a nonempty
+sequence-record catalog, exact source and native identities, and finite limits.
 
 The result is a reproducible compiler boundary between biological source
 records and typed Development Module IR, published as a stable inspectable

@@ -11,6 +11,8 @@ from brainc._canonical import digest
 import brainc.external_profile as external_profile
 from brainc.external_profile import (
     ABI,
+    EXECUTABLE_ABI,
+    FRONTEND_PROTOCOL,
     RECORD_CATALOG_SCHEMA,
     VALIDATOR_PROTOCOL,
     ExternalProfileError,
@@ -27,7 +29,7 @@ from brainc.external_profile import (
 # A small syntax fixture.  The installed real-data gate is specified in the
 # external-profile handoff; production code contains no record or accession.
 FASTQ = (
-    b"@read-1\n"
+    b"@read-1 first\n"
     b"GATTACA\n"
     b"+\n"
     b"IIIIIII\n"
@@ -144,6 +146,24 @@ def _profile_ir() -> dict:
     }
 
 
+def _executable_profile_ir() -> dict:
+    profile = _profile_ir()
+    profile["abi"] = EXECUTABLE_ABI
+    profile["frontend"] = {
+        "protocol": FRONTEND_PROTOCOL,
+        "command": {
+            "id": "org.example.fastq-frontend",
+            "distribution": "org.example.fastq-frontend-dist",
+            "version": "1.0.0",
+            "runtime": "python",
+            "distribution_sha256": _sha(b"frontend distribution archive"),
+            "executable_sha256": _sha(b"installed frontend executable"),
+        },
+    }
+    profile["validator"]["command"]["runtime"] = "python"
+    return profile
+
+
 def _closure() -> tuple[dict, dict, dict, list[dict], list[dict], list[dict]]:
     inputs = [_input_reference(FASTQ)]
     native = [_native_reference()]
@@ -194,6 +214,93 @@ def _reseal_report(value: dict) -> dict:
 
 
 class ExternalProfileTests(unittest.TestCase):
+    def test_version_one_manifest_identity_is_stable(self) -> None:
+        self.assertEqual(
+            seal_profile_manifest(_profile_ir())["artifact_sha256"],
+            "9c05a6e339620becd74d1ca18fb7b3c31ef9a1a332e828f2a37f37b9d06f9b29",
+        )
+
+    def test_executable_profile_manifest_is_closed_and_pins_two_programs(self) -> None:
+        manifest = seal_profile_manifest(_executable_profile_ir(), version=2)
+        self.assertEqual(manifest["version"], 2)
+        self.assertEqual(manifest["profile_ir"]["abi"], EXECUTABLE_ABI)
+        self.assertEqual(
+            manifest["profile_ir"]["frontend"]["protocol"],
+            FRONTEND_PROTOCOL,
+        )
+        self.assertEqual(validate_profile_manifest(manifest), manifest)
+
+        for mutation, detail in (
+            (lambda value: value["frontend"].pop("protocol"), "missing"),
+            (lambda value: value["frontend"].__setitem__("extra", True), "unknown"),
+            (
+                lambda value: value["frontend"]["command"].__setitem__(
+                    "runtime", "shell"
+                ),
+                "runtime",
+            ),
+            (
+                lambda value: value["validator"]["command"].__setitem__(
+                    "executable_sha256",
+                    value["frontend"]["command"]["executable_sha256"],
+                ),
+                "distinct",
+            ),
+        ):
+            attacked = _executable_profile_ir()
+            mutation(attacked)
+            with self.subTest(detail=detail):
+                with self.assertRaisesRegex(ExternalProfileError, detail):
+                    seal_profile_manifest(attacked, version=2)
+
+    def test_external_attestation_checks_integrity_not_grammar_execution(self) -> None:
+        original = b"THIS INPUT CONTAINS NO DNA\n"
+        inputs = [_input_reference(original)]
+        native = [_native_reference()]
+        records = [
+            {
+                "ordinal": 0,
+                "input_role": "reads",
+                "record_id": "caller-claimed-dna",
+                "bases": 4,
+                "sequence_sha256": _sha(b"ACGT"),
+                "refget_id": _refget(b"ACGT"),
+            }
+        ]
+        manifest = seal_profile_manifest(_profile_ir())
+        descriptor = seal_source_descriptor(
+            manifest,
+            input_references=inputs,
+            native_artifact_references=native,
+            records=records,
+        )
+        report = seal_validation_report(
+            manifest,
+            descriptor,
+            replayed_input_references=inputs,
+            replayed_native_artifact_references=native,
+            replayed_records=records,
+        )
+
+        observed = validate_external_evidence(
+            manifest,
+            descriptor,
+            report,
+            original_payloads={"reads": original},
+            native_artifact_payloads={"read-index": NATIVE_INDEX},
+        )
+
+        self.assertEqual(
+            observed["source_descriptor"]["frontend_ir"]["record_catalog"][
+                "records"
+            ],
+            records,
+        )
+        self.assertEqual(
+            observed["validation_report"]["validation_ir"]["result"],
+            "valid",
+        )
+
     def test_fastq_profile_complete_closure(self) -> None:
         manifest, descriptor, report, _, _, _ = _closure()
         observed = validate_external_evidence(
