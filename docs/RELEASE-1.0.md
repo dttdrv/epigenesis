@@ -63,7 +63,10 @@ identity.
 
 ## Publication state
 
-The repository worktree is a local candidate until all release gates pass and
-an authorized commit, push, remote continuous integration run, exact remote
-readback, tag, and package publication complete. Local test results do not
-establish any of those states.
+The Epigenesis 1.0 source release is published on `origin/main`. Implementation
+commit `4e12e84dcdb34a6aeb8bdd1e19a9e42d21b83292` was read back from the remote at
+the same SHA, and GitHub Actions CI run `33611870599` passed the configured
+Linux, macOS, Windows smoke, wheel, source-distribution, and release gates.
+
+A 1.0 tag and package-index artifacts have not been published. Those are
+separate distribution actions and are not implied by the source release.
