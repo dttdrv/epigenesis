@@ -1,10 +1,19 @@
-# Epigenesis compiler contract 1.0.0
+# Epigenesis universal DNA compiler contract 1.0.0
 
 ## 1. Status and terminology
 
-This document specifies Epigenesis 1.0: biological source admission, exact
-source provenance, typed Development Module lowering, reference-only linking,
-and independent compilation verification.
+This document specifies Epigenesis 1.0, the universal DNA translation compiler:
+profile-qualified biological source admission, exact source provenance, a
+common typed source boundary, Development Module lowering, reference-only
+linking, and producer-isolated compilation verification.
+
+"Universal" means that built-in and external DNA-bearing source profiles enter
+through one source contract and reach one Development Module target. It does
+not mean that this package parses every DNA grammar or models universal biology.
+
+The interpretation manifest, request, and response are caller-supplied. This
+contract does not specify biological prediction or derive an interpretation
+from source DNA.
 
 The words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
 RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are interpreted as described by
@@ -72,6 +81,13 @@ before frontend use. The external profile is admitted through its dedicated
 evidence API and command; it is not selected by sniffing a byte stream.
 
 ### 3.2 Source descriptor
+
+The canonical typed source boundary is the composition of the common source
+descriptor, its `source_ir.records` array, and the selected profile's
+profile-native typed artifacts. The common array preserves ordered DNA record
+identity. External source admission normalizes its
+`brainc.sequence-record-catalog/v1` into this array. Native artifacts preserve
+source-language semantics that cannot be represented without loss there.
 
 Every accepted source emits `brainc.source-descriptor/v1`:
 
@@ -354,8 +370,10 @@ not converted to successful diagnostics.
 All public input and output paths are bounded before untrusted allocation.
 Accepted paths MUST resolve to one stable regular object of the required kind.
 Secure directory publication and validation use descriptor-relative primitives
-on Linux and platform-specific identity checks on Windows; a platform without
-the required primitives MUST fail closed for that operation.
+on Linux and macOS. Windows uses platform-specific identity checks for focused
+file and publication operations, but complete secure bundle validation is not
+part of the supported 1.0 host contract. A platform without the required
+primitives MUST fail closed for that operation.
 
 Every reader enforces per-role bytes, JSON depth, JSON member count, string
 length, record count, and relevant decompressed/logical limits. Whole-chain
@@ -377,14 +395,18 @@ Package 1.0 retains these independently versioned paths:
 | INSDC feature state | `compile-insdc-graph`, `brainc-validate-insdc-graph` |
 | Final source/development compiler | `compile-source`, `compile-external-source`, `compile-development`, `brainc-validate-development` |
 
-Existing wire versions retain their defined producer identities. The 1.0
-package version does not silently reinterpret an earlier artifact version.
+Package versions, producer versions, wire-format versions, frontend-profile
+versions, and cited standards versions are separate namespaces. A wire-format
+version changes only when that contract changes. A cited standards version is
+not an Epigenesis release version.
 
 ## 11. Conformance
 
 A conforming distribution MUST pass:
 
 - complete unit and integration tests;
+- universal translation conformance across every built-in profile and the
+  external frontend data ABI;
 - generated unseen-source causality and no-content-dispatch checks;
 - direct and coherently resealed cross-artifact attacks;
 - path, resource, gzip, JSON, and allocation attacks;

@@ -1,17 +1,36 @@
 # Epigenesis
 
-Epigenesis 1.0 is a deterministic compiler from explicitly selected biological
-source profiles to typed Development Module IR. It binds exact source and native
-frontend evidence, checks a caller-supplied interpretation against a target ABI,
-lowers it to declarative target-authorized operations, and links the compilation
-as a content-addressed bundle.
+Epigenesis 1.0 is the universal DNA translation compiler: DNA-bearing source
+formats enter one deterministic, verifiable pipeline and emerge as typed
+Development Module IR.
 
-The compiler and its independent validators use only the Python 3.11+ standard
-library. Every compiler contract artifact is closed JSON sealed with RFC 8785
-canonical JSON and SHA-256. Source bytes and tensor blobs remain
-content-addressed byte resources.
+```text
+DNA source/profile
+    -> common typed source boundary
+    -> validated interpretation and target lowering
+    -> Development Module IR
+    -> independently verifiable compilation bundle
+```
 
-## Compile real DNA
+Built-in frontends cover raw IUPAC DNA, FASTA, streaming reference FASTA,
+GenBank, and GFF3 with an exact sequence. The data-only external frontend ABI
+extends the same pipeline to additional DNA grammars through explicit profile,
+schema, provenance, and validation-evidence contracts.
+
+Every accepted source keeps its exact byte identity, ordered DNA records,
+profile-native structure, grammar authority, and content-derived sequence
+identities. The common typed source boundary makes those formats available to
+one target-neutral lowering system without erasing their native meaning.
+
+The interpretation stage is an explicit compiler input. Epigenesis binds the
+caller-supplied interpretation to the exact source, checks its tensors and
+coordinates against a target ABI, emits only target-authorized operations, and
+seals the complete result with RFC 8785 canonical JSON and SHA-256.
+
+The compiler and its producer-isolated validators use only the Python 3.11+
+standard library.
+
+## Compile a DNA source
 
 Install the package and compile an assembled genome without materializing its
 sequence in the output:
@@ -31,7 +50,8 @@ catalog. The catalog records exact physical and logical source identities,
 per-record SHA-256 and GA4GH refget identifiers, ordered collection identity,
 and base counts. Sequence strings stay in the original source file.
 
-Compile the validated source and a typed interpretation into the final target:
+Compile the validated source and a caller-supplied typed interpretation into
+the final target:
 
 ```bash
 brainc compile-development genome.source \
@@ -83,10 +103,11 @@ brainc compile-source \
   --output exceptional.source
 ```
 
-## Universal frontend ABI
+## External frontend data ABI
 
-Additional DNA-bearing grammars and composite DNA-plus-overlay profiles enter
-through a data-only frontend ABI. A frontend publishes three sealed objects:
+Additional DNA-bearing grammars and composite DNA-plus-overlay profiles can
+enter through a data-only frontend ABI. A frontend publishes three sealed
+objects:
 
 1. a profile manifest naming its grammar, authority binding, input roles,
    native artifact schema identities, validator identity, and finite limits;
@@ -94,11 +115,10 @@ through a data-only frontend ABI. A frontend publishes three sealed objects:
    sequence-record catalog; and
 3. a manifest-qualified validation report reproducing that descriptor.
 
-The compiler loads no frontend plugin code and does not execute the declared
-external grammar or validator. It verifies the supplied report, streams and
-hashes the declared original inputs, validates bounded native JSON identities,
-binds the exact profile-manifest digest, and emits the standard source
-descriptor:
+The ABI separates frontend execution from compiler admission. Epigenesis
+verifies the supplied report, streams and hashes the declared original inputs,
+validates bounded native JSON identities, binds the exact profile-manifest
+digest, and emits the standard source descriptor:
 
 ```bash
 brainc compile-external-source \
@@ -136,7 +156,7 @@ Epigenesis performs linked static validation across the whole compilation:
 - built-in grammar semantics, roles, wrappers, record order, sequence alphabet,
   coordinates, references, and native IR closure;
 - external manifest, validation-report, original-byte, native-JSON, and record-
-  catalog closure without executing external frontend code;
+  catalog closure through supplied evidence;
 - source SHA-256, byte lengths, sequence digests, refget identities, canonical
   seals, source maps where emitted, and authority digests where declared;
 - interpretation manifest, request, response, configuration identity, ordered
@@ -170,8 +190,9 @@ target_contract.json
 
 `bundle.json` is a reference-only digest index over source/native artifacts,
 seven child contracts, and external tensor blobs. Publication is atomic,
-no-clobber, and absent-to-complete on supported Linux and Windows hosts;
-unsupported hosts fail closed.
+no-clobber, and absent-to-complete on supported Linux and macOS hosts. Windows
+has a focused publication primitive, but the complete secure bundle-validation
+path is not advertised there. Unsupported operations fail closed.
 
 | Contract | Identity |
 |---|---|
@@ -189,11 +210,11 @@ feature-state commands remain versioned and compatible.
 
 ## Independent validation
 
-The final validator independently parses canonical JSON, snapshots exact
-directories and paths, replays the built-in source frontends, verifies external
-frontend closures against their original/native evidence, reconstructs typed
-lowering, checks blob contents, and compares the complete result using exact
-JSON types.
+The producer-isolated validator independently parses canonical JSON, snapshots
+exact directories and paths, replays the built-in source frontends, verifies
+external frontend closures against their original/native evidence, reconstructs
+typed lowering, checks blob contents, and compares the complete result using
+exact JSON types.
 
 Dedicated validators are also available:
 
@@ -213,6 +234,7 @@ use the standard `argparse` exit status 2.
 ```bash
 python -m unittest discover -s tests -v
 python tests/verify.py source-causality
+python tests/verify.py universal-translation
 python tests/verify.py boundary
 python tests/verify.py contract-attacks
 python tests/verify.py resource-path-safety

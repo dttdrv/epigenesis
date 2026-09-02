@@ -1,4 +1,4 @@
-"""Explicit 1.0 admission for the fixed built-in DNA source profiles."""
+"""Universal DNA source admission through explicit profile contracts."""
 
 from __future__ import annotations
 

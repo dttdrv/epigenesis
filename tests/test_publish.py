@@ -11,11 +11,39 @@ from unittest import mock
 from brainc import _publish as publication
 
 
+class NativeDirectoryPublicationTests(unittest.TestCase):
+    def test_native_commit_publishes_without_replacing_a_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            destination = root / "published"
+            publication.publish_directory(
+                destination,
+                {"artifact.json": b"{}\n"},
+                lambda value: value,
+            )
+            self.assertEqual((destination / "artifact.json").read_bytes(), b"{}\n")
+
+            with self.assertRaises(publication.PublicationError) as caught:
+                publication.publish_directory(
+                    destination,
+                    {"artifact.json": b'{"changed":true}\n'},
+                    lambda value: value,
+                )
+            self.assertFalse(caught.exception.committed)
+            self.assertEqual((destination / "artifact.json").read_bytes(), b"{}\n")
+
+
 @unittest.skipUnless(
-    publication.HAS_LINUX_DIRECTORY_PUBLICATION,
-    "requires Linux descriptor-relative publication",
+    publication.HAS_POSIX_DIRECTORY_PUBLICATION,
+    "requires POSIX descriptor-relative publication",
 )
 class DirectoryPublicationTests(unittest.TestCase):
+    @staticmethod
+    def _commit_hook():
+        if publication.HAS_LINUX_DIRECTORY_PUBLICATION:
+            return "_call_renameat2", publication._call_renameat2
+        return "_call_renameatx_np", publication._call_renameatx_np
+
     def _entries(self) -> dict[str, bytes]:
         return {"a.json": b'{"a":1}\n', "b.json": b'{"b":2}\n'}
 
@@ -28,7 +56,7 @@ class DirectoryPublicationTests(unittest.TestCase):
             root = Path(temporary)
             destination = root / "published"
             observed: list[tuple[bool, set[str]]] = []
-            native = publication._call_renameat2
+            hook, native = self._commit_hook()
 
             def inspect_commit(renameat2, parent_fd, source_name, destination_name):
                 observed.append((destination.exists(), set()))
@@ -39,7 +67,7 @@ class DirectoryPublicationTests(unittest.TestCase):
 
             with mock.patch.object(
                 publication,
-                "_call_renameat2",
+                hook,
                 side_effect=inspect_commit,
             ):
                 paths = publication.publish_directory(
@@ -86,7 +114,7 @@ class DirectoryPublicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             destination = root / "appeared"
-            native = publication._call_renameat2
+            hook, native = self._commit_hook()
 
             def race(renameat2, parent_fd, source_name, destination_name):
                 destination.mkdir()
@@ -95,7 +123,7 @@ class DirectoryPublicationTests(unittest.TestCase):
 
             with mock.patch.object(
                 publication,
-                "_call_renameat2",
+                hook,
                 side_effect=race,
             ), self.assertRaises(publication.PublicationError) as caught:
                 publication.publish_directory(
@@ -169,7 +197,7 @@ class DirectoryPublicationTests(unittest.TestCase):
             root = Path(temporary)
             destination = root / "published"
             displaced = root / "displaced.json"
-            native = publication._call_renameat2
+            hook, native = self._commit_hook()
 
             def swap_after_commit(renameat2, parent_fd, source_name, destination_name):
                 native(renameat2, parent_fd, source_name, destination_name)
@@ -178,7 +206,7 @@ class DirectoryPublicationTests(unittest.TestCase):
 
             with mock.patch.object(
                 publication,
-                "_call_renameat2",
+                hook,
                 side_effect=swap_after_commit,
             ), self.assertRaises(publication.PublicationError) as caught:
                 publication.publish_directory(
@@ -225,14 +253,19 @@ class DirectoryPublicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             parent = Path(temporary) / "not-created"
             destination = parent / "output"
+            loader = (
+                "_linux_renameat2"
+                if publication.HAS_LINUX_DIRECTORY_PUBLICATION
+                else "_darwin_renameatx_np"
+            )
             unavailable = publication.PublicationError(
-                "missing renameat2",
+                "missing native rename",
                 committed=False,
                 error=errno.ENOTSUP,
             )
             with mock.patch.object(
                 publication,
-                "_linux_renameat2",
+                loader,
                 side_effect=unavailable,
             ), self.assertRaises(publication.PublicationError) as caught:
                 publication.publish_directory(

@@ -62,6 +62,7 @@ def read_regular_file(
             raise BoundedIOError(f"{label} exceeds byte limit {limit}")
 
         flags = os.O_RDONLY
+        flags |= getattr(os, "O_BINARY", 0)
         flags |= getattr(os, "O_CLOEXEC", 0)
         flags |= getattr(os, "O_NOFOLLOW", 0)
         # Avoid blocking if a non-regular file is swapped into the pathname on

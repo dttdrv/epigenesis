@@ -1311,6 +1311,10 @@ def wheel() -> None:
             entry_points_text = archive.read(entry_points_name).decode("utf-8")
             assert "Version: 1.0.0\n" in metadata_text
             assert "License-Expression: Apache-2.0\n" in metadata_text
+            assert (
+                "Epigenesis 1.0 is the universal DNA translation compiler"
+                in metadata_text
+            )
             assert "brainc/validator_bio_graph.py" in names
             for required_module in (
                 "brainc/insdc.py",
@@ -2107,6 +2111,16 @@ def contract_attacks() -> None:
     print("CONTRACT-ATTACKS-PASSED")
 
 
+def universal_translation() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "unittest", "tests.test_universal_translation", "-v"],
+        check=False,
+        cwd=ROOT,
+    )
+    assert result.returncode == 0, result.returncode
+    print("UNIVERSAL-TRANSLATION-PASSED")
+
+
 COMMANDS = {
     "boundary": boundary,
     "canonical": canonical,
@@ -2119,6 +2133,7 @@ COMMANDS = {
     "sdist": sdist,
     "source-causality": source_causality,
     "tamper": tamper,
+    "universal-translation": universal_translation,
     "wheel": wheel,
 }
 

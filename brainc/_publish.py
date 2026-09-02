@@ -15,6 +15,7 @@ from typing import TypeVar
 
 
 RENAME_NOREPLACE = 1
+RENAME_EXCL = 4
 _T = TypeVar("_T")
 _Snapshot = tuple[int, int, int, int, int]
 _DIR_FD_OPERATIONS = (os.open, os.unlink, os.stat, os.mkdir, os.rmdir)
@@ -25,6 +26,17 @@ HAS_LINUX_DIRECTORY_PUBLICATION = (
         operation in getattr(os, "supports_dir_fd", set())
         for operation in _DIR_FD_OPERATIONS
     )
+)
+HAS_DARWIN_DIRECTORY_PUBLICATION = (
+    os.name == "posix"
+    and sys.platform == "darwin"
+    and all(
+        operation in getattr(os, "supports_dir_fd", set())
+        for operation in _DIR_FD_OPERATIONS
+    )
+)
+HAS_POSIX_DIRECTORY_PUBLICATION = (
+    HAS_LINUX_DIRECTORY_PUBLICATION or HAS_DARWIN_DIRECTORY_PUBLICATION
 )
 
 
@@ -69,6 +81,44 @@ def _call_renameat2(
         parent_descriptor,
         os.fsencode(destination_name),
         RENAME_NOREPLACE,
+    ) != 0:
+        error = ctypes.get_errno() or errno.EIO
+        raise OSError(error, os.strerror(error), destination_name)
+
+
+def _darwin_renameatx_np() -> ctypes._CFuncPtr:
+    try:
+        renameatx_np = ctypes.CDLL(None, use_errno=True).renameatx_np
+    except (AttributeError, OSError) as failure:
+        raise PublicationError(
+            "renameatx_np is unavailable for atomic directory publication",
+            committed=False,
+            error=errno.ENOTSUP,
+        ) from failure
+    renameatx_np.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameatx_np.restype = ctypes.c_int
+    return renameatx_np
+
+
+def _call_renameatx_np(
+    renameatx_np: ctypes._CFuncPtr,
+    parent_descriptor: int,
+    source_name: str,
+    destination_name: str,
+) -> None:
+    ctypes.set_errno(0)
+    if renameatx_np(
+        parent_descriptor,
+        os.fsencode(source_name),
+        parent_descriptor,
+        os.fsencode(destination_name),
+        RENAME_EXCL,
     ) != 0:
         error = ctypes.get_errno() or errno.EIO
         raise OSError(error, os.strerror(error), destination_name)
@@ -146,7 +196,7 @@ def _write_all(descriptor: int, raw: bytes) -> None:
         view = view[written:]
 
 
-def _write_linux_child(
+def _write_posix_child(
     directory_descriptor: int,
     filename: str,
     raw: bytes,
@@ -196,7 +246,7 @@ def _write_linux_child(
             os.close(descriptor)
 
 
-def _require_linux_children(
+def _require_posix_children(
     directory_descriptor: int,
     snapshots: Mapping[str, _Snapshot],
 ) -> None:
@@ -212,11 +262,11 @@ def _require_linux_children(
             raise OSError(errno.ESTALE, f"staged {filename} changed")
 
 
-def _publish_linux(
+def _publish_posix(
     destination: Path,
     entries: tuple[tuple[str, _T], ...],
     encode: Callable[[_T], bytes],
-    renameat2: ctypes._CFuncPtr,
+    commit: Callable[[int, str, str], None],
 ) -> dict[str, Path]:
     parent_descriptor = -1
     staging_descriptor = -1
@@ -283,13 +333,13 @@ def _publish_linux(
             raw = encode(value)
             if type(raw) is not bytes:
                 raise TypeError("publication encoder must return bytes")
-            snapshots[filename] = _write_linux_child(
+            snapshots[filename] = _write_posix_child(
                 staging_descriptor,
                 filename,
                 raw,
                 owned_children,
             )
-        _require_linux_children(staging_descriptor, snapshots)
+        _require_posix_children(staging_descriptor, snapshots)
         os.fsync(staging_descriptor)
         current_staging = os.stat(
             staging_name,
@@ -298,14 +348,9 @@ def _publish_linux(
         )
         if not _same_directory(current_staging, staging_identity):
             raise OSError(errno.ESTALE, "staging directory changed before publication")
-        _require_linux_children(staging_descriptor, snapshots)
+        _require_posix_children(staging_descriptor, snapshots)
 
-        _call_renameat2(
-            renameat2,
-            parent_descriptor,
-            staging_name,
-            destination.name,
-        )
+        commit(parent_descriptor, staging_name, destination.name)
         committed = True
 
         published = os.stat(
@@ -315,7 +360,7 @@ def _publish_linux(
         )
         if not _same_directory(published, staging_identity):
             raise OSError(errno.ESTALE, "published directory changed identity")
-        _require_linux_children(staging_descriptor, snapshots)
+        _require_posix_children(staging_descriptor, snapshots)
         parent_finished = destination.parent.lstat()
         if not _same_directory(parent_finished, parent_identity):
             raise OSError(errno.ESTALE, "output parent changed during publication")
@@ -327,7 +372,7 @@ def _publish_linux(
         )
         if not _same_directory(final_entry, staging_identity):
             raise OSError(errno.ESTALE, "published directory changed after synchronization")
-        _require_linux_children(staging_descriptor, snapshots)
+        _require_posix_children(staging_descriptor, snapshots)
         return {filename: destination / filename for filename, _ in entries}
     except PublicationError:
         raise
@@ -524,14 +569,33 @@ def publish_directory(
         )
     if os.name == "nt":
         return _publish_windows(target, normalized, encode)
-    if not HAS_LINUX_DIRECTORY_PUBLICATION:
+    if HAS_LINUX_DIRECTORY_PUBLICATION:
+        renameat2 = _linux_renameat2()
+        return _publish_posix(
+            target,
+            normalized,
+            encode,
+            lambda parent, source, destination: _call_renameat2(
+                renameat2, parent, source, destination
+            ),
+        )
+    if HAS_DARWIN_DIRECTORY_PUBLICATION:
+        renameatx_np = _darwin_renameatx_np()
+        return _publish_posix(
+            target,
+            normalized,
+            encode,
+            lambda parent, source, destination: _call_renameatx_np(
+                renameatx_np, parent, source, destination
+            ),
+        )
+    if not HAS_POSIX_DIRECTORY_PUBLICATION:
         raise PublicationError(
             "atomic directory publication is unsupported on this host",
             committed=False,
             error=errno.ENOTSUP,
         )
-    renameat2 = _linux_renameat2()
-    return _publish_linux(target, normalized, encode, renameat2)
+    raise AssertionError("unreachable directory publication platform")
 
 
 def rename_directory_noreplace(
@@ -549,18 +613,31 @@ def rename_directory_noreplace(
     if os.name == "nt":
         os.rename(source, destination)
         return
-    if not HAS_LINUX_DIRECTORY_PUBLICATION or parent_descriptor < 0:
+    if parent_descriptor < 0:
         raise OSError(errno.ENOTSUP, "descriptor-relative rename is unsupported")
-    _call_renameat2(
-        _linux_renameat2(),
-        parent_descriptor,
-        source.name,
-        destination.name,
-    )
+    if HAS_LINUX_DIRECTORY_PUBLICATION:
+        _call_renameat2(
+            _linux_renameat2(),
+            parent_descriptor,
+            source.name,
+            destination.name,
+        )
+        return
+    if HAS_DARWIN_DIRECTORY_PUBLICATION:
+        _call_renameatx_np(
+            _darwin_renameatx_np(),
+            parent_descriptor,
+            source.name,
+            destination.name,
+        )
+        return
+    raise OSError(errno.ENOTSUP, "descriptor-relative rename is unsupported")
 
 
 __all__ = [
+    "HAS_DARWIN_DIRECTORY_PUBLICATION",
     "HAS_LINUX_DIRECTORY_PUBLICATION",
+    "HAS_POSIX_DIRECTORY_PUBLICATION",
     "PublicationError",
     "publish_directory",
     "rename_directory_noreplace",

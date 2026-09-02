@@ -32,7 +32,7 @@ GENBANK = ROOT / "tests/data/U49845.1.gb"
 GFF3 = ROOT / "tests/data/J02482.1.gff3"
 
 
-class CompilerOneZeroCliTests(unittest.TestCase):
+class SourceDevelopmentCliTests(unittest.TestCase):
     def test_root_api_exports_source_and_development_surfaces(self) -> None:
         source = __import__("brainc.source", fromlist=["compile_source"])
         development = __import__(
