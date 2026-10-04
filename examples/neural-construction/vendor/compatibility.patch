@@ -1,0 +1,366 @@
+--- a/ini/cx3d/localBiology/NeuriteElement.java
++++ b/ini/cx3d/localBiology/NeuriteElement.java
+@@ -469,6 +469,14 @@
+ 					if(e2.getEx()!=null || e2.getType() != Excrescence.SPINE){
+ 						continue inner;
+ 					}
++
++                    // compressed cylinders can leave old candidates outside their physical extent.
++                    double axial1 = e1.getPositionOnPO()[0];
++                    if (!Double.isFinite(axial1) || axial1 < 0 || axial1 > physicalCylinder.getActualLength()) continue ext;
++                    if (po instanceof PhysicalCylinder) {
++                        double axial2 = e2.getPositionOnPO()[0];
++                        if (!Double.isFinite(axial2) || axial2 < 0 || axial2 > ((PhysicalCylinder)po).getActualLength()) continue inner;
++                    }
+ 
+ 					// Find origin of the two Excrescences
+ 					double[] o1 = e1.getProximalEnd();
+--- a/ini/cx3d/parallelSpatialOrganization/ManagedObjectTracker.java
++++ b/ini/cx3d/parallelSpatialOrganization/ManagedObjectTracker.java
+@@ -21,8 +21,8 @@
+ 
+ package ini.cx3d.parallelSpatialOrganization;
+ 
+-import sun.awt.image.ImageWatched.Link;
+ 
++
+ /**
+  * A wrapper interface that is used by managed objects to either direct requests for 
+  * other managed directly to the responsible SpatialOrganizationManager or to the 
+--- a/ini/cx3d/parallelSpatialOrganization/Tetrahedron.java
++++ b/ini/cx3d/parallelSpatialOrganization/Tetrahedron.java
+@@ -31,7 +31,7 @@
+ import java.util.LinkedList;
+ import java.util.List;
+ 
+-import sun.security.action.GetLongAction;
++
+ 
+ /**
+  * This class is used to represent a tetrahedron. Each instance saves references
+--- a/ini/cx3d/physics/PhysicalBond.java
++++ b/ini/cx3d/physics/PhysicalBond.java
+@@ -167,32 +167,25 @@
+ 		this.slidingAllowed = slidingAllowed;
+ 	}
+ 	
+-	public void exchangePhysicalObject(PhysicalObject oldPo, PhysicalObject newPo){
+-		ReadWriteLock rwl1;
+-		ReadWriteLock rwl2;
+-		if(a.getID()>b.getID())
+-		{
+-			rwl1 = a.getRwLock();
+-			rwl2 = b.getRwLock();
+-		}
+-		else
+-		{
+-			rwl1 =  a.getRwLock();
+-			rwl2 =  b.getRwLock();
+-		}
+-		
+-		if(oldPo == a){
+-			a = newPo;
+-		}else{
+-			b = newPo;
+-		}
+-		oldPo.removePhysicalBond(this);
+-		newPo.addPhysicalBond(this);
+-		
+-		rwl1.writeLock().unlock();
+-		rwl2.writeLock().unlock();
+-	}
+-	
++    public synchronized void exchangePhysicalObject(PhysicalObject oldPo, PhysicalObject newPo) {
++        if (oldPo != a && oldPo != b) throw new IllegalArgumentException("bond endpoint is not attached to old object");
++        java.util.Objects.requireNonNull(newPo);
++        if (oldPo == newPo) return;
++        PhysicalObject first = oldPo.getID() < newPo.getID() ? oldPo : newPo;
++        PhysicalObject second = first == oldPo ? newPo : oldPo;
++        first.getRwLock().writeLock().lock();
++        second.getRwLock().writeLock().lock();
++        try {
++            if (oldPo == a) a = newPo;
++            else b = newPo;
++            oldPo.removePhysicalBond(this);
++            newPo.addPhysicalBond(this);
++        } finally {
++            second.getRwLock().writeLock().unlock();
++            first.getRwLock().writeLock().unlock();
++        }
++    }
++
+ 	public void vanish(){
+ 		ReadWriteLock rwl1;
+ 		ReadWriteLock rwl2;
+--- a/ini/cx3d/physics/PhysicalCylinder.java
++++ b/ini/cx3d/physics/PhysicalCylinder.java
+@@ -55,6 +55,8 @@
+  *
+  */
+ public class PhysicalCylinder extends PhysicalObject{
++    public static java.util.function.BiConsumer<PhysicalCylinder,PhysicalCylinder> subdivisionObserver;
++    public static java.util.function.BiConsumer<PhysicalCylinder,PhysicalCylinder> mergeObserver;
+ 
+ 	/* Local biology object associated with this PhysicalCylinder.*/
+ 	private NeuriteElement neuriteElement = null;
+@@ -265,6 +267,11 @@
+ 	//   DISCRETIZATION , SPATIAL NODE, CELL ELEMENT
+ 	// *************************************************************************************
+ 
++
++    private static boolean sameRemeshAxis(double[] first, double[] second) {
++        // unit-vector normalization can differ by rounding after a split.
++        return norm(subtract(first,second)) <= Math.ulp(1.0);
++    }
+ 
+ 	/** 
+ 	 * Checks if this <code>PhysicalCylinder</code> is either too long (and in this case it will insert 
+@@ -287,11 +294,16 @@
+ 		}
+ 		
+ 
++        // retain the fine mesh when coarsening would change its geometry or attachment frame.
+ 		if(	actualLength<Param.NEURITE_MIN_LENGTH &&
+ 				mother.isAPhysicalCylinder() &&
+ 				((PhysicalCylinder)mother).restingLength < Param.NEURITE_MAX_LENGTH - this.restingLength - 1 &&
+ 				((PhysicalCylinder)mother).daughterRight == null &&
+-				this.daughterLeft != null) {
++                this.daughterLeft != null &&
++                diameter == ((PhysicalCylinder)mother).diameter &&
++                sameRemeshAxis(xAxis,((PhysicalCylinder)mother).xAxis) &&
++                sameRemeshAxis(yAxis,((PhysicalCylinder)mother).yAxis) &&
++                sameRemeshAxis(zAxis,((PhysicalCylinder)mother).zAxis)) {
+ 			getRwLock().writeLock().lock();
+ 			// if the previous branch is removed, we first remove its associated NeuriteElement
+ 			((PhysicalCylinder)mother).neuriteElement.removeYourself();
+@@ -380,25 +392,31 @@
+ 				ne.addLocalBiologyModule(module.getCopy());
+ 		}
+ 		
+-		// deal with the excressences:
+-		for (int i = 0; i<excrescences.size() ; i++){
+-			Excrescence ex = excrescences.get(i);
+-			double[] pos = ex.getPositionOnPO();
+-			// transmitt them to proxymal cyl
+-			if(pos[0]<newProximalCylinder.actualLength){
+-				this.excrescences.remove(ex);
+-				newProximalCylinder.excrescences.add(ex);
+-				ex.setPo(newProximalCylinder);
+-				i--;
+-			}else{
+-				// or kep them here, depending on coordonate
+-				pos[0]-=newProximalCylinder.actualLength;
+-			}
+-		}
+-		
+-		
++        // a synaptic site and its spring can share the same coordinate array.
++        java.util.IdentityHashMap<double[],PhysicalCylinder> destinations = new java.util.IdentityHashMap<>();
++        for (Excrescence ex : excrescences) destinations.put(ex.getPositionOnPO(),this);
++        for (PhysicalBond bond : physicalBonds) destinations.put(bond.getPositionOnObjectInLocalCoord(this),this);
++        for (java.util.Map.Entry<double[],PhysicalCylinder> entry : destinations.entrySet()) {
++            double[] position = entry.getKey();
++            if (position[0] < newProximalCylinder.actualLength) entry.setValue(newProximalCylinder);
++            else position[0] -= newProximalCylinder.actualLength;
++        }
++        for (Excrescence ex : new java.util.ArrayList<>(excrescences)) {
++            if (destinations.get(ex.getPositionOnPO()) == newProximalCylinder) {
++                excrescences.remove(ex);
++                newProximalCylinder.excrescences.add(ex);
++                ex.setPo(newProximalCylinder);
++            }
++        }
++        for (PhysicalBond bond : new java.util.ArrayList<>(physicalBonds)) {
++            if (destinations.get(bond.getPositionOnObjectInLocalCoord(this)) == newProximalCylinder)
++                bond.exchangePhysicalObject(this,newProximalCylinder);
++        }
++        
++
+ 		getRwLock().writeLock().unlock();
+ 		
++		if (subdivisionObserver != null) subdivisionObserver.accept(this,newProximalCylinder);
+ 		return ne;
+ 	}
+ 
+@@ -448,22 +466,20 @@
+ 			// ecm
+ 			ecm.removePhysicalCylinder(proximalCylinder);
+ 			
+-			// dealing with excressences:
+-			// mine are shifted up :
+-			for (int i = 0; i<excrescences.size() ; i++){
+-				double shift = this.actualLength-proximalCylinder.actualLength;
+-				Excrescence ex = excrescences.get(i);
+-				double[] pos = ex.getPositionOnPO();
+-				pos[0] += shift;
+-			}
+-			// I incorporate the ones of the previous cyl:
+-			for (int i = 0; i<proximalCylinder.excrescences.size() ; i++){
+-				Excrescence ex = excrescences.get(i);
+-				this.excrescences.add(ex);
+-				ex.setPo(this);
+-			}
+-			// TODO: take care of Physical Bonds 
++            // concatenate axial coordinates; discretization checks caliber and frame compatibility.
++            java.util.Set<double[]> distalSites = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
++            for (Excrescence ex : excrescences) distalSites.add(ex.getPositionOnPO());
++            for (PhysicalBond bond : physicalBonds) distalSites.add(bond.getPositionOnObjectInLocalCoord(this));
++            for (double[] position : distalSites) position[0] += proximalCylinder.actualLength;
++            for (Excrescence ex : proximalCylinder.excrescences) {
++                excrescences.add(ex);
++                ex.setPo(this);
++            }
++            proximalCylinder.excrescences.clear();
++            for (PhysicalBond bond : new java.util.ArrayList<>(proximalCylinder.physicalBonds))
++                bond.exchangePhysicalObject(proximalCylinder,this);
+ 			proximalCylinder.setStillExisting(false);
++			if (mergeObserver != null) mergeObserver.accept(this,proximalCylinder);
+ 		}finally
+ 		{
+ 			getRwLock().writeLock().unlock();
+@@ -1097,19 +1113,19 @@
+ 		massLocation[2] += actualDisplacement[2];
+ 		getRwLock().writeLock().unlock();
+ 		// 8.2) Recompute length, tension and re-center the computation node, and redefine axis
+-		updateDependentPhysicalVariables();
+-		updateLocalCoordinateAxis();
++		updateAfterPassiveDeformation();
+ 		// 8.3) For the relatives: recompute the lenght, tension etc. (why for mother? have to think about that)
+ 		getRwLock().readLock().lock();
+-		if(daughterLeft!=null){
+-			daughterLeft.updateDependentPhysicalVariables();
+-			daughterLeft.updateLocalCoordinateAxis();
+-		}
+-		if(daughterRight!=null){
+-			daughterRight.updateDependentPhysicalVariables();
+-			daughterRight.updateLocalCoordinateAxis();
++		try {
++			if(daughterLeft!=null){
++				daughterLeft.updateAfterPassiveDeformation();
++			}
++			if(daughterRight!=null){
++				daughterRight.updateAfterPassiveDeformation();
++			}
++		} finally {
++			getRwLock().readLock().unlock();
+ 		}
+-		getRwLock().readLock().unlock();
+ 		// 8.4) next time we reschedule everyone :
+ 		scheduleMeAndAllMyFriends();
+ 
+@@ -1436,6 +1452,28 @@
+ 
+ 
+ 
++    void updateAfterPassiveDeformation() {
++        getRwLock().writeLock().lock();
++        try {
++            double previousLength = actualLength;
++            updateDependentPhysicalVariables();
++            if (!excrescences.isEmpty() || !physicalBonds.isEmpty()) {
++                if (!(previousLength > 0) || !(actualLength > 0) || !Double.isFinite(previousLength) || !Double.isFinite(actualLength))
++                    throw new IllegalStateException("material attachments require finite positive lengths");
++                if (actualLength != previousLength) {
++                    java.util.Set<double[]> points = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
++                    for (Excrescence site : excrescences) points.add(site.getPositionOnPO());
++                    for (PhysicalBond bond : physicalBonds) points.add(bond.getPositionOnObjectInLocalCoord(this));
++                    // uniform passive strain transports material sites; tip addition is a separate operation.
++                    for (double[] point : points) point[0] = (point[0]/previousLength)*actualLength;
++                }
++            }
++            updateLocalCoordinateAxis();
++        } finally {
++            getRwLock().writeLock().unlock();
++        }
++    }
++
+ 	/**
+ 	 * Updates the spring axis, the actual length, the tension and the volume.
+ 	 *  
+--- a/ini/cx3d/physics/PhysicalSphere.java
++++ b/ini/cx3d/physics/PhysicalSphere.java
+@@ -360,7 +360,7 @@
+ 	 */
+ 	protected void updateVolume(){
+ 		getRwLock().writeLock().lock();
+-		volume = 0.523598776 * diameter*diameter*diameter; 	// 0,523598776 = (4/3)*pi*(1/(2^3))
++		volume = (Math.PI / 6.0) * diameter*diameter*diameter; 	// 0,523598776 = (4/3)*pi*(1/(2^3))
+ 		getRwLock().writeLock().unlock();
+ 		updateIntracellularConcentrations();
+ 	}
+@@ -370,7 +370,7 @@
+ 	protected void updateDiameter(){
+ 		// V = (4/3)*pi*r^3 = (pi/6)*diameter^3
+ 		getRwLock().writeLock().lock();
+-		diameter = Math.cbrt(volume * 1.90985932);   		// 1.90985932 = 6/pi
++		diameter = Math.cbrt(volume * (6.0 / Math.PI));   		// 1.90985932 = 6/pi
+ 		getRwLock().writeLock().unlock();
+ 	}
+ 
+@@ -490,7 +490,7 @@
+ 		newSphere.adherence = this.adherence;
+ 		newSphere.setInterObjectForceCoefficient(this.interObjectForceCoefficient);
+ 		newSphere.diameter = r2*2;
+-		newSphere.volume = 0.523598776 * newSphere.diameter*newSphere.diameter*newSphere.diameter; 	// 0,523598776 = (4/3)*pi*(1/(2^3))
++		newSphere.volume = (Math.PI / 6.0) * newSphere.diameter*newSphere.diameter*newSphere.diameter; 	// 0,523598776 = (4/3)*pi*(1/(2^3))
+ 		
+ 		// Mass Location
+ 		double[] newSphereMassLocation = new double[] { 	
+@@ -528,7 +528,7 @@
+ 		
+ 		// F) change properties of this cell  
+ 		this.diameter = r1*2;
+-		this.volume = 0.523598776 * this.diameter*this.diameter*this.diameter; 	// 0,523598776 = (4/3)*pi*(1/(2^3))
++		this.volume = (Math.PI / 6.0) * this.diameter*this.diameter*this.diameter; 	// 0,523598776 = (4/3)*pi*(1/(2^3))
+ 	
+ 		
+ 		// G) Copy the intracellular and membrane bound Substances
+@@ -864,7 +864,7 @@
+ 			updateSpatialOrganizationNodePosition();
+ 			// if I have daughters, I update their length and tension
+ 			for (int i = 0; i < daughters.size(); i++) {
+-				daughters.get(i).updateDependentPhysicalVariables();
++				daughters.get(i).updateAfterPassiveDeformation();
+ 			}
+ 
+ 			// Re-schedule me and every one that has something to do with me :
+--- a/ini/cx3d/simulations/ECM.java
++++ b/ini/cx3d/simulations/ECM.java
+@@ -191,6 +191,17 @@
+ 	// Random Number
+ 	// **************************************************************************
+ 	static Random random = new Random();
++
++    // scoped stream for the synchronous construction consumer; retain Gaussian state.
++    public static void withRandom(Random source, Runnable action) {
++        Random previous = random;
++        random = java.util.Objects.requireNonNull(source);
++        try {
++            action.run();
++        } finally {
++            random = previous;
++        }
++    }
+ 	
+ 	/**
+ 	 * @return a random number between, from uniform probability 0 and 1;
+--- a/ini/cx3d/simulations/Scheduler.java
++++ b/ini/cx3d/simulations/Scheduler.java
+@@ -44,7 +44,7 @@
+ 	/* Reference to the ECM.*/
+ 	protected static ECM ecm = ECM.getInstance();
+ 	/* Reference to the ECM display window */
+-	protected static View view = ecm.createGUI();
++	protected static View view = java.awt.GraphicsEnvironment.isHeadless() ? null : ecm.createGUI();
+ 	/* static counter, needed in case where we want to make regular snapshots.*/
+ 	protected static int cycle_counter = 0; 	
+ 	protected static int inter_snapshot_time_steps = 30; 	
+@@ -211,7 +211,7 @@
+ 				ecm.dumpImage();
+ 			}
+ 			// updating the picture on the GUI
+-			view.repaint();
++			if (view != null) view.repaint();
+ 			// ticking ECM's time
+ 			cycle_counter += 1;
+ 			ecm.increaseECMtime(Param.SIMULATION_TIME_STEP);

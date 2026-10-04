@@ -1,3 +1,13 @@
 tests/data/J02482.1.fasta -text -diff
 tests/data/J02482.1.gff3 -text -diff
 tests/data/*.gb -text -diff
+
+# source bytes and patch context are preserved exactly for their recorded hashes.
+examples/coding-consequences/data/* -text
+examples/coding-consequences/data/*.fasta -diff
+examples/coding-consequences/data/*.gb -diff
+examples/coding-consequences/data/sox2-pmc-supplement-text.txt -diff
+examples/neural-binding/data/* -text
+examples/neural-binding/data/*.fasta -diff
+examples/neural-binding/data/*.gb -diff
+examples/neural-construction/vendor/compatibility.patch -text -whitespace

@@ -1,0 +1,12 @@
+{
+  "name": "CX3D",
+  "version": "0.03",
+  "source_url": "https://tilde.ini.uzh.ch/~amw/seco/cx3d/cx3d-0.03.zip",
+  "source_bytes": 908697,
+  "source_sha256": "41bc3580f253709e23fbdea21395f33c4e60091a761483e36aa76de6280d2c34",
+  "license": "GPL-3.0-or-later",
+  "primary_paper": "https://doi.org/10.3389/neuro.10.025.2009",
+  "patch_sha256": "bbf052805f530e42fee88da28c041b5f015d086e1e9d20f9e8c27f868edd8dcf",
+  "patch_scope": "Remove two unused JDK-internal imports; headless GUI initialization/repaint; use Math.PI for mutually consistent sphere volume and diameter conversions. Dynamics remain enabled. Scoped contact random stream restores the actual generator after synchronous contact execution, including exceptions. Optional post-operation observers record actual physical segment subdivision and merging without changing those operations. Refresh daughter cylinder coordinate axes after soma motion updates their spring axes; prevents off-surface contact attachment. Reject contact candidates whose stored axial attachment lies outside the current compressed cylinder; do not clamp or relocate them. Remeshing preserves synaptic site and spring ownership, shared coordinate arrays and independent bond endpoints; straight merges use the proximal length offset. Bond exchange acquires the locks it releases. Public mesh coarsening retains unequal diameters or different local coordinate frames instead of approximating their geometry; axis equality allows one ULP at unit-vector scale for normalization roundoff. Passive material-attachment calibration remains unvalidated; upstream biological retraction is outside this consumer path. Passive cylinder/soma deformation now transports each distinct attachment or bond coordinate array by its material fraction h/L. Active tip addition and remeshing retain their own rules. This uniform-strain no-slip assumption is not biologically calibrated.",
+  "patch_file": "compatibility.patch"
+}

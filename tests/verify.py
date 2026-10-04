@@ -975,7 +975,7 @@ def development_real_dna() -> None:
             ]
             metadata = archive.read(metadata_name).decode("utf-8")
             entry_points = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 1.0.0\n" in metadata
+            assert "Version: 1.5.0\n" in metadata
             assert "brainc/source.py" in names
             assert "brainc/development_bundle.py" in names
             assert "brainc/validator_development.py" in names
@@ -1311,7 +1311,7 @@ def wheel() -> None:
                 name for name in names if name.endswith(".dist-info/entry_points.txt")
             ]
             entry_points_text = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 1.0.0\n" in metadata_text
+            assert "Version: 1.5.0\n" in metadata_text
             assert "License-Expression: Apache-2.0\n" in metadata_text
             assert (
                 "Universal DNA translation compiler targeting Development Module IR"
@@ -1391,7 +1391,7 @@ def wheel() -> None:
                     "brainc.external_source, brainc.development_bundle, "
                     "brainc.validator_reference, brainc.validator_external, "
                     "brainc.validator_development; "
-                    "assert brainc.__version__ == '1.0.0'"
+                    "assert brainc.__version__ == '1.5.0'"
                 ),
             ],
             check=True,
@@ -1749,8 +1749,10 @@ def sdist() -> None:
                 "LICENSE",
                 "README.md",
                 "SPEC.md",
+                "docs/RELEASE-1.5.md",
                 "docs/PRIOR_ART.md",
                 "docs/STANDARDS.md",
+                "docs/NEURAL_MECHANISM_ACCEPTANCE.md",
                 "examples/minimal-development/sequence.fasta",
                 "examples/minimal-development/expected.json",
                 "examples/minimal-development/interpretation/manifest.json",
@@ -1764,6 +1766,62 @@ def sdist() -> None:
                 "examples/external-fastq/validator.py",
                 "examples/external-fastq/profile.py",
                 "examples/external-fastq/reads.fastq",
+                "examples/neural-fate/README.md",
+                "examples/neural-fate/models.json",
+                "examples/neural-fate/experiment.py",
+                "examples/neural-regulation/README.md",
+                "examples/neural-regulation/regulation.py",
+                "examples/neural-regulation/data/design.fasta",
+                "examples/neural-regulation/data/alphas.csv.gz",
+                "examples/neural-regulation/data/provenance.json",
+                "examples/neural-construction/README.md",
+                "examples/neural-construction/construction.py",
+                "examples/neural-construction/activity.py",
+                "examples/neural-construction/Construction.java",
+                "examples/neural-construction/viewer.html",
+                "examples/neural-construction/vendor/cx3d-0.03.zip",
+                "examples/neural-construction/vendor/compatibility.patch",
+                "examples/neural-construction/vendor/provenance.json",
+                "examples/neural-construction/vendor/LICENSE.CX3D",
+                "examples/coding-consequences/README.md",
+                "examples/coding-consequences/coding.py",
+                "examples/coding-consequences/data/provenance.json",
+                "examples/coding-consequences/data/sox2-wt.json",
+                "examples/coding-consequences/data/sox2-minus4.json",
+                "examples/coding-consequences/data/NC_007133.7_37347793_37350078.fasta",
+                "examples/coding-consequences/data/NC_141042.1_40458511_40460773.fasta",
+                "examples/coding-consequences/data/NC_007133.7_37347793_37350078.gb",
+                "examples/coding-consequences/data/NC_141042.1_40458511_40460773.gb",
+                "examples/coding-consequences/data/NM_213118.1.gb",
+                "examples/coding-consequences/data/ncbi-gc.prt",
+                "examples/coding-consequences/data/sox2-motor-article.xml",
+                "examples/coding-consequences/data/sox2-pmc-image1.tiff",
+                "examples/coding-consequences/data/sox2-pmc-supplement-text.txt",
+                "examples/neural-binding/README.md",
+                "examples/neural-binding/binding.py",
+                "examples/neural-binding/benchmark.py",
+                "examples/neural-binding/benchmark-data/protocol.json",
+                "examples/neural-binding/benchmark-data/variant-mapping.json",
+                "examples/neural-binding/benchmark-data/input-manifest.json",
+                "examples/neural-binding/benchmark-data/kock-panel.json",
+                "examples/neural-binding/data/provenance.json",
+                "examples/neural-binding/data/homeodomain.json",
+                "examples/neural-binding/data/BLOSUM62.json",
+                "examples/neural-binding/data/FamilyCode-LICENSE",
+                "examples/neural-binding/data/Artistic-2.0.txt",
+                "examples/neural-binding/data/HD_SELEX_PBM_CV_alignment.rsd",
+                "examples/neural-binding/data/HD_SELEX_PBM_CV_motif.rsd",
+                "examples/neural-binding/data/FCpackage-pinned--data--BLOSUM62.RData",
+                "examples/neural-binding/data/NC_000068.8_147025815_147028038.fasta",
+                "examples/neural-binding/data/NC_000068.8_147025815_147028038.gb",
+                "examples/neural-binding/data/NM_010919.3.gb",
+                "examples/neural-binding/data/Nkx2-2_NP_035049.1.fasta",
+                "examples/neural-binding/data/nkx2-2-wt.json",
+                "examples/neural-binding/data/nkx2-2-p156l.json",
+                "examples/neural-binding/data/nkx2-2-wt-selection.json",
+                "examples/neural-binding/data/nkx2-2-p156l-selection.json",
+                "tests/test_neural_binding.py",
+                "tests/test_neural_binding_benchmark.py",
                 "pyproject.toml",
                 "tests/verify.py",
                 "tests/data/J02482.1.fasta",
@@ -1789,6 +1847,12 @@ def sdist() -> None:
                 "tests/test_external_source.py",
                 "tests/test_external_execution.py",
                 "tests/test_universal_translation.py",
+                "tests/test_neural_mechanism_acceptance.py",
+                "tests/test_neural_fate_experiment.py",
+                "tests/test_neural_regulation.py",
+                "tests/test_neural_construction.py",
+                "tests/test_coding_consequences.py",
+                "tests/data/NeuralAttachmentProbe.java",
                 "tests/test_validator_external.py",
                 "tests/test_validator_development.py",
                 "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
@@ -1888,7 +1952,7 @@ def sdist() -> None:
                     "brainc.external_profile, brainc.external_runtime, brainc.external_source, "
                     "brainc.development_bundle, brainc.validator_reference, "
                     "brainc.validator_external, brainc.validator_development; "
-                    "assert brainc.__version__ == '1.0.0'"
+                    "assert brainc.__version__ == '1.5.0'"
                 ),
             ],
             check=True,
@@ -2156,13 +2220,80 @@ def minimal_example() -> None:
     print("MINIMAL-EXAMPLE-PASSED")
 
 
+def neural_mechanism_controls() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "unittest", "tests.test_neural_mechanism_acceptance", "-v"],
+        check=False,
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-MECHANISM-CONTROLS-PASSED")
+    print("Artificial assay and compiler transport only; biological development is NOT ACCEPTED by this gate.")
+
+
+def neural_fate_experiment() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "unittest", "tests.test_neural_fate_experiment", "-v"],
+        check=False,
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-FATE-EXPERIMENT-PASSED")
+    print("Published model reproduction only; natural DNA inference and independent biological prediction are NOT ESTABLISHED.")
+
+
+def neural_regulation() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "unittest", "tests.test_neural_regulation", "-v"],
+        check=False,
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-REGULATION-SOFTWARE-PASSED")
+    print("Source integrity, numerical fitting, and compilation only; see the separate benchmark's predictive_acceptance result.")
+
+
+def neural_construction() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_construction","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-CONSTRUCTION-SOFTWARE-PASSED")
+    print("Artificial development and transmission controls; biological brain equivalence is NOT ESTABLISHED.")
+
+
+def coding_consequences() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_coding_consequences","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("CODING-CONSEQUENCES-SOFTWARE-PASSED")
+    print("Source-bound peptide predictions; molecular activity and neural development are NOT ESTABLISHED.")
+
+
+def neural_binding() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_binding",
+                             "tests.test_neural_binding_benchmark","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-BINDING-SOFTWARE-PASSED")
+    print("Source-bound preferences and frozen evaluation; see the separate benchmark's predictive_acceptance result.")
+
+
 COMMANDS = {
+    "coding-consequences": coding_consequences,
+    "neural-binding": neural_binding,
     "boundary": boundary,
     "canonical": canonical,
     "contract-attacks": contract_attacks,
     "development-real-dna": development_real_dna,
     "genbank-real-dna": genbank_real_dna,
     "minimal-example": minimal_example,
+    "neural-mechanism-controls": neural_mechanism_controls,
+    "neural-fate-experiment": neural_fate_experiment,
+    "neural-regulation": neural_regulation,
+    "neural-construction": neural_construction,
     "universal-translation": universal_translation,
     "real-dna": real_dna,
     "resource-path-safety": resource_path_safety,

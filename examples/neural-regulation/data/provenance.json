@@ -1,0 +1,31 @@
+{
+  "study": "Kreimer et al. 2022",
+  "doi": "10.1038/s41467-022-28659-0",
+  "accession": "GSE188264",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Exact source bytes preserved; interpretation and analysis are separate.",
+  "files": {
+    "design.fasta": {
+      "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-022-28659-0/MediaObjects/41467_2022_28659_MOESM9_ESM.txt",
+      "bytes": 2498296,
+      "sha256": "2f0792a428fa5dda719bcc5bba57a536c5c3671fd2ae3c95414600b72da27fe6"
+    },
+    "alphas.csv.gz": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE188nnn/GSE188264/suppl/GSE188264_new_uq_alphas.csv.gz",
+      "bytes": 512221,
+      "sha256": "aef1dd9a443f893fea2e837b485f31d9ca51b8f1f4c7201553cd6b1b88775d7b"
+    }
+  },
+  "prefix": "AGGACCGGATCAACT",
+  "suffix": "CATTGCGTGAACCGA",
+  "insert_bases": 171,
+  "times_hours": [
+    0,
+    3,
+    6,
+    12,
+    24,
+    48,
+    72
+  ]
+}

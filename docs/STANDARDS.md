@@ -1,6 +1,6 @@
 # Standards and format trace
 
-Epigenesis 1.0 treats each accepted biological format as an explicitly selected
+Epigenesis 1.5 treats each accepted biological format as an explicitly selected
 source profile with defined grammar, identity rules, limits, and versioned IR.
 Built-in raw DNA, FASTA, reference FASTA, GenBank, and bounded structural GFF3
 frontends feed one source-descriptor contract. The GenBank profile carries a
@@ -148,7 +148,7 @@ GFF3 and retained feature-graph paths consume Sequence Collection v1.
 
 ## Release statement
 
-Epigenesis 1.0 is a deterministic biological-source compiler. Its GenBank
+Epigenesis 1.5 is a deterministic biological-source compiler. Its GenBank
 profile is packaged-authority-pinned; other built-ins use project-defined
 grammar versions; external profiles bind declared authorities and
 manifest-qualified caller attestations. The producer-isolated validator

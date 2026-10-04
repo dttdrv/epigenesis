@@ -1,0 +1,519 @@
+LOCUS       NC_000068               2224 bp    DNA     linear   CON 07-FEB-2024
+DEFINITION  Mus musculus strain C57BL/6J chromosome 2, GRCm39.
+ACCESSION   NC_000068 REGION: 147025815..147028038
+VERSION     NC_000068.8
+DBLINK      BioProject: PRJNA169
+            Assembly: GCF_000001635.27
+KEYWORDS    RefSeq.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia; Myomorpha;
+            Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (bases 1 to 2224)
+  AUTHORS   Church,D.M., Schneider,V.A., Graves,T., Auger,K., Cunningham,F.,
+            Bouk,N., Chen,H.C., Agarwala,R., McLaren,W.M., Ritchie,G.R.,
+            Albracht,D., Kremitzki,M., Rock,S., Kotkiewicz,H., Kremitzki,C.,
+            Wollam,A., Trani,L., Fulton,L., Fulton,R., Matthews,L.,
+            Whitehead,S., Chow,W., Torrance,J., Dunn,M., Harden,G.,
+            Threadgold,G., Wood,J., Collins,J., Heath,P., Griffiths,G.,
+            Pelan,S., Grafham,D., Eichler,E.E., Weinstock,G., Mardis,E.R.,
+            Wilson,R.K., Howe,K., Flicek,P. and Hubbard,T.
+  TITLE     Modernizing reference genome assemblies
+  JOURNAL   PLoS Biol. 9 (7), e1001091 (2011)
+   PUBMED   21750661
+REFERENCE   2  (bases 1 to 2224)
+  AUTHORS   Church,D.M., Goodstadt,L., Hillier,L.W., Zody,M.C., Goldstein,S.,
+            She,X., Bult,C.J., Agarwala,R., Cherry,J.L., DiCuccio,M.,
+            Hlavina,W., Kapustin,Y., Meric,P., Maglott,D., Birtle,Z.,
+            Marques,A.C., Graves,T., Zhou,S., Teague,B., Potamousis,K.,
+            Churas,C., Place,M., Herschleb,J., Runnheim,R., Forrest,D.,
+            Amos-Landgraf,J., Schwartz,D.C., Cheng,Z., Lindblad-Toh,K.,
+            Eichler,E.E. and Ponting,C.P.
+  CONSRTM   Mouse Genome Sequencing Consortium
+  TITLE     Lineage-specific biology revealed by a finished genome assembly of
+            the mouse
+  JOURNAL   PLoS Biol. 7 (5), e1000112 (2009)
+   PUBMED   19468303
+REFERENCE   3  (bases 1 to 2224)
+  CONSRTM   Genome Reference Consortium
+  TITLE     Direct Submission
+  JOURNAL   Submitted (24-JUN-2020) NCBI, NIH, Bethesda, MD 20892, USA
+COMMENT     REFSEQ INFORMATION: The reference sequence is identical to
+            CM000995.3.
+            
+            On Sep 22, 2020 this sequence version replaced NC_000068.7.
+            Assembly Name: GRCm39
+            The DNA sequence is composed of genomic sequence, primarily
+            finished clones that were sequenced as part of the Mouse Genome
+            Project. PCR products and WGS shotgun sequence have been added
+            where necessary to fill gaps or correct errors. All such additions
+            are manually curated by GRC staff. For more information see:
+            https://genomereference.org.
+            
+            ##Genome-Annotation-Data-START##
+            Annotation Provider         :: NCBI RefSeq
+            Annotation Status           :: Updated annotation
+            Annotation Name             :: GCF_000001635.27-RS_2024_02
+            Annotation Pipeline         :: NCBI eukaryotic genome annotation
+                                           pipeline
+            Annotation Software Version :: 10.2
+            Annotation Method           :: Best-placed RefSeq; Gnomon;
+                                           RefSeqFE; cmsearch; tRNAscan-SE
+            Features Annotated          :: Gene; mRNA; CDS; ncRNA
+            Annotation Date             :: 02/01/2024
+            ##Genome-Annotation-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2224
+                     /organism="Mus musculus"
+                     /mol_type="genomic DNA"
+                     /strain="C57BL/6J"
+                     /db_xref="taxon:10090"
+                     /chromosome="2"
+     gene            complement(<1..>2224)
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="NK2 homeobox 2; Derived by automated computational
+                     analysis using gene prediction method: BestRefSeq,Gnomon."
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X5"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 46 long SRA reads, 3 Proteins, and
+                     100% coverage of the annotated genomic feature by RNAseq
+                     alignments"
+                     /transcript_id="XM_036159329.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X2"
+                     /protein_id="XP_036015222.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKEIRRVLQISLDLELRMLVIHHVDAGNQI
+                     WVLCKRNKCFLMPYLQPLERETLMRFYVYRQYNMNKLKIG"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X10"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 46 long SRA reads, 3 Proteins, and
+                     100% coverage of the annotated genomic feature by RNAseq
+                     alignments, including 1 sample with support for all
+                     annotated introns"
+                     /transcript_id="XM_036159345.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X5"
+                     /protein_id="XP_036015238.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKEIRRVLQISLDLELRMLVIHHVDAGNQI
+                     WVLCKRNKCFLMPYLQPLERETLMSSPR"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X6"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 53 long SRA reads, 3 Proteins, and
+                     100% coverage of the annotated genomic feature by RNAseq
+                     alignments, including 5 samples with support for all
+                     annotated introns"
+                     /transcript_id="XM_036159330.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     misc_RNA        complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X11"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 1 EST, 50 long SRA reads, 3
+                     Proteins, and 99% coverage of the annotated genomic
+                     feature by RNAseq alignments, including 3 samples with
+                     support for all annotated introns"
+                     /transcript_id="XR_004938823.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X3"
+                     /protein_id="XP_036015223.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKEIRRVLQISLDLELRMLVIHHVDAGNQI
+                     WVLCKRNKCFLMPYLQPLERETLMRLAASAE"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X9"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 93 long SRA reads, 4
+                     Proteins, and 100% coverage of the annotated genomic
+                     feature by RNAseq alignments, including 14 samples with
+                     support for all annotated introns"
+                     /transcript_id="XM_036159341.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X7"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 102 long SRA reads, 4
+                     Proteins, and 100% coverage of the annotated genomic
+                     feature by RNAseq alignments, including 17 samples with
+                     support for all annotated introns"
+                     /transcript_id="XM_036159331.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X8"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 1 EST, 100 long SRA
+                     reads, 4 Proteins, and 100% coverage of the annotated
+                     genomic feature by RNAseq alignments, including 15 samples
+                     with support for all annotated introns"
+                     /transcript_id="XM_036159335.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant 2"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: BestRefSeq."
+                     /transcript_id="NM_001077632.2"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="isoform 2 is encoded by transcript variant 2;
+                     Derived by automated computational analysis using gene
+                     prediction method: BestRefSeq."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform 2"
+                     /protein_id="NP_001071100.1"
+                     /db_xref="CCDS:CCDS38259.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKAFQNRRMDARIEAAVPIVSARWSDWIRK
+                     QFQVGRLTQAWEHNLVICGFEGCLGKVHLQ"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X4"
+                     /protein_id="XP_036015224.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKAFQNRRMDARIEAAVPIVSARWSDWIRK
+                     QFQVGRLTQAWEHNLVICGFEGCLGKVHLQ"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X4"
+                     /protein_id="XP_036015228.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKAFQNRRMDARIEAAVPIVSARWSDWIRK
+                     QFQVGRLTQAWEHNLVICGFEGCLGKVHLQ"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X4"
+                     /protein_id="XP_036015234.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKAFQNRRMDARIEAAVPIVSARWSDWIRK
+                     QFQVGRLTQAWEHNLVICGFEGCLGKVHLQ"
+     mRNA            complement(join(<352..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X12"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 45 long SRA reads, 3 Proteins, and
+                     100% coverage of the annotated genomic feature by RNAseq
+                     alignments, including 4 samples with support for all
+                     annotated introns"
+                     /transcript_id="XM_036159347.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     CDS             complement(join(<352..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X6"
+                     /protein_id="XP_036015240.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGHRY"
+     mRNA            complement(join(<1..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X3"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 1 EST, 563 long SRA
+                     reads, 8 Proteins, and 100% coverage of the annotated
+                     genomic feature by RNAseq alignments, including 15 samples
+                     with support for all annotated introns"
+                     /transcript_id="XM_006498900.5"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<1..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X4"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 1 EST, 554 long SRA
+                     reads, 8 Proteins, and 100% coverage of the annotated
+                     genomic feature by RNAseq alignments, including 16 samples
+                     with support for all annotated introns"
+                     /transcript_id="XM_011239349.4"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<1..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X1"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 1 EST, 586 long SRA
+                     reads, 8 Proteins, and 100% coverage of the annotated
+                     genomic feature by RNAseq alignments, including 20 samples
+                     with support for all annotated introns"
+                     /transcript_id="XM_006498899.4"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<1..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant X2"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon. Supporting evidence
+                     includes similarity to: 3 mRNAs, 2 ESTs, 565 long SRA
+                     reads, 8 Proteins, and 100% coverage of the annotated
+                     genomic feature by RNAseq alignments, including 16 samples
+                     with support for all annotated introns"
+                     /transcript_id="XM_036159325.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     mRNA            complement(join(<1..663,1866..>2224))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /product="NK2 homeobox 2, transcript variant 1"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: BestRefSeq."
+                     /transcript_id="NM_010919.3"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     CDS             complement(join(101..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X1"
+                     /protein_id="XP_036015218.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGMEVTPLPSPRRVAVPVLVRDGKPCHAL
+                     KAQDLAAATFQAGIPFSAYSAQSLQHMQYNAQYSSASTPQYPTAHPLVQAQQWTW"
+     CDS             complement(join(101..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X1"
+                     /protein_id="XP_006498962.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGMEVTPLPSPRRVAVPVLVRDGKPCHAL
+                     KAQDLAAATFQAGIPFSAYSAQSLQHMQYNAQYSSASTPQYPTAHPLVQAQQWTW"
+     CDS             complement(join(101..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X1"
+                     /protein_id="XP_006498963.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGMEVTPLPSPRRVAVPVLVRDGKPCHAL
+                     KAQDLAAATFQAGIPFSAYSAQSLQHMQYNAQYSSASTPQYPTAHPLVQAQQWTW"
+     CDS             complement(join(101..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="isoform 1 is encoded by transcript variant 1;
+                     Derived by automated computational analysis using gene
+                     prediction method: BestRefSeq."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform 1"
+                     /protein_id="NP_035049.1"
+                     /db_xref="CCDS:CCDS16834.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGMEVTPLPSPRRVAVPVLVRDGKPCHAL
+                     KAQDLAAATFQAGIPFSAYSAQSLQHMQYNAQYSSASTPQYPTAHPLVQAQQWTW"
+     misc_feature    complement(1957..2124)
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="propagated from UniProtKB/Swiss-Prot (P42586.2);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    complement(530..652)
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="propagated from UniProtKB/Swiss-Prot (P42586.2);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     CDS             complement(join(101..663,1866..2124))
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: Gnomon."
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform X1"
+                     /protein_id="XP_011237651.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGMEVTPLPSPRRVAVPVLVRDGKPCHAL
+                     KAQDLAAATFQAGIPFSAYSAQSLQHMQYNAQYSSASTPQYPTAHPLVQAQQWTW"
+     gene            189..>2224
+                     /gene="Nkx2-2os"
+                     /gene_synonym="Gm14112; Nkx2-2as; Nkx2.2AS"
+                     /note="NK2 homeobox 2, opposite strand; Derived by
+                     automated computational analysis using gene prediction
+                     method: BestRefSeq."
+                     /db_xref="GeneID:100313531"
+                     /db_xref="MGI:MGI:3652259"
+     ncRNA           189..>466
+                     /ncRNA_class="lncRNA"
+                     /gene="Nkx2-2os"
+                     /gene_synonym="Gm14112; Nkx2-2as; Nkx2.2AS"
+                     /product="NK2 homeobox 2, opposite strand"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: BestRefSeq."
+                     /transcript_id="NR_030769.3"
+                     /db_xref="GeneID:100313531"
+                     /db_xref="MGI:MGI:3652259"
+ORIGIN      
+        1 aataataata acaaccgtgg taaggatcga gtcctcctcg ccaccggcgc cgctggggtg
+       61 gggccagggc ctaaggcctc cagtcttgga ggggcggcgc tcaccaagtc cactgctggg
+      121 cctggaccag ggggtgtgct gtcgggtact ggggggtgct ggccgagctg tactgggcgt
+      181 tgtactgcat gtgctgcagc gactgcgcgc tgtaggcgga aaaggggatg cctgcctgga
+      241 aggtggcggc tgccaggtcc tgggctttga gcgcgtggca cggtttgccg tccctgacca
+      301 agaccggcac tgccacacgg cgcggcgagg gcagaggcgt cacctccata cctttctccg
+      361 cccgggcacg tttcatcttg tagcgatggt tctggaacca gatcttgacc tgtgtcggcg
+      421 tgagacggat gaggctggcc aggtgctcgc gctcgggcgc cgacaggtac cgctgctgcc
+      481 ggaagcgccg ctccagctcg taggtctgcg ctttggagaa gagcactcgg cgcttccgct
+      541 tcttgcctgc gtcccccccg ccgccctggg tctccttgtc attgtccggt gactcgtcag
+      601 ccgagggctc tggggatttg gagctcgagt cttggggggg agcgctggcc gccagcccgt
+      661 gcactgggtg gggggggggg ggggaagaga agcgcatcag gcggctggag gccaagtgcc
+      721 acctgggtca cccggagtcc cagggctctt ccgtgggccc ttggcccact ggaccagccc
+      781 agacccgctg cctttgcagc aatccccgcc cgagtaagcc gtcggggtct gctagggttc
+      841 agaggagagt ctgcgcagcg ggggctctga ggcataagtt tctaggggtt cccactattc
+      901 aggagaattt agtgcgaagc gcagagtgtg gacggtcatt gagggttaag ggctctggac
+      961 cccttaaaca gtttcctctt tggagagacg tgggcagatt tttaaaagga aaacctcaca
+     1021 atcccagcat tgatgggctt ggcggggtaa accaggtttg gggggctttc gcttttgctt
+     1081 tcggactttc tggatggaca cccacacccg ccgctgcacg caccacatag tttttctctt
+     1141 tctttctttc tttctttctt tctttctttc tttctttctt tctttctttc tttctttctt
+     1201 tctttctttc tttctttctt ccttccttcc ttcctttctt tcttccttcc tttctttctt
+     1261 tctttctttc tttctttcct tctttctttc tttctttctt tctttctttc tttctttctt
+     1321 tctttctttc tttcttcttt ctttctttct ttctttcttt tttctttctc tctctctctc
+     1381 tctctctctc tctctctctc tctctctctc tctctctctc tctttctttc tttttttttt
+     1441 acaatcatgc aggggcaggg atgagctatt ataccccaag cctcctccac cctctactgc
+     1501 tagccggacc ctgaccaggg atccctgctc cagagagcaa agccaagtcc tctgggccat
+     1561 ctgagtccag ggtactccgg ccagagccat aagtccggtt gacatctcta gccagctttt
+     1621 agaaagcgtc tctcttgtct tttgctttaa tttctcccgt agaaaatata tggcatcaga
+     1681 gactgggaag ggatgtctac cgaggaggga aaagggcata ctaagcaaat gtttcaaaat
+     1741 ctagggatcc gggatgggac ttggacatta aatggcttct tccccaaaac tcccagcgtc
+     1801 cacccgggtt actgcctcag caatggaggc agccacagcc gttgcggcca agtttcgcta
+     1861 cttacgggag tattggaggc cctcggtgct ggccagccag cgagtgtagg ggttgtcgct
+     1921 gctgtcgtag aaagggctct taaggggcag gctctgcaca gcgtccaggg cgccctgccc
+     1981 cagcggcccg gccctcttgg cgggctccgg cccttcgctc tcctcctctg gcccttcggc
+     2041 caccgagccg tcttcatcgt tggtgtccgg aaggtccaag atgtccttga ctgaaaaccc
+     2101 cgtctttgtg ttggtcagcg acatggttcc ggaccccgca atttatgcca caaagttgta
+     2161 gcctcacttg gtcaattcgt ggctctcccc agccccagcg ggcgggggag gggggtttaa
+     2221 ggaa
+//
+

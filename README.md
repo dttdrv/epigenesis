@@ -1,7 +1,13 @@
 # Epigenesis
 
-Epigenesis 1.0 is a universal DNA translation compiler targeting Development
-Module IR.
+Epigenesis 1.5 is a universal DNA translation compiler targeting Development
+Module IR, with experimental consumers for neural mechanisms, developmental
+construction, coding consequences and DNA-binding preferences.
+
+The [1.5 release notes](docs/RELEASE-1.5.md) describe the supported execution
+paths and evidence. A validated natural-genome-to-brain model remains an open
+research objective. The measured reporter and binding predictors failed their
+scientific acceptance criteria; those results are preserved.
 
 It accepts built-in and external DNA source languages, preserves exact source
 identity and profile-native structure, normalizes sequence identity into one
@@ -63,6 +69,74 @@ The report has `valid: true`. Stable identities are recorded in
 | Development Module | `0d835308d23fe83a5f4cd0e28c26c678c510049a381752d8671c39e3805d2cea` |
 | Development bundle | `9cc0b7c95027d777212beb75cdea04666c3333368ca5769c3203c6547d74b313` |
 | Validation report | `3b8dafa503bcb376b50c798c0e4ceb2cf254505adeff83253d854fca61dc88d3` |
+
+## Neural-fate mechanism experiment
+
+The [neural-fate example](examples/neural-fate/README.md) compiles an artificial
+512-base parameter recipe, validates its Development Module, and computes
+Pax6/Olig2/Nkx2.2 dynamics from two published models:
+
+```bash
+demo_dir=$(mktemp -d)
+python3.11 examples/neural-fate/experiment.py --output "$demo_dir/neural-fate"
+```
+
+It tests signal-history dependence, gene loss, and a steady-to-oscillating
+parameter contrast. The output includes complete trajectories, sealed modules,
+validation reports, and numerical refinement checks. Its caller-owned decoder
+and target consumer are outside the compiler package. The recipe stores model
+parameters; it does not infer a mechanism from natural DNA or construct a brain.
+The [acceptance protocol](docs/NEURAL_MECHANISM_ACCEPTANCE.md) distinguishes
+these executable results from biological validation.
+
+## Measured neural regulatory sequences
+
+The [neural-regulation example](examples/neural-regulation/README.md) fits a
+sequence-only predictor to real enhancer perturbations measured during human
+neural induction. It includes pinned source data, family-isolated evaluation,
+competing baselines, and compilation of predicted reporter effects from two
+exact DNA sequences. It is an external interpreter; the compiler retains its
+caller-supplied interpretation boundary.
+
+The first frozen evaluation reduced targeted-variant MSE by 20.97% versus
+predicting no effect, but **failed its predictive acceptance criterion** because
+superiority over a dinucleotide model was uncertain. It does not establish
+endogenous expression, developmental dynamics, or brain construction.
+
+## Local neural construction
+
+The [construction example](examples/neural-construction/README.md) consumes a
+validated artificial recipe, starts from one founder and grows cells, neurites
+and physical contacts using the pinned CX3D source. An exact integrate-and-fire
+assay tests transmission through the final contacts and its loss after lesions.
+Recorded development and activity can be explored in an offline viewer.
+
+```sh
+python3.11 examples/neural-construction/construction.py --output /tmp/my-construction
+```
+
+It requires a JDK and `patch`. This demonstrates local construction and synthetic
+transmission controls; natural DNA mapping, biological brain equivalence and
+intelligence remain unvalidated. The compiler package still owns no simulator.
+
+## Natural DNA coding consequences
+
+The [coding example](examples/coding-consequences/README.md) reconstructs
+published local Sox2 mutations on genuine genomic DNA, compiles the actual
+coding nucleotides, validates their source binding, and translates the loaded
+module with the NCBI standard genetic code. Tests distinguish real reference
+haplotypes that encode identical normal proteins but different mutant peptides.
+This predicts primary amino-acid sequence under an explicit coding-region
+contract. Protein activity and its connection to neural development remain
+unvalidated.
+
+The [binding example](examples/neural-binding/README.md) assembles annotated
+Nkx2-2 coding exons, checks its translated domain and computes relative DNA
+preferences using the published FamilyCode single-residue model. Source and
+arithmetic checks pass. Its frozen comparison uses all 92 published mutants
+and 316 fitted matrices; the 66 clone-supported primary mutants fail all three
+predictive criteria. A connection to neural-development parameters remains
+unvalidated.
 
 ## Source languages
 
@@ -204,6 +278,12 @@ python3.11 -m unittest discover -s tests -v
 python3.11 tests/verify.py source-causality
 python3.11 tests/verify.py universal-translation
 python3.11 tests/verify.py minimal-example
+python3.11 tests/verify.py neural-mechanism-controls
+python3.11 tests/verify.py neural-fate-experiment
+python3.11 tests/verify.py neural-regulation
+python3.11 tests/verify.py neural-construction
+python3.11 tests/verify.py coding-consequences
+python3.11 tests/verify.py neural-binding
 python3.11 tests/verify.py boundary
 python3.11 tests/verify.py contract-attacks
 python3.11 tests/verify.py resource-path-safety

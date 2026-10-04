@@ -1,0 +1,115 @@
+{
+  "familycode_repository_commit": "35726b009d7475b6783936530689a04c743a1900",
+  "fcpackage_commit": "3a4eeb4bf95371055b8afa12bec8b4b9c385bec3",
+  "method_doi": "10.1093/nar/gkaf831",
+  "scope": "FamilyCode single-residue model on original414 homeodomain motifs; relative DNA preferences, not absolute affinity or neural activity.",
+  "empirical_data_license": "FamilyCode repository MIT; see FamilyCode-LICENSE. Preserve original studies cited by row names.",
+  "substitution_table_license": "FCpackage Artistic-2.0; see Artistic-2.0.txt. Original table unchanged; JSON is a data-only export.",
+  "json_conversion": "rdata1.1.0 and an independent XDR reader agree exactly on all rows, dimensions, labels and numeric values. Portable model is a derived JSON export of the two original RDS inputs; it is not serialized SVD parameters.",
+  "genomic_cds": "NC_000068.8:147025815..147028038, Mus musculus; complement(join(101..663,1866..2124)) in local1-based coordinates.",
+  "protein_oracle": "NP_035049.1,273aa; NM_010919.3 is an mRNA annotation oracle, not an admitted genomic source.",
+  "domain": "57 published aligned residues exactly match peptide128:185; domain identity alone cannot establish the species of the original FamilyCode assay.",
+  "variant": "P156L is a designed reference-bound c.467C>T substitution for dataflow testing. It is not a measured Nkx2-2 mutant or a validated neural intervention.",
+  "ncbi_policy": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+  "sources": {
+    "NC_000068.8_147025815_147028038.gb": {
+      "file": "NC_000068.8_147025815_147028038.gb",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_000068.8&seq_start=147025815&seq_stop=147028038&rettype=gb&retmode=text",
+      "retrieved": "2026-10-04T10:03:28.782956+00:00",
+      "status": 200,
+      "bytes": 31277,
+      "sha256": "4803b8ff5abc26b7a6b8328be4945a5a8ee3c51234d79185bec4f008265b4a8b"
+    },
+    "NC_000068.8_147025815_147028038.fasta": {
+      "file": "NC_000068.8_147025815_147028038.fasta",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_000068.8&seq_start=147025815&seq_stop=147028038&rettype=fasta&retmode=text",
+      "retrieved": "2026-10-04T10:03:30.122099+00:00",
+      "status": 200,
+      "bytes": 2340,
+      "sha256": "43aea166408a02e067fc3eccf1e54626773f5adb6ff727c58b318b8daa82f0e0"
+    },
+    "NM_010919.3.gb": {
+      "file": "NM_010919.3.gb",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NM_010919.3&rettype=gb&retmode=text",
+      "retrieved": "2026-10-04T10:02:17.309267+00:00",
+      "status": 200,
+      "bytes": 11133,
+      "sha256": "51f90c096c94b593ff5e73b7392a16b08a7a3ae2e77cf8e535923ee33bb2489e"
+    },
+    "Nkx2-2_NP_035049.1.fasta": {
+      "file": "Nkx2-2_NP_035049.1.fasta",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=protein&id=NP_035049.1&rettype=fasta&retmode=text",
+      "retrieved": "2026-10-04T10:02:18.017663+00:00",
+      "status": 200,
+      "bytes": 341,
+      "sha256": "f2f6f8a1d6cfa68b3106817998ceaf4712be9788b3ed4dbb514e79882bd6f44c"
+    }
+  },
+  "original_data_urls": {
+    "HD_SELEX_PBM_CV_alignment.rsd": "https://media.githubusercontent.com/media/BussemakerLab/FamilyCode/35726b009d7475b6783936530689a04c743a1900/intermediateData/HD/HD_SELEX_PBM_CV_alignment.rsd",
+    "HD_SELEX_PBM_CV_motif.rsd": "https://media.githubusercontent.com/media/BussemakerLab/FamilyCode/35726b009d7475b6783936530689a04c743a1900/intermediateData/HD/HD_SELEX_PBM_CV_motif.rsd",
+    "FCpackage-pinned--data--BLOSUM62.RData": "https://raw.githubusercontent.com/BussemakerLab/FCpackage/3a4eeb4bf95371055b8afa12bec8b4b9c385bec3/data/BLOSUM62.RData"
+  },
+  "files": {
+    "Artistic-2.0.txt": {
+      "bytes": 9073,
+      "sha256": "4cabb00406b10ab960d3ebb5c14e5042cf54d2b970cc4047588aa28c703525fe"
+    },
+    "BLOSUM62.json": {
+      "bytes": 7091,
+      "sha256": "2d09a35756264ef08df133694c3fd17fd5909a0d64f5d36393868d5079b12cef"
+    },
+    "FCpackage-pinned--data--BLOSUM62.RData": {
+      "bytes": 631,
+      "sha256": "d7fdfbb718eb3ee7f4def3e4d46b46c13133c4ff5947d9c3fa82ddf7948e0a9a"
+    },
+    "FamilyCode-LICENSE": {
+      "bytes": 1093,
+      "sha256": "611126eca7a1973a6868321942a3ba2d7ef259b2406c707bdd89e71fd17ffc8a"
+    },
+    "HD_SELEX_PBM_CV_alignment.rsd": {
+      "bytes": 11577,
+      "sha256": "628d8504d572952155ad768a0ff9bddab5ad7651c9274432907f0bfcb11828c3"
+    },
+    "HD_SELEX_PBM_CV_motif.rsd": {
+      "bytes": 78652,
+      "sha256": "df363e4260b13a080b01e2640cb4ec5379fdee35f5b16a8401cdedec2b977967"
+    },
+    "NC_000068.8_147025815_147028038.fasta": {
+      "bytes": 2340,
+      "sha256": "43aea166408a02e067fc3eccf1e54626773f5adb6ff727c58b318b8daa82f0e0"
+    },
+    "NC_000068.8_147025815_147028038.gb": {
+      "bytes": 31277,
+      "sha256": "4803b8ff5abc26b7a6b8328be4945a5a8ee3c51234d79185bec4f008265b4a8b"
+    },
+    "NM_010919.3.gb": {
+      "bytes": 11133,
+      "sha256": "51f90c096c94b593ff5e73b7392a16b08a7a3ae2e77cf8e535923ee33bb2489e"
+    },
+    "Nkx2-2_NP_035049.1.fasta": {
+      "bytes": 341,
+      "sha256": "f2f6f8a1d6cfa68b3106817998ceaf4712be9788b3ed4dbb514e79882bd6f44c"
+    },
+    "homeodomain.json": {
+      "bytes": 541457,
+      "sha256": "510cd52a527ee1f9b0f871dd0822a1a65a3f26f4daaeaae14baa085282b441ba"
+    },
+    "nkx2-2-p156l-selection.json": {
+      "bytes": 904,
+      "sha256": "029c1a2cd03a28970e3ed3711a55e3a9d043961a60ca74c4bd36f354da721d9a"
+    },
+    "nkx2-2-p156l.json": {
+      "bytes": 455,
+      "sha256": "8485cdf368d17a8a8a6e7fcb9cd753b6e7211db83dd9867377f6428cc35db4f5"
+    },
+    "nkx2-2-wt-selection.json": {
+      "bytes": 904,
+      "sha256": "4f105a5e195a58e8a9d76f1b9c3e73c121334f5a2e04b02d8835a69f402fce52"
+    },
+    "nkx2-2-wt.json": {
+      "bytes": 396,
+      "sha256": "692202f5c3fcb1912c16961835020939a6d8b83b89d7595d6bcb4eb7262d07d8"
+    }
+  }
+}

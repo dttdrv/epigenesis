@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Epigenesis · Development and activity</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f8fa;--ink:#172832;--muted:#52646f;--line:#d6dfe4;--axon:#007e89;--dendrite:#ae581d;--cell:#647984;--panel:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#142027;--ink:#e1edf2;--muted:#a3b8c2;--line:#3b515c;--axon:#56d0ce;--dendrite:#ffac70;--cell:#8ba8b9;--panel:#192b35}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}main{max-width:1140px;margin:auto;padding:36px 28px}header{margin-bottom:28px}.eyebrow{color:var(--muted);font-size:13px;letter-spacing:.06em}h1{font-size:32px;font-weight:550;margin:8px 0}h2{font-size:19px;font-weight:550;margin:0 0 8px}p{margin:8px 0;color:var(--muted)}.columns{display:grid;grid-template-columns:1.4fr 1fr;gap:32px}.panel{min-width:0}canvas{display:block;width:100%;height:380px;background:var(--panel);border-radius:12px}#raster{height:260px}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}button,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 12px}button{cursor:pointer}input[type=range]{width:100%;accent-color:var(--axon)}label{display:block}output{font-variant-numeric:tabular-nums}.legend{color:var(--muted);font-size:13px;display:flex;gap:18px;margin:10px 0}.axon{color:var(--axon)}.dendrite{color:var(--dendrite)}.metrics{font-size:18px;font-weight:500;font-variant-numeric:tabular-nums}.note{font-size:13px}footer{border-top:1px solid var(--line);margin-top:28px;padding-top:15px;color:var(--muted);font-size:13px}a{color:var(--axon)}@media(max-width:760px){main{padding:22px 16px}.columns{grid-template-columns:1fr}h1{font-size:27px}canvas{height:340px}}
+</style>
+</head>
+<body><main>
+<header><div class="eyebrow">EPIGENESIS / NEURAL MECHANISM EXPERIMENT</div><h1>Developing cells and their connections</h1><p>A shared artificial recipe drives division, neurite growth and local contact formation.</p><p class="note">Synthetic development. Natural DNA interpretation and biological brain equivalence remain unvalidated.</p></header>
+<div class="columns">
+<section class="panel"><h2>Development through time</h2><canvas id="morphology" role="img" aria-label="Recorded three dimensional cells and neurites"></canvas><div class="legend"><span class="axon">— Axon</span><span class="dendrite">— Dendrite</span><span>● Soma</span></div><div class="row"><button id="play" type="button">Replay development</button><output id="time"></output></div><label for="timeline">Developmental time <span class="note">(model hours)</span></label><input id="timeline" type="range" min="0" step="1"><div class="metrics" id="counts" aria-live="polite"></div><div class="row"><label for="angle">View angle</label><input id="angle" type="range" min="0" max="360" value="40" aria-label="View angle in degrees"></div></section>
+<section class="panel"><h2>Does activity follow the grown contacts?</h2><p>Stimulate one cell, then remove its outgoing contacts. Each mark is a recorded spike.</p><div class="row"><label for="source">Stimulate cell</label><select id="source"></select><label><input id="lesion" type="checkbox"> Cut outgoing contacts</label></div><canvas id="raster" role="img" aria-label="Spike raster: cell identity by activity time in milliseconds"></canvas><div id="activity-result" class="metrics" aria-live="polite"></div><p class="note" id="contacts"></p><p class="note" id="attachment-limit"></p><p class="note">Exact leaky integrate-and-fire dynamics. All contacts receive an assumed excitatory 15 mV jump and 1 ms delay. These assay values are not predicted by the recipe or fitted to biological recordings.</p><p class="note">Development and activity use separate clocks: hours for construction; milliseconds for this transmission probe.</p></section>
+</div><footer>Playback uses recorded geometry and actual contact endpoints from the development run. <a href="experiment.json">Experiment evidence</a> · <a href="activity.json">Activity trials</a> · <a href="compiled/recipe.dna">Artificial recipe</a></footer>
+</main>
+<script>
+'use strict';
+const data = /* CONSTRUCTION_DATA */ null;
+if (!data) throw new Error('Generate this viewer with construction.py before opening it.');
+const frames=data.frames, activity=data.activity;
+const $=id=>document.getElementById(id);
+const timeline=$('timeline'), angle=$('angle'), source=$('source'), lesion=$('lesion');
+timeline.max=frames.length-1;timeline.value=frames.length-1;
+for(const trial of activity.trials){const option=document.createElement('option');option.value=trial.stimulated_cell;option.textContent=trial.stimulated_cell;source.append(option)}
+const minima=[Infinity,Infinity,Infinity],maxima=[-Infinity,-Infinity,-Infinity];
+for(const frame of frames){const points=frame.cells.map(c=>c.slice(1,4)).concat(frame.segments.flatMap(s=>[s.slice(2,5),s.slice(5,8)]));for(const p of points)for(let i=0;i<3;i++){minima[i]=Math.min(minima[i],p[i]);maxima[i]=Math.max(maxima[i],p[i])}}
+const center=minima.map((v,i)=>(v+maxima[i])/2), extent=Math.max(40,...maxima.map((v,i)=>v-minima[i]));
+function canvas(id){const el=$(id),ratio=devicePixelRatio||1,w=el.clientWidth,h=el.clientHeight;el.width=Math.round(w*ratio);el.height=Math.round(h*ratio);const ctx=el.getContext('2d');ctx.scale(ratio,ratio);return{ctx,w,h}}
+function colors(){const s=getComputedStyle(document.documentElement);return Object.fromEntries(['ink','muted','line','axon','dendrite','cell'].map(k=>[k,s.getPropertyValue('--'+k).trim()]))}
+function drawMorphology(){const {ctx,w,h}=canvas('morphology'),c=colors(),frame=frames[+timeline.value],theta=+angle.value*Math.PI/180,scale=Math.min(w-60,h-60)/(extent+30);
+const project=p=>{const[x,y,z]=p.map((v,i)=>v-center[i]);return[w/2+(x*Math.cos(theta)-y*Math.sin(theta))*scale,h/2-(z*.92+(x*Math.sin(theta)+y*Math.cos(theta))*.38)*scale]};
+for(const s of frame.segments){const a=project(s.slice(2,5)),b=project(s.slice(5,8));ctx.strokeStyle=s[1]?c.axon:c.dendrite;ctx.lineWidth=Math.max(1.3,s[8]*scale);ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke()}
+for(const cell of frame.cells){const p=project(cell.slice(1,4));ctx.fillStyle=c.cell;ctx.globalAlpha=.7;ctx.beginPath();ctx.arc(...p,Math.max(3,cell[4]*scale),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle=c.ink;ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText(cell[0],p[0],p[1]+4)}
+ctx.strokeStyle=c.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(20,h-22);ctx.lineTo(20+10*scale,h-22);ctx.stroke();ctx.fillStyle=c.muted;ctx.textAlign='left';ctx.fillText('10 μm',20,h-30);
+$('time').textContent=frame.time.toFixed(2)+' h';$('counts').textContent=frame.cells.length+' cells · '+frame.segments.length+' neurite segments';
+}
+function drawRaster(){const {ctx,w,h}=canvas('raster'),c=colors(),trial=activity.trials.find(t=>t.stimulated_cell===+source.value),spikes=lesion.checked?trial.lesioned_spikes:trial.intact_spikes,ids=activity.trials.map(t=>t.stimulated_cell),left=48,right=w-22,top=32,bottom=h-42;ctx.font='12px system-ui';ctx.fillStyle=c.muted;ctx.textAlign='center';
+for(let t=0;t<=20;t+=5){const x=left+(right-left)*t/20;ctx.strokeStyle=c.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.fillText(t,x,bottom+20)}ctx.fillText('Activity time (ms)',(left+right)/2,h-5);
+const y=id=>top+(ids.indexOf(id)+.5)*(bottom-top)/ids.length;
+ctx.textAlign='right';for(const id of ids){ctx.fillStyle=c.muted;ctx.fillText('Cell '+id,left-10,y(id)+4)}
+for(const[t,id]of spikes){ctx.strokeStyle=id===trial.stimulated_cell?c.ink:c.axon;ctx.lineWidth=3;const x=left+(right-left)*t/20;ctx.beginPath();ctx.moveTo(x,y(id)-9);ctx.lineTo(x,y(id)+9);ctx.stroke()}
+const count=new Set(spikes.filter(s=>s[1]!==trial.stimulated_cell).map(s=>s[1])).size;$('activity-result').textContent=count+' downstream '+(count===1?'cell responds':'cells respond');$('contacts').textContent=activity.contacts+' retained synaptic links in the final graph. Transmission controls '+(activity.transmission_controls_pass?'pass.':'fail.');
+}
+let playing=false,last=0;function stop(){playing=false;$('play').textContent='Replay development'}
+function tick(now){if(!playing)return;if(now-last>50){last=now;timeline.value=Math.min(+timeline.value+1,+timeline.max);drawMorphology();if(+timeline.value===+timeline.max)stop()}if(playing)requestAnimationFrame(tick)}
+$('play').onclick=()=>{if(playing){stop();return}timeline.value=0;playing=true;$('play').textContent='Pause';drawMorphology();requestAnimationFrame(tick)};
+timeline.oninput=()=>{stop();drawMorphology()};angle.oninput=drawMorphology;source.onchange=drawRaster;lesion.onchange=drawRaster;
+new ResizeObserver(()=>{drawMorphology();drawRaster()}).observe(document.querySelector('.columns'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawMorphology();drawRaster()});
+$('attachment-limit').textContent=activity.retained_sites_outside_segments+' retained attachment sites lie beyond their current shaft endpoints. Formation was checked; attachment mechanics during later deformation remain unvalidated.';
+drawMorphology();drawRaster();
+</script></body></html>

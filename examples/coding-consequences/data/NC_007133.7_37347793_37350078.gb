@@ -1,0 +1,212 @@
+LOCUS       NC_007133               2286 bp    DNA     linear   CON 08-SEP-2024
+DEFINITION  Danio rerio strain Tuebingen chromosome 22, GRCz11 Primary
+            Assembly.
+ACCESSION   NC_007133 REGION: 37347793..37350078
+VERSION     NC_007133.7
+DBLINK      BioProject: PRJNA13922
+            BioSample: SAMN06930106
+            Assembly: GCF_000002035.6
+KEYWORDS    RefSeq.
+SOURCE      Danio rerio (zebrafish)
+  ORGANISM  Danio rerio
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Actinopterygii; Neopterygii; Teleostei; Ostariophysi;
+            Cypriniformes; Danionidae; Danioninae; Danio.
+REFERENCE   1  (bases 1 to 2286)
+  AUTHORS   Howe,K., Clark,M.D., Torroja,C.F., Torrance,J., Berthelot,C.,
+            Muffato,M., Collins,J.E., Humphray,S., McLaren,K., Matthews,L.,
+            McLaren,S., Sealy,I., Caccamo,M., Churcher,C., Scott,C.,
+            Barrett,J.C., Koch,R., Rauch,G.J., White,S., Chow,W., Kilian,B.,
+            Quintais,L.T., Guerra-Assuncao,J.A., Zhou,Y., Gu,Y., Yen,J.,
+            Vogel,J.H., Eyre,T., Redmond,S., Banerjee,R., Chi,J., Fu,B.,
+            Langley,E., Maguire,S.F., Laird,G.K., Lloyd,D., Kenyon,E.,
+            Donaldson,S., Sehra,H., Almeida-King,J., Loveland,J., Trevanion,S.,
+            Jones,M., Quail,M., Willey,D., Hunt,A., Burton,J., Sims,S.,
+            McLay,K., Plumb,B., Davis,J., Clee,C., Oliver,K., Clark,R.,
+            Riddle,C., Elliot,D., Threadgold,G., Harden,G., Ware,D., Begum,S.,
+            Mortimore,B., Kerry,G., Heath,P., Phillimore,B., Tracey,A.,
+            Corby,N., Dunn,M., Johnson,C., Wood,J., Clark,S., Pelan,S.,
+            Griffiths,G., Smith,M., Glithero,R., Howden,P., Barker,N.,
+            Lloyd,C., Stevens,C., Harley,J., Holt,K., Panagiotidis,G.,
+            Lovell,J., Beasley,H., Henderson,C., Gordon,D., Auger,K.,
+            Wright,D., Collins,J., Raisen,C., Dyer,L., Leung,K., Robertson,L.,
+            Ambridge,K., Leongamornlert,D., McGuire,S., Gilderthorp,R.,
+            Griffiths,C., Manthravadi,D., Nichol,S., Barker,G., Whitehead,S.,
+            Kay,M., Brown,J., Murnane,C., Gray,E., Humphries,M., Sycamore,N.,
+            Barker,D., Saunders,D., Wallis,J., Babbage,A., Hammond,S.,
+            Mashreghi-Mohammadi,M., Barr,L., Martin,S., Wray,P., Ellington,A.,
+            Matthews,N., Ellwood,M., Woodmansey,R., Clark,G., Cooper,J.,
+            Tromans,A., Grafham,D., Skuce,C., Pandian,R., Andrews,R.,
+            Harrison,E., Kimberley,A., Garnett,J., Fosker,N., Hall,R.,
+            Garner,P., Kelly,D., Bird,C., Palmer,S., Gehring,I., Berger,A.,
+            Dooley,C.M., Ersan-Urun,Z., Eser,C., Geiger,H., Geisler,M.,
+            Karotki,L., Kirn,A., Konantz,J., Konantz,M., Oberlander,M.,
+            Rudolph-Geiger,S., Teucke,M., Lanz,C., Raddatz,G., Osoegawa,K.,
+            Zhu,B., Rapp,A., Widaa,S., Langford,C., Yang,F., Schuster,S.C.,
+            Carter,N.P., Harrow,J., Ning,Z., Herrero,J., Searle,S.M.,
+            Enright,A., Geisler,R., Plasterk,R.H., Lee,C., Westerfield,M., de
+            Jong,P.J., Zon,L.I., Postlethwait,J.H., Nusslein-Volhard,C.,
+            Hubbard,T.J., Roest Crollius,H., Rogers,J. and Stemple,D.L.
+  TITLE     The zebrafish reference genome sequence and its relationship to the
+            human genome
+  JOURNAL   Nature 496 (7446), 498-503 (2013)
+   PUBMED   23594743
+  REMARK    Erratum:[Nature. 2014 Jan 9;505(7482):248. Cooper, James [corrected
+            to Cooper, James D]; Eliott, David [corrected to Elliot, David];
+            Mortimer, Beverly [corrected to Mortimore, Beverley]; Begum,
+            Sharmin [added]; Lloyd, Christine [added]; Lanz, Christa [added];
+            Raddatz, Gunter [added]; Schuster, Stephan C [added]]
+REFERENCE   2  (bases 1 to 2286)
+  CONSRTM   Genome Reference Consortium
+  TITLE     Genome Reference Consortium reference assembly of the zebrafish
+            genome
+  JOURNAL   Unpublished
+COMMENT     REFSEQ INFORMATION: The reference sequence is identical to
+            CM002906.2.
+            
+            On Jun 26, 2017 this sequence version replaced NC_007133.6.
+            Assembly Name: GRCz11 Primary Assembly
+            The GRCz11 sequence is composed of genomic sequence, primarily
+            finished clones that were sequenced as part of Zebrafish Genome
+            Project at the Wellcome Trust Sanger Institute. PCR products and
+            WGS shotgun sequence from mainly the WGS31 assembly
+            (CABZ00000000.1) but also WGS29 (CAAK00000000.1) and WGS32
+            (CZQB00000000.1) have been added where necessary to fill gaps. In
+            addition, unplaced sequences from WGS31 were added if they featured
+            at least 5 kb of non-repetitive sequence, or if alignments with a
+            cDNA could be detected that were not already covered by the placed
+            sequences. For more information see: https://genomereference.org.
+            
+            ##Genome-Annotation-Data-START##
+            Annotation Provider         :: NCBI RefSeq
+            Annotation Status           :: Full annotation
+            Annotation Name             :: GCF_000002035.6-RS_2024_08
+            Annotation Pipeline         :: NCBI eukaryotic genome annotation
+                                           pipeline
+            Annotation Software Version :: 10.3
+            Annotation Method           :: Best-placed RefSeq; Gnomon;
+                                           cmsearch; tRNAscan-SE
+            Features Annotated          :: Gene; mRNA; CDS; ncRNA
+            Annotation Date             :: 08/15/2024
+            ##Genome-Annotation-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2286
+                     /organism="Danio rerio"
+                     /mol_type="genomic DNA"
+                     /strain="Tuebingen"
+                     /db_xref="taxon:7955"
+                     /chromosome="22"
+     gene            complement(<1..>2286)
+                     /gene="sox2ot"
+                     /note="SOX2 overlapping transcript; Derived by automated
+                     computational analysis using gene prediction method:
+                     Gnomon."
+                     /db_xref="GeneID:103909645"
+                     /db_xref="ZFIN:ZDB-LNCRNAG-091125-1"
+     gene            complement(101..2186)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="SRY-box transcription factor 2; Derived by
+                     automated computational analysis using gene prediction
+                     method: BestRefSeq."
+                     /db_xref="GeneID:378723"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+     mRNA            complement(101..2186)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /product="SRY-box transcription factor 2"
+                     /inference="similar to RNA sequence, mRNA (same
+                     species):RefSeq:NM_213118.1"
+                     /exception="annotated by transcript or proteomic data"
+                     /note="The RefSeq transcript has 13 substitutions, 5
+                     non-frameshifting indels compared to this genomic
+                     sequence; Derived by automated computational analysis
+                     using gene prediction method: BestRefSeq."
+                     /transcript_id="NM_213118.1"
+                     /db_xref="GeneID:378723"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+     CDS             complement(1016..1963)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: BestRefSeq."
+                     /codon_start=1
+                     /product="transcription factor Sox-2"
+                     /protein_id="NP_998283.1"
+                     /db_xref="GeneID:378723"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+                     /translation="MYNMMETELKPPAPQPNTGGTGNTNSSGNNQKNSPDRIKRPMNA
+                     FMVWSRGQRRKMAQENPKMHNSEISKRLGAEWKLLSESEKRPFIDEAKRLRALHMKEH
+                     PDYKYRPRRKTKTLMKKDKYTLPGGLLAPGGNGMGAGVGVGAGLGAGVNQRMDSYAHM
+                     NGWTNGGYGMMQEQLGYPQHPSLNAHNTAQMQPMHRYDMSALQYNSMTNSQTYMNGSP
+                     TYSMSYSQQSTPGMTLGSMGSVVKSESSSSPPVVTSSSHSRAGQCQTGDLRDMISMYL
+                     PGAEVQDQSAQSRLHMSQHYQSAPVPGTTINGTIPLSHM"
+     misc_feature    complement(1841..1963)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    complement(1175..1261)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    complement(1130..1156)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: 9aaTAD. /evidence=ECO:0000250|UniProtKB:P41225"
+     misc_feature    complement(1019..1078)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+ORIGIN      
+        1 ataagtgaca ttttcgtttg ttttgtttga gtaaatcaaa caacaaatat catattagaa
+       61 ttgcaaccca aatggtaaac aaaatcaaaa ccagaagcaa tttcaaatat ccaaatttca
+      121 aaaatttatt catttcaaac tgcattggaa aaaaaactca tcttgtaact gttataatga
+      181 tgttattagt taaaatatat acatggagcg ttggcaactg cgtacaggcc acattttaca
+      241 actacgaaaa atgaaagttt taaaataaaa acttaaaata tcacagaaaa tgtacagaaa
+      301 atttacaaac catgagaaaa taaagaacac aaacttcata tatctaacag atgaagagtg
+      361 ggagaccgaa aataatcaag tggaaattaa aaaaagctgg agagtgcctc tgttcgttct
+      421 ctcatttaga acttaataat aataataata ataataataa taataataat aataataata
+      481 ataatgattt attactatgt accttcagtg agaaactctt taaatccagt tttcatgtca
+      541 gcctttgcaa aactttgacg taaacatcag ttgtgcatca atttcttgca caatttttta
+      601 taattttttt aaaactttct gctgtttaca aacattacat ctcgttgttg ttattacgct
+      661 tcttttttta gataaatact gtacaaaaag tcgattgcaa taataaaaca tttgattcat
+      721 tctccccccg cttgtcaacc atgtccaaat ctcatacacc ttttggaaac aaaacagaac
+      781 tgaaaaatct aaattaaaaa aataataaaa taaatcagaa gagaacaaaa caaaaactgt
+      841 gtggagttcc taccgttcct ctttttttta gtttgtttgt ttgtttgttt gtttgttttt
+      901 taaatagaaa gcaaaagttt tgtgttcttt ccttgagctc tatacaactt tttccctccc
+      961 caaaagaagt gttctgtaca aaaatagtcc agcagtgtag taaaaagagt tcattttaca
+     1021 tatgcgataa gggaatcgtg ccgttaatcg tcgtaccggg cacaggtgcg ctctggtaat
+     1081 gttgggacat gtgcagtctg ctctgagcgc tctggtcctg cacctccgcc ccgggcaggt
+     1141 acatactgat catgtcccgc aggtcccccg tttggcactg tccggcccgg gaatgagacg
+     1201 acgacgtgac caccggcgga ctcgaactag actcggactt gaccaccgag cccatggagc
+     1261 ccagcgtcat tcccggcgtg ctttgctgcg aataggacat gctgtaggtg ggcgagccgt
+     1321 tcatgtaggt ctgcgagttg gtcatggagt tgtactggag cgcgctcatg tcgtagcggt
+     1381 gcatgggctg catctgcgcc gtgttgtgcg cgttcaaact cgggtgctgc gggtaaccca
+     1441 gctgctcctg catcatgccg tagcctccgt tggtccagcc gttcatatgc gcgtagctgt
+     1501 ccatcctctg gttgaccccg gcgcccaaac cggcccctac acccacgccg gcgcccatgc
+     1561 cgttgccgcc cggcgccagg agcccgcccg gcagggtgta cttgtccttc ttcatcaggg
+     1621 tcttggtttt cctccggggt ctgtatttgt aatccgggtg ttccttcatg tgcagagccc
+     1681 gaaggcgttt ggcttcgtcg atgaatggtc gcttctcgct ctcggacaga agtttccact
+     1741 cggccccgag tcgcttactt atttccgaat tgtgcatttt ggggttctcc tgtgccattt
+     1801 tccgccgctg tcccctcgac cacaccatga aggcgttcat gggtctcttg atgcggtccg
+     1861 ggctgttttt ctggttgttt cccgaggagt tggtgttccc cgtgcccccg gtgttgggct
+     1921 ggggcgccgg gggcttcagc tcggtttcca tcatgttata catttaaacc gattttctcg
+     1981 aaagtctacc ccaccagccg taaaaataaa aaataaagaa gtccaaaaag tgtgtggaga
+     2041 ggctgctgaa gttaccttag cagttggagg taactttgct gggaaaagaa gcgctcttag
+     2101 gtcctgttgt gcccacaaac ttcttttctt agtcttgaag aatcaacaca aactcggttt
+     2161 ccctcctcgc cagagccctt gtcaactcct gatacttttt gaacaagtta atagacaacc
+     2221 attcatagag cgactgtcag cgaatataaa tgggtttgtc gctgaccaat cagagcgcgt
+     2281 ctgctc
+//
+

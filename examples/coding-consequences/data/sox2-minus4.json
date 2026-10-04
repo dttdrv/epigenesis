@@ -1,0 +1,16 @@
+{
+  "format": "epigenesis.coding-contract",
+  "version": 1,
+  "source_sha256": "72bbfa8b0603ac239689a750788192f7ffc851fd4c5b69843fdf33206e898a9c",
+  "record_id": "NC_007133.7:37347793-37350078",
+  "start": 1015,
+  "end": 1963,
+  "strand": -1,
+  "genetic_code": 1,
+  "initiation": "ATG",
+  "edit": {
+    "start": 208,
+    "deleted": "AGCG",
+    "inserted": ""
+  }
+}

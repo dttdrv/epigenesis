@@ -1,0 +1,208 @@
+LOCUS       NM_010919               2116 bp    mRNA    linear   ROD 12-SEP-2026
+DEFINITION  Mus musculus NK2 homeobox 2 (Nkx2-2), transcript variant 1, mRNA.
+ACCESSION   NM_010919 XM_001004391
+VERSION     NM_010919.3
+KEYWORDS    RefSeq; RefSeq Select.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia; Myomorpha;
+            Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (bases 1 to 2116)
+  AUTHORS   Dillard,M.E., Daly,C.A., Pradhan,R., Ansari,S.S., Hack,S.J.,
+            Wright,W.C., Stewart,D.P., Ghonim,M.A., Zhang,Y., Canac,R.,
+            Moskowitz,I.P., Pruett-Miller,S.M., Steinberg,J., Wang,Y.D.,
+            Sykes,A.D., Mori,M., Hom,C.C., Chen,T., Thomas,P.G., Bridges,J.P.
+            and Ogden,S.K.
+  TITLE     Receptor allostery promotes context-specific Sonic Hedgehog
+            signaling during embryonic development
+  JOURNAL   Nat Commun 17 (1), 9040 (2026)
+   PUBMED   42642386
+REFERENCE   2  (bases 1 to 2116)
+  AUTHORS   Moody,E.C., Wade,E.M., Mizumoto,S., McCallum-Loudeac,J. and
+            Wilson,M.J.
+  TITLE     Deletion of a Pax1 Sex-Associated Genomic Region Associated With
+            Adolescent Idiopathic Scoliosis Leads to Disc Degeneration,
+            Instability, and Vertebral Rotation in Mice
+  JOURNAL   JOR Spine 9 (2), e70177 (2026)
+   PUBMED   42039795
+REFERENCE   3  (bases 1 to 2116)
+  AUTHORS   Segarra,L.C., Sangster,K., Sagner,J., Kania,A. and Sagner,A.
+  TITLE     Evidence for chronological diversification of spinal neuron
+            subtypes by a shared sequence of transcription factors
+  JOURNAL   Sci Adv 12 (12), eadz3075 (2026)
+   PUBMED   41849605
+REFERENCE   4  (bases 1 to 2116)
+  AUTHORS   Chandler,P.W., Lee,S.S., Duncan,L.H., Kim,D.W., Wu,M. and
+            Blackshaw,S.
+  TITLE     Molecularly distinct subtypes of Lhx6-positive neurons of the zona
+            incerta differentially regulate sleep pressure and recovery sleep
+  JOURNAL   iScience 29 (4), 115403 (2026)
+   PUBMED   41993694
+REFERENCE   5  (bases 1 to 2116)
+  AUTHORS   Brooks,E.R., Hwang,S.H., White,K.A. and Mukhopadhyay,S.
+  TITLE     GPR161-GLI3 repressor signaling at cilia directs apical
+            constriction and cell fate during cranial neural tube closure
+  JOURNAL   Development 152 (24) (2025)
+   PUBMED   41417007
+REFERENCE   6  (bases 1 to 2116)
+  AUTHORS   Hartigan,D.J. and Rubenstein,J.L.
+  TITLE     The cDNA sequence of murine Nkx-2.2
+  JOURNAL   Gene 168 (2), 271-272 (1996)
+   PUBMED   8654958
+REFERENCE   7  (bases 1 to 2116)
+  AUTHORS   Pfaff,S.L., Mendelsohn,M., Stewart,C.L., Edlund,T. and Jessell,T.M.
+  TITLE     Requirement for LIM homeobox gene Isl1 in motor neuron generation
+            reveals a motor neuron-dependent step in interneuron
+            differentiation
+  JOURNAL   Cell 84 (2), 309-320 (1996)
+   PUBMED   8565076
+REFERENCE   8  (bases 1 to 2116)
+  AUTHORS   Shimamura,K., Hartigan,D.J., Martinez,S., Puelles,L. and
+            Rubenstein,J.L.
+  TITLE     Longitudinal organization of the anterior neural plate and neural
+            tube
+  JOURNAL   Development 121 (12), 3923-3933 (1995)
+   PUBMED   8575293
+  REMARK    Review article
+REFERENCE   9  (bases 1 to 2116)
+  AUTHORS   Rubenstein,J.L., Martinez,S., Shimamura,K. and Puelles,L.
+  TITLE     The embryonic vertebrate forebrain: the prosomeric model
+  JOURNAL   Science 266 (5185), 578-580 (1994)
+   PUBMED   7939711
+  REMARK    Review article
+REFERENCE   10 (bases 1 to 2116)
+  AUTHORS   Price,M., Lazzaro,D., Pohl,T., Mattei,M.G., Ruther,U., Olivo,J.C.,
+            Duboule,D. and Di Lauro,R.
+  TITLE     Regional expression of the homeobox gene Nkx-2.2 in the developing
+            mammalian forebrain
+  JOURNAL   Neuron 8 (2), 241-255 (1992)
+   PUBMED   1346742
+COMMENT     VALIDATED REFSEQ: This record has undergone validation or
+            preliminary review. The reference sequence was derived from
+            AL929317.13.
+            
+            On May 2, 2023 this sequence version replaced NM_010919.2.
+            
+            Publication Note:  This RefSeq record includes a subset of the
+            publications that are available for this gene. Please see the Gene
+            record to access additional publications.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: AK141002.1, U31566.1 [ECO:0000332]
+            RNAseq introns              :: single sample supports all introns
+                                           SAMN01164142, SAMN02415127
+                                           [ECO:0000348]
+            ##Evidence-Data-END##
+            
+            ##RefSeq-Attributes-START##
+            RefSeq Select criteria :: based on conservation, expression,
+                                      longest protein
+            ##RefSeq-Attributes-END##
+            COMPLETENESS: full length.
+PRIMARY     REFSEQ_SPAN         PRIMARY_IDENTIFIER PRIMARY_SPAN        COMP
+            1-646               AL929317.13        6189-6834           c
+            647-2116            AL929317.13        3517-4986           c
+FEATURES             Location/Qualifiers
+     source          1..2116
+                     /organism="Mus musculus"
+                     /mol_type="mRNA"
+                     /strain="C57BL/6"
+                     /db_xref="taxon:10090"
+                     /chromosome="2"
+                     /map="2 72.63 cM"
+     gene            1..2116
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="NK2 homeobox 2"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+     exon            1..646
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    367..369
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="upstream in-frame stop codon"
+     CDS             388..1209
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="isoform 1 is encoded by transcript variant 1;
+                     homeobox protein Nkx-2.2; homeobox protein Nkx2-2;
+                     homeobox protein NK-2 homolog B; Drosophila NK2
+                     transcription factor related, locus 2; glycoprotein GP330,
+                     renal"
+                     /codon_start=1
+                     /product="homeobox protein Nkx-2.2 isoform 1"
+                     /protein_id="NP_035049.1"
+                     /db_xref="CCDS:CCDS16834.1"
+                     /db_xref="GeneID:18088"
+                     /db_xref="MGI:MGI:97347"
+                     /translation="MSLTNTKTGFSVKDILDLPDTNDEDGSVAEGPEEESEGPEPAKR
+                     AGPLGQGALDAVQSLPLKSPFYDSSDNPYTRWLASTEGLQYSLHGLAASAPPQDSSSK
+                     SPEPSADESPDNDKETQGGGGDAGKKRKRRVLFSKAQTYELERRFRQQRYLSAPEREH
+                     LASLIRLTPTQVKIWFQNHRYKMKRARAEKGMEVTPLPSPRRVAVPVLVRDGKPCHAL
+                     KAQDLAAATFQAGIPFSAYSAQSLQHMQYNAQYSSASTPQYPTAHPLVQAQQWTW"
+     misc_feature    388..555
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="propagated from UniProtKB/Swiss-Prot (P42586.2);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    658..780
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="propagated from UniProtKB/Swiss-Prot (P42586.2);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     exon            647..2116
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /inference="alignment:Splign:2.1.0"
+     regulatory      2088..2093
+                     /regulatory_class="polyA_signal_sequence"
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="hexamer: AATAAA"
+     polyA_site      2116
+                     /gene="Nkx2-2"
+                     /gene_synonym="Nkx-2.2; Nkx2.2; tinman"
+                     /note="major polyA site"
+ORIGIN      
+        1 ccattttttc ctcgccacca gccgccaccg cgcgcggagc ggccgccgga gccggagctg
+       61 acggcacctt ggcacctctc ctggagttac aaactgaggc cgcgcggcgc tgggcgcgca
+      121 ggcccccagt cacagcctac atttctgcgt gctttccgag aagagagagg caccgggtgg
+      181 gctttatttt ttttcccctt tcccttttcc ccccacagtg tcctctcatt ttaaataata
+      241 attatcccaa taattaaaac ccatccccca tccctccccc cattcctttc cttaaacccc
+      301 cctcccccgc ccgctggggc tggggagagc cacgaattga ccaagtgagg ctacaacttt
+      361 gtggcataaa ttgcggggtc cggaaccatg tcgctgacca acacaaagac ggggttttca
+      421 gtcaaggaca tcttggacct tccggacacc aacgatgaag acggctcggt ggccgaaggg
+      481 ccagaggagg agagcgaagg gccggagccc gccaagaggg ccgggccgct ggggcagggc
+      541 gccctggacg ctgtgcagag cctgcccctt aagagccctt tctacgacag cagcgacaac
+      601 ccctacactc gctggctggc cagcaccgag ggcctccaat actccctgca cgggctggcg
+      661 gccagcgctc ccccccaaga ctcgagctcc aaatccccag agccctcggc tgacgagtca
+      721 ccggacaatg acaaggagac ccagggcggc gggggggacg caggcaagaa gcggaagcgc
+      781 cgagtgctct tctccaaagc gcagacctac gagctggagc ggcgcttccg gcagcagcgg
+      841 tacctgtcgg cgcccgagcg cgagcacctg gccagcctca tccgtctcac gccgacacag
+      901 gtcaagatct ggttccagaa ccatcgctac aagatgaaac gtgcccgggc ggagaaaggt
+      961 atggaggtga cgcctctgcc ctcgccgcgc cgtgtggcag tgccggtctt ggtcagggac
+     1021 ggcaaaccgt gccacgcgct caaagcccag gacctggcag ccgccacctt ccaggcaggc
+     1081 atcccctttt ccgcctacag cgcgcagtcg ctgcagcaca tgcagtacaa cgcccagtac
+     1141 agctcggcca gcacccccca gtacccgaca gcacaccccc tggtccaggc ccagcagtgg
+     1201 acttggtgag cgccgcccct ccaagactgg aggccttagg ccctggcccc accccagcgg
+     1261 cgccggtggc gaggaggact cgatccttac cacggttgtt attattatta ttataattat
+     1321 tattatagag tcgagtctga ctttcgactc agttgaggag gcacagggag gttgcctgtg
+     1381 cctccccgag tggcagattc cattgactct gccccatcgc tctccccttt gaacttttgg
+     1441 agaggataga actctaagcc gtgtttacag aatgtttgtg cagctttgct tctttgcctc
+     1501 tctctccctg aggggaccaa accatcccaa cgttaacgtt gtcacttgaa aagagaaagg
+     1561 accaaccggc ccccacccca ccccaccccc gcactgcttt cgtgaatttt gtaaactatg
+     1621 tttgtgtgag tagcgatatt gtcagccttc taaaagcaag tggagaacac tttaaaatat
+     1681 agaggatttc tttttttata agaaaatgct aaatatttat ggccatgtac acgttctgac
+     1741 aactggtggc aaatttcgct cttcgttgta aatatcgcta gtgatcgttg ccaaatgacg
+     1801 ttctggatgg gcctgtatcc ccaccgggcc tgcctctctt tgtcgtttgt tttcggtggg
+     1861 ttatgtttga gttgcagcgg gtttttattt ttatttttat ttttattttt aatttgttca
+     1921 gtgcaaacat ttttcaacta tgaaaaagga aaatatgtgt agggaactca cccccgggcc
+     1981 ccctttttcg tctcctgagc atcggagctt ggaactcagc agtttcacgt ggtttcccca
+     2041 agagcgccgg gcgctgaaag ctttcgattt ttttaaataa gaattttaat aaaaatcctg
+     2101 tgtttaaaaa aacaaa
+//
+

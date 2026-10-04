@@ -1,0 +1,160 @@
+{
+  "retrieved": "2026-10-04",
+  "files": [
+    {
+      "file": "sox2-motor-article.xml",
+      "bytes": 98685,
+      "sha256": "b1d60bfc110316c96421aaf5566c54fce29e7423a9c129b7f509f60787a08a7a",
+      "role": "primary 2020 article XML",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7135881/fullTextXML",
+      "licensing_attribution": {
+        "declared_license": "CC BY (version not explicit in recovered article XML)",
+        "evidence_file": "sox2-motor-article.xml",
+        "evidence_element": "permissions",
+        "copyright": "Copyright \u00a9 2020 Gong, Hu, Huang, Hu, Wang, Zhao, Qian, Wang, Sheng, Lu, Wei and Liu.",
+        "citation": "Gong J et al. (2020), The Requirement of Sox2 for the Spinal Cord Motor Neuron Development of Zebrafish. Front. Mol. Neurosci. 13:34. doi:10.3389/fnmol.2020.00034.",
+        "changes": "none",
+        "publisher_policy_url": "https://www.frontiersin.org/guidelines/author-guidelines",
+        "publisher_policy_note": "Current publisher guidance identifies CC BY 4.0; source article XML itself says CC BY without version."
+      }
+    },
+    {
+      "file": "NM_213118.1.gb",
+      "bytes": 10293,
+      "sha256": "2312d016526804644084cee9113f28dd9cf56648f6d7eeb35b79cb3a0f83a54f",
+      "role": "mRNA annotation/protein oracle; not physical DNA source",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NM_213118.1&rettype=gb&retmode=text",
+      "licensing_attribution": {
+        "policy_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy_section": "Molecular Data Usage",
+        "status": "NCBI imposes no restrictions on use/distribution of molecular data; NCBI does not transfer submitter rights or guarantee unrestricted third-party permission. Retain source attribution, accession/version, source annotations and original bytes."
+      }
+    },
+    {
+      "file": "ncbi-gc.prt",
+      "bytes": 16444,
+      "sha256": "2aecbdd09ecc5e0d233c105090a593737298ef93d88f6bc0c1bef26df6051a04",
+      "role": "authoritative genetic code data, Standard table1",
+      "url": "https://ftp.ncbi.nlm.nih.gov/entrez/misc/data/gc.prt",
+      "licensing_attribution": {
+        "policy_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy_section": "Copyright Status of Webpages",
+        "attribution": "NCBI genetic code table; initial base data Andrzej Elzanowski, additions Jim Ostell and NCBI Taxonomy Group, with original file comments preserved.",
+        "status": "US government-created information falls under NCBI public-domain policy; file itself has no separate SPDX license."
+      }
+    },
+    {
+      "file": "NC_007133.7_37347793_37350078.gb",
+      "bytes": 12998,
+      "sha256": "e1b7224c5053f957aae23dd292edfaf2e53f712a0057b0f66369eb9190a8f5a1",
+      "role": "physical genomic DNA; annotation evidence; REGION admission rejected",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_007133.7&seq_start=37347793&seq_stop=37350078&rettype=gb&retmode=text",
+      "licensing_attribution": {
+        "policy_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy_section": "Molecular Data Usage",
+        "status": "NCBI imposes no restrictions on use/distribution of molecular data; NCBI does not transfer submitter rights or guarantee unrestricted third-party permission. Retain source attribution, accession/version, source annotations and original bytes."
+      }
+    },
+    {
+      "file": "NC_007133.7_37347793_37350078.fasta",
+      "bytes": 2419,
+      "sha256": "72bbfa8b0603ac239689a750788192f7ffc851fd4c5b69843fdf33206e898a9c",
+      "role": "physical genomic DNA; original FASTA bytes; source admission/replay passes",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_007133.7&seq_start=37347793&seq_stop=37350078&rettype=fasta&retmode=text",
+      "licensing_attribution": {
+        "policy_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy_section": "Molecular Data Usage",
+        "status": "NCBI imposes no restrictions on use/distribution of molecular data; NCBI does not transfer submitter rights or guarantee unrestricted third-party permission. Retain source attribution, accession/version, source annotations and original bytes."
+      }
+    },
+    {
+      "file": "NC_141042.1_40458511_40460773.gb",
+      "bytes": 10546,
+      "sha256": "9215d65760f072cdba2c7e06f6003df795315e24a907a80ce747e500b16cc336",
+      "role": "physical genomic DNA; annotation evidence; REGION admission rejected",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_141042.1&seq_start=40458511&seq_stop=40460773&rettype=gb&retmode=text",
+      "licensing_attribution": {
+        "policy_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy_section": "Molecular Data Usage",
+        "status": "NCBI imposes no restrictions on use/distribution of molecular data; NCBI does not transfer submitter rights or guarantee unrestricted third-party permission. Retain source attribution, accession/version, source annotations and original bytes."
+      }
+    },
+    {
+      "file": "NC_141042.1_40458511_40460773.fasta",
+      "bytes": 2419,
+      "sha256": "f5b0e52aec1b912c70a49abeb284378c49550bf9a1f01e12f9288b514ff2dccd",
+      "role": "physical genomic DNA; original FASTA bytes; source admission/replay passes",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_141042.1&seq_start=40458511&seq_stop=40460773&rettype=fasta&retmode=text",
+      "licensing_attribution": {
+        "policy_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy_section": "Molecular Data Usage",
+        "status": "NCBI imposes no restrictions on use/distribution of molecular data; NCBI does not transfer submitter rights or guarantee unrestricted third-party permission. Retain source attribution, accession/version, source annotations and original bytes."
+      }
+    },
+    {
+      "file": "sox2-pmc-image1.tiff",
+      "bytes": 461982,
+      "sha256": "19541a8bcce53e65cdf14171876d91c2caeb94b8e8197cfc8026479f6fa517aa",
+      "role": "authentic FigureS1 allele evidence",
+      "provenance": {
+        "container": "sox2-pmc-Data_Sheet_1.docx",
+        "member": "word/media/image1.tiff",
+        "operation": "exact ZIP member extraction"
+      },
+      "licensing_attribution": {
+        "declared_license": "CC BY (version not explicit in recovered article XML)",
+        "evidence_file": "sox2-motor-article.xml",
+        "evidence_element": "permissions",
+        "copyright": "Copyright \u00a9 2020 Gong, Hu, Huang, Hu, Wang, Zhao, Qian, Wang, Sheng, Lu, Wei and Liu.",
+        "citation": "Gong J et al. (2020), The Requirement of Sox2 for the Spinal Cord Motor Neuron Development of Zebrafish. Front. Mol. Neurosci. 13:34. doi:10.3389/fnmol.2020.00034.",
+        "changes": "none to original source bytes; TIFF extracted byte-for-byte from supplementary DOCX",
+        "publisher_policy_url": "https://www.frontiersin.org/guidelines/author-guidelines",
+        "publisher_policy_note": "Current publisher guidance identifies CC BY 4.0; source article XML itself says CC BY without version."
+      }
+    },
+    {
+      "file": "sox2-pmc-supplement-text.txt",
+      "bytes": 1463,
+      "sha256": "eec59980610fe8a5e87b6264c93f6cfc5c7d040388ec9e310d271da069a9efda",
+      "role": "supplement captions extracted as text, not original DOCX container bytes",
+      "provenance": {
+        "container": "sox2-pmc-Data_Sheet_1.docx",
+        "member": "word/document.xml",
+        "operation": "plain text extraction"
+      },
+      "licensing_attribution": {
+        "declared_license": "CC BY; see primary article permissions",
+        "citation": "Gong J et al. (2020), doi:10.3389/fnmol.2020.00034",
+        "changes": "DOCX paragraph text extracted to UTF-8"
+      }
+    }
+  ],
+  "supplement_container": {
+    "file": "sox2-pmc-Data_Sheet_1.docx",
+    "bytes": 2279758,
+    "sha256": "719b39bf8884decbc53de3c864bd08e94bd8df12e2707a9bf2e44b48188e2b96",
+    "role": "authentic primary supplementary attachment",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/soap",
+    "provenance": {
+      "operation": "getSupplementaryFiles",
+      "id": "PMC7135881",
+      "inlineImages": "no",
+      "recovery_manifest": "sox2-soap-recovery.json"
+    },
+    "licensing_attribution": {
+      "declared_license": "CC BY (version not explicit in recovered article XML)",
+      "evidence_file": "sox2-motor-article.xml",
+      "evidence_element": "permissions",
+      "copyright": "Copyright \u00a9 2020 Gong, Hu, Huang, Hu, Wang, Zhao, Qian, Wang, Sheng, Lu, Wei and Liu.",
+      "citation": "Gong J et al. (2020), The Requirement of Sox2 for the Spinal Cord Motor Neuron Development of Zebrafish. Front. Mol. Neurosci. 13:34. doi:10.3389/fnmol.2020.00034.",
+      "changes": "none",
+      "publisher_policy_url": "https://www.frontiersin.org/guidelines/author-guidelines",
+      "publisher_policy_note": "Current publisher guidance identifies CC BY 4.0; source article XML itself says CC BY without version."
+    }
+  },
+  "genbank_admission": {
+    "status": "rejected",
+    "reason": "INSDC026: ACCESSION REGION syntax outside supported profile"
+  },
+  "sequence_evidence": "Original FASTA equals corresponding GenBank ORIGIN. Coordinates below are caller supplied; annotation files are not admitted GenBank artifacts."
+}

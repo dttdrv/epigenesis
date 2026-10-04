@@ -4,6 +4,15 @@ include SPEC.md
 include pyproject.toml
 recursive-include docs *.md
 recursive-include examples *.fasta *.fastq *.json *.md *.py
+include examples/neural-construction/Construction.java
+include examples/neural-construction/viewer.html
+include examples/neural-construction/vendor/cx3d-0.03.zip
+include examples/neural-construction/vendor/compatibility.patch
+include examples/neural-construction/vendor/LICENSE.CX3D
+include examples/neural-regulation/data/alphas.csv.gz
+recursive-include examples/coding-consequences/data *.gb *.prt *.xml *.tiff *.txt
+recursive-include examples/neural-binding/data *.gb *.rsd *.RData *.txt
+include examples/neural-binding/data/FamilyCode-LICENSE
 recursive-include brainc/standards *.json
 recursive-include tests *.py
 recursive-exclude tests/data *
@@ -14,5 +23,6 @@ include tests/data/J02482.1.gff3.source.json
 include tests/data/U49845.1.gb
 include tests/data/U49845.1.gb.source.json
 include tests/data/CP032762.1.source.json
+include tests/data/NeuralAttachmentProbe.java
 global-exclude __pycache__
 global-exclude *.py[cod]

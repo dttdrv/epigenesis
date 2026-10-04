@@ -1,0 +1,182 @@
+LOCUS       NC_141042               2263 bp    DNA     linear   CON 22-SEP-2026
+DEFINITION  Danio rerio strain M-AB ecotype USA chromosome 22, GRCz13ab, whole
+            genome shotgun sequence.
+ACCESSION   NC_141042 REGION: 40458511..40460773
+VERSION     NC_141042.1
+DBLINK      BioProject: PRJNA1496867
+            BioSample: SAMN50304324
+            Assembly: GCF_052040795.2
+KEYWORDS    WGS; RefSeq.
+SOURCE      Danio rerio (zebrafish)
+  ORGANISM  Danio rerio
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Actinopterygii; Neopterygii; Teleostei; Ostariophysi;
+            Cypriniformes; Danionidae; Danioninae; Danio.
+REFERENCE   1  (bases 1 to 2263)
+  AUTHORS   Okendo,J., Koren,S., Rhie,A., Torrado-Tapias,A., Pickett,B.D.,
+            Brooks,S.Y., Bouffard,G.G., Crawford,J.K., Sison,C., Joardar,V.S.,
+            Murphy,T.D., Tierney,J.A.S., Haggerty,L., Martin,F.J., Wilson,C.,
+            Amores,A., Postlethwait,J.H., Murphy,J., Sakai,N., Varga,Z.M.,
+            Phillippy,A.M. and Burgess,S.M.
+  TITLE     Complete de novo assembly and re-annotation of the zebrafish genome
+  JOURNAL   bioRxiv (2025)
+   PUBMED   41332591
+COMMENT     REFSEQ INFORMATION: The reference sequence is identical to
+            CM124828.1.
+            Assembly name: GRCz13ab
+            The genomic sequence for this RefSeq record is from the
+            whole-genome assembly released by the National Human Genome
+            Research Institute on 2026/08/28. The original whole-genome shotgun
+            project has the accession JBQAYU000000000.2.
+            
+            ##Genome-Assembly-Data-START##
+            Assembly Provider      :: National Human Genome Research Institute
+            Assembly Date          :: JUL-2025
+            Assembly Method        :: Verkko v. 2.2.1
+            Assembly Name          :: GRCz13ab
+            Genome Representation  :: Full
+            Expected Final Version :: Yes
+            Genome Coverage        :: 200.0x
+            Sequencing Technology  :: Oxford Nanopore PromethION; PacBio
+            ##Genome-Assembly-Data-END##
+            
+            ##Genome-Annotation-Data-START##
+            Annotation Provider         :: NCBI RefSeq
+            Annotation Status           :: Full annotation
+            Annotation Name             :: GCF_052040795.2-RS_2026_08
+            Annotation Pipeline         :: NCBI Eukaryotic Genome Annotation
+                                           Pipeline (EGAP)
+            Annotation Software Version :: 10.6
+            Annotation Method           :: Best-placed RefSeq; Gnomon;
+                                           cmsearch; tRNAscan-SE
+            Features Annotated          :: Gene; mRNA; CDS; ncRNA
+            Annotation Date             :: 08/31/2026
+            ##Genome-Annotation-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2263
+                     /organism="Danio rerio"
+                     /mol_type="genomic DNA"
+                     /strain="M-AB"
+                     /db_xref="taxon:7955"
+                     /chromosome="22"
+                     /tissue_type="Cell culture"
+                     /dev_stage="Cell culture"
+                     /ecotype="USA"
+                     /geo_loc_name="Japan"
+                     /collection_date="2024-06"
+     gene            complement(<1..>2263)
+                     /gene="sox2ot"
+                     /note="SOX2 overlapping transcript; Derived by automated
+                     computational analysis using gene prediction method:
+                     Gnomon."
+                     /db_xref="GeneID:103909645"
+                     /db_xref="ZFIN:ZDB-LNCRNAG-091125-1"
+     gene            complement(101..2163)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="SRY-box transcription factor 2; Derived by
+                     automated computational analysis using gene prediction
+                     method: BestRefSeq."
+                     /db_xref="GeneID:378723"
+                     /db_xref="NCBIOrtholog:6657"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+     mRNA            complement(101..2163)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /product="SRY-box transcription factor 2"
+                     /inference="similar to RNA sequence, mRNA (same
+                     species):RefSeq:NM_213118.1"
+                     /exception="annotated by transcript or proteomic data"
+                     /note="The RefSeq transcript has 6 substitutions, 6
+                     non-frameshifting indels compared to this genomic
+                     sequence; Derived by automated computational analysis
+                     using gene prediction method: BestRefSeq."
+                     /transcript_id="NM_213118.1"
+                     /db_xref="GeneID:378723"
+                     /db_xref="NCBIOrtholog:6657"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+     CDS             complement(993..1940)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="Derived by automated computational analysis using
+                     gene prediction method: BestRefSeq."
+                     /codon_start=1
+                     /product="transcription factor Sox-2"
+                     /protein_id="NP_998283.1"
+                     /db_xref="GeneID:378723"
+                     /db_xref="NCBIOrtholog:6657"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+                     /translation="MYNMMETELKPPAPQPNTGGTGNTNSSGNNQKNSPDRIKRPMNA
+                     FMVWSRGQRRKMAQENPKMHNSEISKRLGAEWKLLSESEKRPFIDEAKRLRALHMKEH
+                     PDYKYRPRRKTKTLMKKDKYTLPGGLLAPGGNGMGAGVGVGAGLGAGVNQRMDSYAHM
+                     NGWTNGGYGMMQEQLGYPQHPSLNAHNTAQMQPMHRYDMSALQYNSMTNSQTYMNGSP
+                     TYSMSYSQQSTPGMTLGSMGSVVKSESSSSPPVVTSSSHSRAGQCQTGDLRDMISMYL
+                     PGAEVQDQSAQSRLHMSQHYQSAPVPGTTINGTIPLSHM"
+     misc_feature    complement(1818..1940)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    complement(1152..1238)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    complement(1107..1133)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: 9aaTAD. /evidence=ECO:0000250|UniProtKB:P41225"
+     misc_feature    complement(996..1055)
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+ORIGIN      
+        1 ataagtgaca ttttcgtttg ttttgtttga gtaaatcaaa caacaaatat catattagaa
+       61 ttgcaaccca aatggtaaac aaaatcaaaa ccagaagcaa tttcaaatat ccaaatttca
+      121 aaaatttatt catttcaaac tgcattggaa aaaaaaaact catcttgtaa ctgttataat
+      181 gatgttatta gttaaaatat atacatggag cgttggcaac tgcgtacagg ccacatttta
+      241 caactacgaa aaatgaaagt tttaaaataa aaacttaaaa tatcacagaa aatgtacaga
+      301 aaatttacaa accatgagaa aataaagaac acaaacttca tatatctaac agatgaagag
+      361 tgggagaccg aaaataatca agtggaaatt aaaaaaagct ggagagtgcc tctgttcgtt
+      421 ctctcattta gaacttaata ataataataa taataataat aataatgatt tattactatg
+      481 taccttcagt gagaaactct ttaaatccag ttttcatgtc agcctttgca gaactttgac
+      541 gtaaacatca gttgtgcatc aatttcttgc acaatttttt tataattttt ttaaaactcc
+      601 tgctgtttac aaacattaca tctcgttgtt gttattacgc ttcttttttt tagataaata
+      661 ctgtacaaaa agtcgattgc aataataaaa catttgattc attctccccc cgcttgtcaa
+      721 ccatgtccaa atctcataca ccttttggaa acaaaacaga actgaaaaat ctaaataaaa
+      781 aaataataaa ataaatcaga agagaacaaa acaaaaactg tgtggagttc ctaccgttcc
+      841 tctttttttt agtttgtttg tttgtttgtt tgttttttaa atagaaagca aaagttttgt
+      901 gttctttcct tgagctctat acaacttttt ccctccccaa aagaagtgtt ctgtacaaaa
+      961 atagtccagc agtgtagtaa aaagagttca ttttacatat gcgataaggg aatcgtgccg
+     1021 ttaatcgtcg taccgggcac aggtgcgctc tggtaatgtt gggacatgtg cagtctgctc
+     1081 tgcgcgctct ggtcctgcac ctccgccccg ggcaggtaca tactgatcat gtcccgcagg
+     1141 tcccccgttt ggcactgtcc ggcccgggaa tgagacgacg acgtgaccac cggcggactc
+     1201 gaactagact cggacttgac caccgagccc atggagccca gtgtcattcc cggcgtgctt
+     1261 tgctgcgaat aggacatgct gtaggtgggc gagccgttca tgtaggtctg cgagttggtc
+     1321 atggagttgt actggagcgc gctcatgtcg tagcggtgca tgggctgcat ctgcgccgtg
+     1381 ttgtgcgcgt tcaaactcgg gtgctgcggg taacccagct gctcctgcat catgccgtag
+     1441 cctccgttgg tccagccgtt catatgcgcg tagctgtcca tcctctggtt gaccccggcg
+     1501 cccaaaccgg cccctacacc cacgccggcg cccatgccgt tgccgcccgg cgccaggagc
+     1561 ccgcccggca gggtgtactt gtctttcttc atcagggtct tggttttcct ccggggtctg
+     1621 tatttgtaat ccgggtgttc cttcatgtgc agagcccgaa ggcgtttggc ttcgtcgatg
+     1681 aatggtcgct tctcgctctc ggacagaagt ttccactcgg ccccgagtcg cttacttatt
+     1741 tccgaattgt gcattttggg gttctcctgt gccattttcc gccgctgtcc cctcgaccac
+     1801 accatgaagg cgttcatggg tctcttgatg cggtccgggc tgtttttctg gttgtttccc
+     1861 gaggagttgg tgttccccgt gcccccggtg ttgggctggg gcgccggggg cttcagctcg
+     1921 gtttccatca tgttatacat ttaaaccgat tttctcgaaa gtctacccca ccagccgtaa
+     1981 aaataaaaaa taaagaagtc caaaaagtgt gtggagaggc tgctgaagtt accttagcag
+     2041 ttggaggtaa ctttgctggg gaaggaagcg ctcttaggtc ctgttgtgcc cacaaacttc
+     2101 ttttcttagt cttgaagaat caacacaaac tcggtttccc tcctcgccag agcccttgtc
+     2161 aactcctgat actttttgaa caagttaata gacaaccatt catagagcga ctgtcagcga
+     2221 atataaatgg gtttgtcgct gaccaatcag agcgcgtctg ctc
+//
+

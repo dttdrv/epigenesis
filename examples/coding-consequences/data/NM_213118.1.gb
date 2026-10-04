@@ -1,0 +1,189 @@
+LOCUS       NM_213118               2120 bp    mRNA    linear   VRT 23-SEP-2026
+DEFINITION  Danio rerio SRY-box transcription factor 2 (sox2), mRNA.
+ACCESSION   NM_213118
+VERSION     NM_213118.1
+KEYWORDS    RefSeq.
+SOURCE      Danio rerio (zebrafish)
+  ORGANISM  Danio rerio
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Actinopterygii; Neopterygii; Teleostei; Ostariophysi;
+            Cypriniformes; Danionidae; Danioninae; Danio.
+REFERENCE   1  (bases 1 to 2120)
+  AUTHORS   Baloch,H.U., Jing,Y.Y., Shi,J.H., Wang,H.F., Wu,Y. and Liu,J.X.
+  TITLE     Disrupted Copper Homeostasis and Impaired Retinal Development
+            Caused by slc6a4a Deficiency in Zebrafish
+  JOURNAL   Animals (Basel) 16 (13), 2036 (2026)
+   PUBMED   42450743
+REFERENCE   2  (bases 1 to 2120)
+  AUTHORS   Sun,Y., Golan,M., Zohar,Y., Fan,X. and Zmora,N.
+  TITLE     Single-nuclei RNA sequencing reveals heterogeneity within
+            developing GnRH3 neurons in zebrafish
+  JOURNAL   J Neuroendocrinol 38 (7), e70230 (2026)
+   PUBMED   42415515
+REFERENCE   3  (bases 1 to 2120)
+  AUTHORS   Liu,H., Li,J., Xiao,L., Hou,M., Zi,Z. and Zhang,X.
+  TITLE     tubb5 knockout in zebrafish causes neurodevelopmental defects via
+            notch pathways
+  JOURNAL   Hum Mol Genet 35 (10) (2026)
+   PUBMED   42241496
+REFERENCE   4  (bases 1 to 2120)
+  AUTHORS   Shen,Y.J., Liu,H.F., Hsu,T.C., Chen,Y.C. and Cheng,Y.C.
+  TITLE     Pla2g6 Deficiency Induces Neuronal Precursor Apoptosis During
+            Neurodevelopment
+  JOURNAL   Int J Mol Sci 27 (10), 4280 (2026)
+   PUBMED   42196263
+REFERENCE   5  (bases 1 to 2120)
+  AUTHORS   Choi,J.H., Moon,J., Oh,Y., Klompstra,T.M., Kim,Y., Baek,G.,
+            Kwak,Y., Kim,Y., Lee,S., Park,S., Ha,J., Kwon,O., Choi,Y.K.,
+            Kim,J.H., Lee,J.H., Park,J., Kim,J.K., Woo,D.H., Yoon,K.J.,
+            Koo,B.K. and Lee,H.
+  TITLE     Universal conditional knockout approach to multiple species, from
+            fish to human induced pluripotent stem cells
+  JOURNAL   Nucleic Acids Res 54 (9) (2026)
+   PUBMED   42132111
+REFERENCE   6  (bases 1 to 2120)
+  AUTHORS   Okuda,Y., Yoda,H., Uchikawa,M., Furutani-Seiki,M., Takeda,H.,
+            Kondoh,H. and Kamachi,Y.
+  TITLE     Comparative genomic and expression analysis of group B1 sox genes
+            in zebrafish indicates their diversification during vertebrate
+            evolution
+  JOURNAL   Dev Dyn 235 (3), 811-825 (2006)
+   PUBMED   16408288
+REFERENCE   7  (bases 1 to 2120)
+  AUTHORS   Cunliffe,V.T. and Casaccia-Bonnefil,P.
+  TITLE     Histone deacetylase 1 is essential for oligodendrocyte
+            specification in the zebrafish CNS
+  JOURNAL   Mech Dev 123 (1), 24-30 (2006)
+   PUBMED   16324829
+REFERENCE   8  (bases 1 to 2120)
+  AUTHORS   Woods,I.G., Wilson,C., Friedlander,B., Chang,P., Reyes,D.K.,
+            Nix,R., Kelly,P.D., Chu,F., Postlethwait,J.H. and Talbot,W.S.
+  TITLE     The zebrafish gene map defines ancestral vertebrate chromosomes
+  JOURNAL   Genome Res 15 (9), 1307-1314 (2005)
+   PUBMED   16109975
+REFERENCE   9  (bases 1 to 2120)
+  AUTHORS   Katoh,Y. and Katoh,M.
+  TITLE     Comparative genomics on SOX2 orthologs
+  JOURNAL   Oncol Rep 14 (3), 797-800 (2005)
+   PUBMED   16077994
+REFERENCE   10 (bases 1 to 2120)
+  AUTHORS   Zhang,C., Basta,T., Hernandez-Lagunas,L., Simpson,P., Stemple,D.L.,
+            Artinger,K.B. and Klymkowsky,M.W.
+  TITLE     Repression of nodal expression by maternal B1-type SOXs regulates
+            germ layer formation in Xenopus and zebrafish
+  JOURNAL   Dev Biol 273 (1), 23-37 (2004)
+   PUBMED   15302595
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence was derived from BC065656.1.
+            
+            Publication Note:  This RefSeq record includes a subset of the
+            publications that are available for this gene. Please see the Gene
+            record to access additional publications.
+            
+            ##Evidence-Data-START##
+            Transcript exon combination :: BC065656.1 [ECO:0000332]
+            ##Evidence-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2120
+                     /organism="Danio rerio"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:7955"
+                     /chromosome="22"
+                     /map="22"
+     gene            1..2120
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="SRY-box transcription factor 2"
+                     /db_xref="GeneID:378723"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+     exon            1..2074
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /inference="alignment:Splign:2.1.0"
+     misc_feature    221..223
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="upstream in-frame stop codon"
+     CDS             224..1171
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="transcription factor SOX2; SRY-box containing gene
+                     2; SRY (sex determining region Y)-box 2"
+                     /codon_start=1
+                     /product="transcription factor Sox-2"
+                     /protein_id="NP_998283.1"
+                     /db_xref="GeneID:378723"
+                     /db_xref="ZFIN:ZDB-GENE-030909-1"
+                     /translation="MYNMMETELKPPAPQPNTGGTGNTNSSGNNQKNSPDRIKRPMNA
+                     FMVWSRGQRRKMAQENPKMHNSEISKRLGAEWKLLSESEKRPFIDEAKRLRALHMKEH
+                     PDYKYRPRRKTKTLMKKDKYTLPGGLLAPGGNGMGAGVGVGAGLGAGVNQRMDSYAHM
+                     NGWTNGGYGMMQEQLGYPQHPSLNAHNTAQMQPMHRYDMSALQYNSMTNSQTYMNGSP
+                     TYSMSYSQQSTPGMTLGSMGSVVKSESSSSPPVVTSSSHSRAGQCQTGDLRDMISMYL
+                     PGAEVQDQSAQSRLHMSQHYQSAPVPGTTINGTIPLSHM"
+     misc_feature    224..346
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    926..1012
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+     misc_feature    1031..1057
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: 9aaTAD. /evidence=ECO:0000250|UniProtKB:P41225"
+     misc_feature    1109..1168
+                     /gene="sox2"
+                     /gene_synonym="cb236; soxp; wu:fb83g04; wu:fc14d07;
+                     zgc:65860; zgc:77389"
+                     /note="propagated from UniProtKB/Swiss-Prot (Q6P0E1.1);
+                     Region: Disordered. /evidence=ECO:0000256|SAM:MobiDB-lite"
+ORIGIN      
+        1 gttgacaagg gctctggcga ggagggaaac cgagtttgtg ttgattcttc aagactaaga
+       61 aaagaagttt gtgggcacaa caggacctaa gagcgcttcc ttccccagca aagttacctc
+      121 caactgctaa ggtaacttca gcagcctctc cacacacttt ttggacttct ttatttttta
+      181 tttttacggc tggtggggta gactttcaag aaaatcggtt taaatgtata acatgatgga
+      241 aaccgagctg aagcccccgg cgccccagcc caacaccggg ggcacgggga acaccaactc
+      301 ctcgggaaac aaccagaaaa acagcccgga ccgcatcaag agacccatga acgccttcat
+      361 ggtgtggtcg aggggacagc ggcggaaaat ggcacaggag aaccccaaaa tgcacaattc
+      421 ggaaataagt aagcgactcg gggccgagtg gaaacttctg tccgagagcg agaagcgacc
+      481 attcatcgac gaagccaaac gccttcgggc tctgcacatg aaggaacacc cggattacaa
+      541 atacagaccc cggaggaaaa ccaagaccct gatgaagaag gacaagtaca ccctgccggg
+      601 cgggctcctg gcgccgggcg gcaacggcat gggcgccggc gtgggtgtag gggccggttt
+      661 gggcgccggg gtcaaccaga ggatggacag ctacgcgcat atgaacggct ggaccaacgg
+      721 aggctacggc atgatgcagg agcagctggg ttacccgcag cacccgagtt tgaacgcgca
+      781 caacacggcg cagatgcagc ccatgcaccg ctacgacatg agcgcgctcc agtacaactc
+      841 catgaccaac tcgcagacct acatgaacgg ctcgcccacc tacagcatgt cctattcgca
+      901 gcaaagcacg ccgggaatga cactgggctc catgggctcg gtggtcaagt ccgagtctag
+      961 ttcgagtccg ccggtggtca cgtcgtcgtc tcattcccgg gccggacagt gccaaacggg
+     1021 ggacctgcgg gacatgatca gtatgtacct gcccggggcg gaggtgcagg accagagcgc
+     1081 tcagagcaga ctgcacatgt cccaacatta ccagagcgca cctgtgcccg gtacgacgat
+     1141 taacggcacg attcccttat cgcatatgta aaatgaactc tttttactac actgctggac
+     1201 tatttttgta cagaacactt cttttgggga gggaaaaagt tgtatagagc tcaaggaaag
+     1261 aacacaaaac ttttgctttc tatttaaaaa acaaacaaac aaacaaacaa actaaaaaaa
+     1321 gaggaacggt aggaactcca cacagttttt gttttgttct cttctgattt attttattat
+     1381 ttttttattt agatttttca gttctgtttt gtttccaaaa ggtgtatgag atttggacat
+     1441 ggttgacaag cggggggaga atgaatcaaa tgttttatta ttgcaatcga ctttttgtac
+     1501 agtatttatc taaaaaaaaa gaagcgtaat aacaacaacg agatgtaatg tttgtaaaca
+     1561 gcaggagttt taaaaaaaat tataaaaaat tgtgcaagaa attgatgcac aactgatgtt
+     1621 tacgtcaaaa ttctgcaaag gctgacatga aaactggatt taaagagttt ctcactgaag
+     1681 gtacatagta ataaaccatt attattatta ttattattat tattattatt attattatta
+     1741 agttctaaat gagagaacga acagaggcac tctccagctt tttttaattt ccacttgatt
+     1801 attttcgttc tcccactctt catctgttag atatatgaag tttgtgttct ttattttctc
+     1861 atggtttgta aattttctgt acattttctg tgatatttta agtttttatt ttaaaacttt
+     1921 catttttcgt agttgtaaaa tgtggcctgt acgcagttgc caacgctcca tgtatatatt
+     1981 ttaactaata acatcattat aacagttaca agatgagttt ttttttccaa tgcagtttga
+     2041 aatgaataaa tttttgaaat ttggatattt gaaaaaaaaa aaaaaaaaaa aaaaaaaaaa
+     2101 aaaaaaaaaa aaaaaaaaaa
+//
+
