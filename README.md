@@ -10,8 +10,8 @@ research objective. The measured reporter and binding predictors failed their
 scientific acceptance criteria; those results are preserved.
 
 It accepts built-in and external DNA source languages, preserves exact source
-identity and profile-native structure, normalizes sequence identity into one
-typed source model, validates a caller-supplied interpretation, and lowers it
+identity and profile-native structure, normalizes sequence identity into a
+common typed source boundary, validates a caller-supplied interpretation, and lowers it
 against an explicit target contract.
 
 ```text

@@ -62,5 +62,7 @@ remain visible. Viewer rendering and interaction are unverified.
 
 Natural sequence-to-development inference, measured circuit function,
 time-resolved biological equivalence and whole-brain coverage remain open.
+The [CRX binding audit](CRX_BINDING_AUDIT.md) records why one proposed biological
+bridge could not distinguish the mechanism from a simpler explanation.
 No package-index publication or release tag is implied by updating the source
 repository.

@@ -1750,6 +1750,7 @@ def sdist() -> None:
                 "README.md",
                 "SPEC.md",
                 "docs/RELEASE-1.5.md",
+                "docs/CRX_BINDING_AUDIT.md",
                 "docs/PRIOR_ART.md",
                 "docs/STANDARDS.md",
                 "docs/NEURAL_MECHANISM_ACCEPTANCE.md",
