@@ -473,7 +473,7 @@ predicting an endogenous regulatory response to a DNA intervention in a declared
 neural preparation. Subsequent milestones connect that response to development,
 cell identity and structure, then activity and learning. Each connection needs
 its own intervention evidence. The full
-[genome-to-brain objective](../README.md#research-objective) remains open.
+[genome-to-brain objective](../README.md#epigenesis) remains open.
 
 ## Sources under evaluation
 

@@ -1,15 +1,37 @@
 # Epigenesis
 
-Epigenesis is a universal DNA translation compiler with reproducible
-neural-mechanism experiments. Compare published measurements, explore regulatory
-models, and trace each result back to its sequences, assumptions and source data.
+Epigenesis is a research platform for genome-driven neural development. Its goal
+is to turn a genome and starting conditions into a system that develops neural
+structure, produces activity, and learns.
 
-Version 1.6 adds two offline neuroscience workflows:
+```text
+genome + starting conditions → development → neural structure → activity and learning
+```
 
-- [Neural evidence](examples/neural-evidence/README.md): inspect a published
-  CHE-1 depletion experiment, from individual measurements to intended DNA edits.
-- [Neural patterning](examples/neural-patterning/README.md): explore how an
-  enhancer substitution and signal history affect a four-gene developmental model.
+The central question is causal: how do genetic instructions and developmental
+conditions produce a nervous system, and what changes when we intervene?
+Epigenesis makes proposed mechanisms executable, connects them to biological
+evidence, and preserves the source-to-result chain needed to examine them.
+
+## Working components
+
+Version 1.6 combines a universal DNA translation compiler with executable
+experiments along this path:
+
+| Component | What runs today |
+|---|---|
+| [Natural DNA to coding consequences](examples/coding-consequences/README.md) | Reconstruct Sox2 edits from genomic sequence, execute the declared coding annotation, and check the resulting peptides against independent reference sequences. |
+| [Regulatory sequence to developmental dynamics](examples/neural-patterning/README.md) | Connect an Nkx2.2 enhancer substitution and measured GLI binding profiles to a four-gene model; test signal history, rescue and phenocopy under an explicit affinity-transfer assumption. |
+| [Development to structure and activity](examples/neural-construction/README.md) | Grow cells, neurites and contacts from one founder and a shared artificial DNA recipe. Test signal transmission and contact lesions on the developed network. The final morphology and connections emerge during execution. |
+| [Experimental evidence](examples/neural-evidence/README.md) | Reconstruct 109 published CHE-1 depletion observations, trace them to original workbook cells and intended DNA edits, and examine competing explanations for the measured response. |
+| [Compilation and independent replay](SPEC.md) | Parse exact DNA sources, validate an explicit interpretation, compile a sealed Development Module, and replay its derivation with a separate validator. |
+
+The research program is to connect these components through mechanisms that
+survive independent biological tests. Each current experiment records its own
+inputs, assumptions, interventions and verification results.
+
+The two new 1.6 workflows, neural evidence and neural patterning, run offline
+with Python's standard library. They are the quickest entry points below.
 
 [Release notes](docs/RELEASE-1.6.md) · [Specification](SPEC.md) ·
 [Research roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md)
@@ -125,20 +147,26 @@ and checked by the minimal-example release gate.
 
 </details>
 
-## Research objective
+## Next proof: choose useful DNA edits
 
-The long-term goal is to predict nervous-system development from a genome and
-starting conditions, then connect the resulting neural structure to activity
-and learning. The intended use is to compare genetic or environmental
-interventions and identify experiments that distinguish competing mechanisms.
+A researcher has candidate regulatory DNA edits and a limited experimental
+budget. The next practical milestone is to predict each edit's direction and
+size of effect, then select ten edits from distinct sequence families for
+follow-up measurement. The current target is reporter activity in day-14
+WTC11-NGN2 induced neurons.
 
-The current examples establish specific parts of that workflow. Useful
-DNA-edit prediction is the next separate validation milestone: the candidate
-must improve both effect prediction and experimental ranking against fixed
-baselines on unseen sequence families. Current candidates have not passed both
-requirements; reserved confirmation outcomes remain unopened. The
-[roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) records the protocols, results and next
-decisions, including negative results.
+Success requires better effect prediction and better experimental ranking than
+fixed sequence baselines on held-out families, with uncertainty reported for
+both comparisons. This would establish a useful sequence-to-function link for
+the larger development program and a concrete tool for planning experiments.
+
+The local research workflow already includes family-isolated data intake,
+training and inference, saved model replay, and independent metric verification.
+Eight model-selection rounds have recorded 196 fits, including baselines and
+controls. Their detailed research artifacts remain outside the versioned release.
+Current candidates have not passed both requirements; reserved confirmation
+outcomes remain unopened. The [roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) records
+the frozen protocols, completed experiments, negative results and next decisions.
 
 ## More experiments
 
