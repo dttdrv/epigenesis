@@ -51,7 +51,7 @@ jobs:
         run: python -m unittest tests.test_io tests.test_publish.NativeDirectoryPublicationTests -v
 
   release-gates:
-    name: Epigenesis 1.5 release gates
+    name: Epigenesis 1.6 release gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -81,6 +81,10 @@ jobs:
         env:
           PIP_NO_INDEX: "1"
         run: python tests/verify.py development-real-dna
+      - name: Sequence-to-patterning experiment and numerical refinement
+        run: python examples/neural-patterning/patterning.py demo --output "$RUNNER_TEMP/neural-patterning"
+      - name: Measured neural evidence and source replay
+        run: python examples/neural-evidence/evidence.py demo --output "$RUNNER_TEMP/neural-evidence"
       - name: Installed wheel smoke test
         env:
           PIP_NO_INDEX: "1"

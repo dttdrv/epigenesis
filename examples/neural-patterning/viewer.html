@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Epigenesis · Sequence to cell state</title>
+<style>
+:root{color-scheme:light;--paper:#fff;--ink:#111;--muted:#555;--line:#ddd;--green:#111;--rose:#111;--blue:#111;--gold:#111}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,sans-serif}main{max-width:1040px;margin:auto;padding:34px 38px 60px}a{color:var(--green)}header{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--ink);padding-bottom:16px}.brand{font-size:14px;font-weight:600}.field{font-size:14px;font-weight:600;margin-bottom:8px}h1{font:500 30px/1.2 system-ui,-apple-system,sans-serif;max-width:840px;margin:30px 0 16px}h2{font-size:20px;font-weight:550;margin:0 0 14px}p{max-width:870px;margin:10px 0 20px}.intro{font-size:16px;color:var(--ink)}.chain{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;border-block:1px solid var(--line);padding:22px 0;margin:26px 0}.chain p{font-size:14px;margin:7px 0}.sequence{font:16px ui-monospace,SFMono-Regular,monospace;letter-spacing:0}.changed{color:var(--rose);text-decoration:underline;text-underline-offset:5px}.ratio{font-size:18px}.tag{font-size:12px;color:var(--green)}.controls{display:flex;gap:20px;align-items:end;flex-wrap:wrap;margin:25px 0 16px}label{display:block;font-size:13px;color:var(--muted)}select,button{min-height:42px;font:inherit;color:var(--ink);background:white;border:1px solid var(--line);border-radius:0;padding:8px 12px}button{cursor:pointer}button:hover,select:hover{border-color:var(--green)}button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #111;outline-offset:3px}.time{flex:1;min-width:240px}input[type=range]{width:100%;accent-color:var(--green)}.plots{display:grid;grid-template-columns:1fr 1fr;gap:26px}.plot{min-width:0}.plot h2{font-family:"Times New Roman",Times,serif;font-size:20px;font-weight:400}.plot figcaption{font-family:"Times New Roman",Times,serif;font-size:14px}.plot-scroll{overflow-x:auto}.plot-hint{display:none}svg{display:block;width:100%;height:auto}figcaption{font-size:13px;color:var(--muted);margin:8px 0}figure{margin:0}.legend{font-family:"Times New Roman",Times,serif;display:flex;gap:20px;flex-wrap:wrap;margin:14px 0;font-size:16px}.key{display:inline-flex;align-items:center;gap:6px}.key svg{width:28px;height:12px;flex:none}.explanation{margin:24px 0;font-size:15px}.lower{display:grid;grid-template-columns:1fr 1fr;gap:34px;border-top:1px solid var(--line);padding-top:26px;margin-top:26px}.counts{display:flex;gap:35px}.count{font-size:18px}.small{font-size:13px;color:var(--muted)}details{border-top:1px solid var(--line);padding:16px 0}summary{cursor:pointer;font-weight:550}ul{padding-left:22px}li{margin:8px 0}.check{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:14px;border-bottom:1px solid #ddd}.pass{color:var(--green)}.fail{color:var(--rose)}.exports{display:flex;gap:18px;flex-wrap:wrap;margin-top:24px;align-items:center}.status{font-size:13px}.history{margin-top:30px}.subtle{color:var(--muted)}::selection{background:#111;color:#fff}footer{font-size:12px;color:var(--muted);margin-top:30px;border-top:1px solid var(--line);padding-top:16px}@media screen and (max-width:760px){main{padding:22px 18px}.chain,.plots,.lower{grid-template-columns:1fr}.chain{gap:18px}.controls{gap:12px}header{font-size:12px}.legend{gap:12px}.plot{overflow-x:auto}.plot>svg,#history{min-width:560px}.plot-hint{display:block}}.print-only{display:none}@media print{h2,summary{break-after:avoid}.history{break-inside:avoid}button,.controls,.exports,.plot-hint{display:none}.print-only{display:block}.plot,.plot-scroll{overflow:visible}.plot>svg,#history{min-width:0}.plot svg text{font-size:16px}main{max-width:none;padding:0}body{background:white}.plots,.lower{grid-template-columns:1fr 1fr}details{break-inside:avoid}figure{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<header><span class="brand">Epigenesis / Neural mechanisms</span><span class="status" id="status">Loading verified experiment…</span></header>
+<h1>Sequence to cell state</h1>
+<p class="intro">A real single-base enhancer change, measured GLI binding profiles, and a published four-gene model of neural development. Explore how sequence and signal history change the model's outcome.</p>
+<div class="chain">
+<div><div class="field"> Regulatory DNA</div><div class="sequence">TGGGTG<span class="changed">G</span>TC<br>TGGGTG<span class="changed">T</span>TC</div><p>Nkx2.2 enhancer core and the engineered substitution tested by Peterson et al.</p><a class="small" href="https://doi.org/10.1101/gad.207142.112">Sequence and reporter source</a></div>
+<div><div class="field"> Measured binding profile</div><div class="ratio" id="ratio"></div><p>Variant / reference, GLI2. Transferring this assay ratio into cellular binding affinity is an explicit model assumption.</p><a class="small" href="https://doi.org/10.1016/j.cell.2005.10.042">Hallikas et al., Table S1</a></div>
+<div><div class="field"> Developmental dynamics</div><div class="ratio">4 interacting genes</div><p>Pax6, Olig2, Nkx2.2 and Irx3. Pattern emerges from local gene regulation under a spatial signal gradient.</p><a class="small" href="https://doi.org/10.1103/PhysRevResearch.2.043069">Published equations and parameters</a></div>
+</div>
+<div class="controls">
+<div><label for="mode">Experiment</label><select id="mode"><option value="endogenous">Endogenous edit · hypothesis</option><option value="reporter">Passive reporter · occupancy</option></select></div>
+<div class="time"><label for="time">Development time: <output id="time-value">0</output> model units</label><input type="range" id="time" min="0" max="100" value="0" step="1"></div>
+<button type="button" id="play">Play development</button>
+</div>
+<p class="print-only" id="figure-context"></p>
+<div class="legend" id="legend"></div>
+<p class="plot-hint small">Scroll each plot sideways to inspect the full gradient.</p>
+<div class="plots">
+<figure class="plot"><h2>Reference site</h2><svg id="reference" viewBox="0 0 560 315" role="img" aria-label="Reference spatial gene concentrations"></svg><svg id="reference-strip" viewBox="0 0 560 38" role="img" aria-label="Reference dominant expression states"></svg><figcaption id="reference-caption"></figcaption></figure>
+<figure class="plot"><h2>Single-base variant</h2><svg id="variant" viewBox="0 0 560 315" role="img" aria-label="Variant spatial gene concentrations"></svg><svg id="variant-strip" viewBox="0 0 560 38" role="img" aria-label="Variant dominant expression states"></svg><figcaption id="variant-caption"></figcaption></figure>
+</div>
+<p class="explanation" id="interpretation"></p>
+<section class="history"><h2>The same final signal can produce different states</h2><p class="small">Reference DNA. Compare 20 time units at GliA = 0.05 with 5 units at GliA = 1 followed by 15 at 0.05. The final environment is identical.</p><div class="plot-scroll"><svg id="history" viewBox="0 0 1120 250" role="img" aria-label="Nkx2.2 trajectories with and without prior high signal"></svg></div><div class="legend"><span class="key"><svg viewBox="0 0 28 12" aria-hidden="true"><path d="M0 6H28" stroke="#111" fill="none"/></svg>Primed with high signal</span><span class="key"><svg viewBox="0 0 28 12" aria-hidden="true"><path d="M0 6H28" stroke="#111" stroke-dasharray="6 3" fill="none"/></svg>No priming</span></div></section>
+<div class="lower">
+<section><h2>What was observed in embryos</h2><div class="counts"><div><div class="count">4 / 6</div><span class="small">Reference reporter</span></div><div><div class="count">0 / 13</div><span class="small">Variant reporter</span></div></div><p class="small">Expressing / total transgenic mouse embryos, E10.5, forelimb level. Peterson et al., Figure 5D–E. These counts are not expression intensities.</p><p>The plotted occupancy has no fitted fluorescence scale or detection threshold. It does not predict these embryo counts. The endogenous edit has not been validated by this reporter experiment.</p></section>
+<section><h2>What this lets you test</h2><p>Does a variant act through binding? Does restoring that mediator rescue the phenotype? Does the same DNA change behave differently under another signal history?</p><p class="small">The model predicts that reduced affinity lowers occupancy above GliA = 0.1 and raises it below 0.1. The neutral point follows from the equations. It is a candidate mechanism to test experimentally.</p><div id="control-summary"></div></section>
+</div>
+<details><summary>Mechanism checks and interventions</summary><div id="checks"></div><p class="small">Allele rescue restores the reference sequence. Mediator rescue retains variant DNA and restores the reference binding multiplier. Phenocopy retains reference DNA and imposes the variant multiplier. These test the implemented causal chain.</p></details>
+<details><summary>Assumptions and scientific scope</summary><ul id="assumptions"></ul><p>Each position is an independent regulatory system under a fixed gradient. There is no cell migration, tissue mechanics, neural connectivity or cognition in this experiment. Below each plot, lines span contiguous sampled positions where the same Olig2, Nkx2.2 or Irx3 concentration is largest and above 0.5. Dotted lines mark unresolved positions. These marks do not interpolate domain boundaries between samples.</p></details>
+<details><summary>Source identity and reproducibility</summary><p class="small">The output includes exact input FASTA, compiled Development Modules, source validation, source citations, file hashes and full intervention trajectories. All displayed simulation data were computed by Python. The viewer does not approximate the equations in JavaScript.</p><p class="small" id="identity"></p></details>
+<div class="exports"><a href="report.json" download>Experiment data · JSON</a><a href="variant.csv" download>Endogenous variant, fixed-signal trajectory · CSV</a><a href="files.sha256.json" download>File hashes</a><button id="export-svg" type="button">Export current figure · SVG</button><button id="print" type="button">Print / save PDF</button></div>
+<footer>Neural-patterning research experiment. Concentrations, distance and time are model units. Original papers and source identities are included in the data export.</footer>
+</main>
+<script type="application/json" id="experiment">__EXPERIMENT_DATA__</script>
+<script>
+"use strict";
+const data=JSON.parse(document.getElementById("experiment").textContent), spatial=data.spatial;
+const dashes=["none","7 3","2 3","8 3 2 3"], genes=data.model_source.genes;
+const figureFont="Times New Roman, Times, serif";
+const $=id=>document.getElementById(id), ns="http://www.w3.org/2000/svg";
+$("time").max=spatial.times.length-1;$("time").value=$("time").max;
+function node(tag,attrs={},text=""){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);n.textContent=text;return n;}
+function plot(svg,xs,series,width=560,height=315,xLabel="Normalized position (ventral → dorsal)",yLabel="Concentration (model units)"){
+ svg.replaceChildren();
+ const left=62,right=18,top=20,bottom=54,w=width-left-right,h=height-top-bottom,xmax=xs.at(-1)||1;
+ const text={fill:"#000","font-family":figureFont,"font-size":15};
+ const x=v=>left+w*v/xmax,y=v=>top+h*(1-v);
+ svg.append(node("rect",{width,height,fill:"#fff"}));
+ svg.append(node("path",{d:`M${left} ${top}V${top+h}H${width-right}`,fill:"none",stroke:"#000","stroke-width":1}));
+ for(const v of [0,.25,.5,.75,1]){
+  svg.append(node("path",{d:`M${left-5} ${y(v)}h5`,stroke:"#000","stroke-width":1}));
+  svg.append(node("text",{x:left-10,y:y(v)+5,"text-anchor":"end",...text},String(v)));
+  const tick=v*xmax;
+  svg.append(node("path",{d:`M${x(tick)} ${top+h}v5`,stroke:"#000","stroke-width":1}));
+  svg.append(node("text",{x:x(tick),y:top+h+22,"text-anchor":"middle",...text},String(Number(tick.toFixed(4)))));
+ }
+ svg.append(node("text",{transform:`translate(17 ${top+h/2}) rotate(-90)`,"text-anchor":"middle",...text,"font-size":16},yLabel));
+ svg.append(node("text",{x:left+w/2,y:height-6,"text-anchor":"middle",...text,"font-size":16},xLabel));
+ for(const seriesItem of series){
+  const points=xs.map((value,i)=>`${x(value)},${y(seriesItem.values[i])}`).join(" ");
+  svg.append(node("polyline",{points,fill:"none",stroke:"#000","stroke-dasharray":seriesItem.dash,"stroke-width":1.3,"stroke-linejoin":"miter"}));
+ }
+}
+function strip(svg,states){
+ svg.replaceChildren();
+ const left=62,w=560-left-18,x=i=>left+w*spatial.positions[i]/spatial.positions.at(-1);
+ const dominant=states.map(values=>{let best=-1;for(let j=1;j<genes.length;j++)if(values[j]>.5&&(best<0||values[j]>values[best]))best=j;return best;});
+ for(let first=0;first<dominant.length;){
+  let last=first;while(last+1<dominant.length&&dominant[last+1]===dominant[first])last++;
+  const gene=dominant[first],label=gene<0?"unresolved":genes[gene];
+  svg.append(node("line",{x1:x(first),x2:x(last),y1:6,y2:6,stroke:"#000","stroke-width":1,"stroke-dasharray":gene<0?"2 3":"none"}));
+  const text=node("text",{x:(x(first)+x(last))/2,y:25,"text-anchor":"middle","font-family":figureFont,"font-size":14,"font-style":gene<0?"normal":"italic",fill:"#000"},label);
+  text.append(node("title",{},`Sampled positions ${spatial.positions[first]}–${spatial.positions[last]}: ${label}`));svg.append(text);first=last+1;
+ }
+}
+function render(){const t=Number($("time").value),reporter=$("mode").value==="reporter";$("time-value").value=spatial.times[t];$("figure-context").textContent=$("mode").selectedOptions[0].textContent+" · Development time: "+spatial.times[t]+" model units";
+ $("legend").replaceChildren();const legend=reporter?[{name:"Nkx2.2 promoter occupancy",dash:dashes[2]}]:genes.map((name,i)=>({name,dash:dashes[i]}));for(const item of legend){const span=document.createElement("span");span.className="key";const sample=node("svg",{viewBox:"0 0 28 12","aria-hidden":"true"});sample.append(node("path",{d:"M0 6H28",stroke:"#111","stroke-width":1.5,"stroke-dasharray":item.dash,fill:"none"}));span.append(sample,document.createTextNode(item.name));$("legend").append(span);}
+ for(const name of ["reference","variant"]){const states=spatial[reporter?"reference":name][t];const series=reporter?[{dash:dashes[2],values:spatial["reporter-"+name][t]}]:genes.map((_,i)=>({dash:dashes[i],values:states.map(s=>s[i])}));plot($(name),spatial.positions,series,560,315,undefined,reporter?"Occupancy probability":"Concentration (model units)");strip($(name+"-strip"),states);$(name+"-caption").textContent=reporter?"Underlying endogenous states are unchanged. Lines mark runs of sampled positions with the same dominant gene (threshold 0.5).":"Lines mark runs of sampled positions with the same dominant gene (threshold 0.5); dotted = unresolved.";}
+ $("interpretation").textContent=reporter?"The variant changes a passive readout on the same wild-type developmental trajectory. Promoter occupancy is a model probability, not measured fluorescence.":"The variant changes Nkx2.2 regulation inside the feedback network. All four genes respond. This is a hypothetical endogenous edit, with a binding-profile ratio transferred into the model.";
+}
+$("ratio").textContent=data.compiled.variant.profile.profile_ratio.toPrecision(5)+" × reference";
+$("status").textContent=data.mechanism_checks_passed?"Mechanism checks passed · biological transfer unvalidated":"A mechanism check failed · inspect results";
+$("control-summary").textContent=`${data.checks.filter(c=>c.passed).length} / ${data.checks.length} mechanism checks passed`;
+for(const c of data.checks){const row=document.createElement("div");row.className="check";const label=document.createElement("span");label.textContent=c.name;const result=document.createElement("span");result.className=c.passed?"pass":"fail";result.textContent=c.passed?"PASS":"FAIL";row.append(label,result);$("checks").append(row);}
+for(const text of data.assumptions){const li=document.createElement("li");li.textContent=text;$("assumptions").append(li);}
+$("identity").textContent="Scientific data SHA-256: "+data.data_sha256;
+const h1=data.interventions["history-primed"].trajectory,h2=data.interventions["history-naive"].trajectory;
+plot($("history"),h1.map(r=>r[0]),[{dash:"none",values:h1.map(r=>r[3])},{dash:"6 3",values:h2.map(r=>r[3])}],1120,250,"Time (model units)","Nkx2.2 (model units)");
+let timer=null;function stop(){clearInterval(timer);timer=null;$("play").textContent="Play development";}
+$("play").addEventListener("click",()=>{if(timer){stop();return;}if($("time").value===$("time").max)$("time").value=0;render();$("play").textContent="Pause";timer=setInterval(()=>{if(Number($("time").value)>=Number($("time").max)){stop();return;}$("time").value=Number($("time").value)+1;render();},140);});
+$("time").addEventListener("input",()=>{stop();render();});$("mode").addEventListener("change",render);$("print").addEventListener("click",()=>window.print());
+$("export-svg").addEventListener("click",()=>{const svg=node("svg",{xmlns:ns,viewBox:"0 0 1120 440",width:1120,height:440});for(const [i,name] of ["reference","variant"].entries()){svg.append(node("text",{x:48+i*560,y:24,"font-family":figureFont,"font-size":18},`${name} · ${$("mode").value} · t=${spatial.times[Number($("time").value)]} model units`));const g=node("g",{transform:`translate(${i*560},40)`});const copy=$(name).cloneNode(true);copy.setAttribute("width",560);copy.setAttribute("height",315);g.append(copy);svg.append(g);}const legend=$("mode").value==="reporter"?[{name:"Nkx2.2 promoter occupancy",dash:dashes[2]}]:genes.map((name,i)=>({name,dash:dashes[i]}));legend.forEach((item,i)=>{const x=48+i*180;svg.append(node("path",{d:`M${x} 382h28`,stroke:"#111","stroke-width":1.5,"stroke-dasharray":item.dash,fill:"none"}));svg.append(node("text",{x:x+36,y:387,"font-family":figureFont,"font-size":14},item.name));});svg.append(node("text",{x:48,y:416,"font-family":figureFont,"font-size":13},"Conditional regulatory model; binding-profile to intracellular-affinity transfer is unvalidated."));svg.append(node("metadata",{},JSON.stringify({scientific_data_sha256:data.data_sha256,model_source:data.model_source})));const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"}));const a=document.createElement("a");a.href=url;a.download="neural-patterning.svg";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+let printDetails;
+window.addEventListener('beforeprint',()=>{
+ stop();if(printDetails)return;
+ printDetails=[...document.querySelectorAll('details')].map(el=>[el,el.open]);
+ for(const [el] of printDetails)el.open=true;
+});
+window.addEventListener('afterprint',()=>{
+ if(!printDetails)return;
+ for(const [el,open] of printDetails)el.open=open;
+ printDetails=null;
+});
+render();
+</script></body></html>

@@ -1,0 +1,149 @@
+{
+  "format": "epigenesis.neural-evidence-case",
+  "version": 1,
+  "title": "What protects expression after CHE-1 depletion?",
+  "citation": "Traets et al. (2021), eLife 10:e66955, Figure 6F",
+  "doi": "https://doi.org/10.7554/eLife.66955",
+  "license": "CC BY 4.0; original study and source data credited to Traets et al.",
+  "endpoint": "gcy-22 mRNA molecules in ASER, measured by smFISH",
+  "background": "che-1(gj2089[che-1::GFP::AID]); ieSi57 (TIR1), shared by the promoter constructs",
+  "treatment": "Control versus 24 hours of 1 mM auxin; figure labels early L3",
+  "sources": [
+    {
+      "file": "figure6f.xlsx",
+      "sha256": "5117514177d40044bf6bf25b2909a9b093004125a13655d4b80496e9fa2c743b",
+      "url": "https://cdn.elifesciences.org/articles/66955/elife-66955-fig6-data1-v2.zip",
+      "archive_member": "Figure 6F-Source data.xlsx"
+    },
+    {
+      "file": "figure6.ipynb",
+      "sha256": "f25d7777ffb10ef030d1b225286e7ea2d0acea2d3861ec4353429a54de2e0fc8",
+      "url": "https://cdn.elifesciences.org/articles/66955/elife-66955-fig6-data1-v2.zip",
+      "archive_member": "Fig6 and sup.ipynb"
+    },
+    {
+      "file": "donors.docx",
+      "sha256": "1d8b73f6b9e1e450a4a35a985ded68782942a7c38dc5075bc8e374e6aaafdebe",
+      "url": "https://cdn.elifesciences.org/articles/66955/elife-66955-supp5-v2.docx",
+      "archive_member": null
+    },
+    {
+      "file": "gcy-22.fasta",
+      "sha256": "f085ce9cc62dc45b5e04df39ae428e42d448c34a6cbee93940403c5c8756a09e",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_003283.11&rettype=fasta&retmode=text&seq_start=20825050&seq_stop=20825400",
+      "archive_member": null
+    },
+    {
+      "file": "che-1.fasta",
+      "sha256": "7963307b3bc67d83a5cf4f64e2f38333a91c5a61f336776a7c76d1e8d78f1be5",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_003279.8&rettype=fasta&retmode=text&seq_start=6521000&seq_stop=6521300",
+      "archive_member": null
+    },
+    {
+      "file": "article.xml",
+      "sha256": "fd3ba9bbc5b4e80840a4f30fb5ee2a8183430febea64be09b0bbc5f8cdc6746f",
+      "url": "https://doi.org/10.7554/eLife.66955",
+      "archive_member": null
+    }
+  ],
+  "constructs": [
+    {
+      "id": "core",
+      "label": "Core transfer",
+      "donor": "3418"
+    },
+    {
+      "id": "fragment",
+      "label": "Fragment transfer",
+      "donor": "3415"
+    },
+    {
+      "id": "native",
+      "label": "Native promoter",
+      "donor": null
+    }
+  ],
+  "groups": [
+    {
+      "construct": "core",
+      "condition": "control",
+      "sheet": "gcy22_che1bp_con",
+      "column": "C",
+      "batch_column": "A",
+      "specimen_column": "B"
+    },
+    {
+      "construct": "core",
+      "condition": "auxin",
+      "sheet": "gcy22_che1bp_aux",
+      "column": "C",
+      "batch_column": "A",
+      "specimen_column": "B"
+    },
+    {
+      "construct": "fragment",
+      "condition": "control",
+      "sheet": "gcy22_che1flank_con",
+      "column": "C",
+      "batch_column": "A",
+      "specimen_column": "B"
+    },
+    {
+      "construct": "fragment",
+      "condition": "auxin",
+      "sheet": "gcy22_che1flank_aux",
+      "column": "C",
+      "batch_column": "A",
+      "specimen_column": "B"
+    },
+    {
+      "construct": "native",
+      "condition": "control",
+      "sheet": "degron_l3l4_con",
+      "column": "E",
+      "batch_column": "A",
+      "specimen_column": "B"
+    },
+    {
+      "construct": "native",
+      "condition": "auxin",
+      "sheet": "degron_l3l4_aux",
+      "column": "A",
+      "batch_column": null,
+      "specimen_column": null
+    }
+  ],
+  "sequence": {
+    "target": "gcy-22",
+    "target_gene_strand": -1,
+    "core": "GAAGCCACAATT",
+    "native_core": "GAAGCCCTTCAA",
+    "homology_arm_bp": 35,
+    "arm_source": "Article Methods: Genomic modifications using CRISPR/Cas9"
+  },
+  "limitations": [
+    "Each dot is a supplied workbook observation. Repeated batch and worm labels are preserved; unique animals and independent biological batches are not established.",
+    "Control and auxin are unpaired fixed endpoints. Ratios divide group means; they are not within-animal changes. No confidence intervals or population hypothesis tests are inferred from these rows.",
+    "Donor/reference alignments reconstruct the intended fully templated product, not sequence-verified final clones.",
+    "The fragment transfer changes surrounding sequence, core orientation and target spacing together. This comparison cannot isolate a flank-only or cofactor mechanism.",
+    "This panel measures one transcript, not binding affinity, whole neuronal identity, neural activity or prediction of an unseen edit. It is a protective regulatory transfer, not a classical same-background genetic rescue."
+  ],
+  "source_conflicts": [
+    {
+      "issue": "Construct notation",
+      "detail": "Figure 6F caption names the reciprocal che-1-promoter edit. Main text, figure labels, notebook and donor table instead support the gcy-22 core transfer gj2064. This mapping is our source reconciliation, not an author-issued correction."
+    },
+    {
+      "issue": "Workbook header",
+      "detail": "Core-transfer sheets have an E1 label naming ASEgcy-22bp, in conflict with A1 and the notebook. Figure 6F selects gcy-22 counts from column C; the unlabelled fragment-auxin column D is not selected."
+    },
+    {
+      "issue": "Developmental stage",
+      "detail": "The native-control sheet labels L3/L4, while Figure 6F labels early L3. The original labels remain unresolved."
+    },
+    {
+      "issue": "Solvent",
+      "detail": "Methods specify 0.2% EtOH; Results state 0.25%. Exact solvent metadata is unresolved."
+    }
+  ]
+}

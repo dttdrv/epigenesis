@@ -1,0 +1,614 @@
+{
+  "binding": {
+    "schema_version": 1,
+    "title": "Hallikas2006 measured GLI2 and GLI3 single-substitution binding profiles",
+    "source": {
+      "citation": "Hallikas O, Palin K, Sinjushina N, Rautiainen R, Partanen J, Ukkonen E, Taipale J. Genome-wide prediction of mammalian enhancers based on analysis of transcription-factor binding affinity. Cell 124(1):47-59 (2006). Table S1, data for Figure 1D.",
+      "doi": "10.1016/j.cell.2005.10.042",
+      "article_url": "https://doi.org/10.1016/j.cell.2005.10.042",
+      "author_article_pdf_url": "https://www.cs.helsinki.fi/u/kpalin/HallikasEtAl06.pdf",
+      "table_url": "https://ars.els-cdn.com/content/image/1-s2.0-S0092867405013954-mmc2.xls",
+      "table_sha256": "62f6672f064f91ed5fc484d31d7c5ab28559b0aeef2592d48e0d22a479c515bd",
+      "table_bytes": 848384,
+      "sheet": "TableS1-binding profiles",
+      "table_caption": "MEASURED BINDING PROFILES (DATA FOR FIG1D)",
+      "original_table_positions": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0,
+        9.0,
+        10.0,
+        14.0
+      ],
+      "omitted_positions": [
+        10,
+        14
+      ],
+      "omission_reason": "The requested consumer accepts the nine-base GLI consensus core. Source columns for positions 10 and 14 remain in the original workbook but are not part of this nine-base extraction.",
+      "reuse": {
+        "explicit_dataset_license_found": false,
+        "article_copyright_notice": "2006 Elsevier Inc.",
+        "limitation": "No explicit dataset reuse license was identified in the inspected table and article. Preserve attribution and provenance. The separate EEL software GPL license does not establish a license for this spreadsheet."
+      },
+      "related_method_doi": "10.1038/nprot.2006.33"
+    },
+    "positions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "base_order": [
+      "A",
+      "C",
+      "G",
+      "T"
+    ],
+    "consensus": "GACCACCCA",
+    "reverse_complement_consensus": "TGGGTGGTC",
+    "units": "dimensionless published normalized binding-profile weight",
+    "profiles": {
+      "GLI2": {
+        "A": [
+          0.0002712508662948493,
+          0.8216745292333673,
+          0.04063440697383719,
+          0.0,
+          0.8392729745979067,
+          0.0,
+          0.09798023864936087,
+          0.013038978576263023,
+          0.9974556654950845
+        ],
+        "C": [
+          0.0,
+          0.0902870587627769,
+          0.9593655930261629,
+          1.0,
+          0.06429425508334938,
+          1.0,
+          0.9020197613506392,
+          0.8868706727623472,
+          0.0
+        ],
+        "G": [
+          0.9813949896404062,
+          0.08803841200385586,
+          0.0,
+          0.0,
+          0.009851896132690972,
+          0.0,
+          0.0,
+          0.00463372657316638,
+          0.0
+        ],
+        "T": [
+          0.018333759493299046,
+          0.0,
+          0.0,
+          0.0,
+          0.08658087418605287,
+          0.0,
+          0.0,
+          0.09545662208822328,
+          0.002544334504915496
+        ]
+      },
+      "GLI3": {
+        "A": [
+          0.0038791289742368135,
+          0.7845028564437249,
+          0.03409141625199168,
+          0.0,
+          0.7666926283997519,
+          0.0,
+          0.1466811917902018,
+          0.05356070194614885,
+          0.9373233250854016
+        ],
+        "C": [
+          0.0,
+          0.09651963845542581,
+          0.9659085837480084,
+          1.0,
+          0.10563795557593253,
+          1.0,
+          0.8533188082097982,
+          0.8456233513752314,
+          0.03114907945147012
+        ],
+        "G": [
+          0.9693187978726797,
+          0.11897750510084933,
+          0.0,
+          0.0,
+          0.024095317751394476,
+          0.0,
+          0.0,
+          0.012571099365735276,
+          0.0044050270133286235
+        ],
+        "T": [
+          0.026802073153083514,
+          0.0,
+          0.0,
+          0.0,
+          0.10357409827292104,
+          0.0,
+          0.0,
+          0.08824484731288455,
+          0.027122568449799708
+        ]
+      }
+    },
+    "source_cells": {
+      "GLI2": {
+        "header_row": 9,
+        "protein_cell": "A9",
+        "position_cells": {
+          "1": "B9",
+          "2": "C9",
+          "3": "D9",
+          "4": "E9",
+          "5": "F9",
+          "6": "G9",
+          "7": "H9",
+          "8": "I9",
+          "9": "J9"
+        },
+        "row_labels": {
+          "A": "A10",
+          "C": "A11",
+          "G": "A12",
+          "T": "A13"
+        },
+        "value_cells": {
+          "A": [
+            "B10",
+            "C10",
+            "D10",
+            "E10",
+            "F10",
+            "G10",
+            "H10",
+            "I10",
+            "J10"
+          ],
+          "C": [
+            "B11",
+            "C11",
+            "D11",
+            "E11",
+            "F11",
+            "G11",
+            "H11",
+            "I11",
+            "J11"
+          ],
+          "G": [
+            "B12",
+            "C12",
+            "D12",
+            "E12",
+            "F12",
+            "G12",
+            "H12",
+            "I12",
+            "J12"
+          ],
+          "T": [
+            "B13",
+            "C13",
+            "D13",
+            "E13",
+            "F13",
+            "G13",
+            "H13",
+            "I13",
+            "J13"
+          ]
+        }
+      },
+      "GLI3": {
+        "header_row": 15,
+        "protein_cell": "A15",
+        "position_cells": {
+          "1": "B15",
+          "2": "C15",
+          "3": "D15",
+          "4": "E15",
+          "5": "F15",
+          "6": "G15",
+          "7": "H15",
+          "8": "I15",
+          "9": "J15"
+        },
+        "row_labels": {
+          "A": "A16",
+          "C": "A17",
+          "G": "A18",
+          "T": "A19"
+        },
+        "value_cells": {
+          "A": [
+            "B16",
+            "C16",
+            "D16",
+            "E16",
+            "F16",
+            "G16",
+            "H16",
+            "I16",
+            "J16"
+          ],
+          "C": [
+            "B17",
+            "C17",
+            "D17",
+            "E17",
+            "F17",
+            "G17",
+            "H17",
+            "I17",
+            "J17"
+          ],
+          "G": [
+            "B18",
+            "C18",
+            "D18",
+            "E18",
+            "F18",
+            "G18",
+            "H18",
+            "I18",
+            "J18"
+          ],
+          "T": [
+            "B19",
+            "C19",
+            "D19",
+            "E19",
+            "F19",
+            "G19",
+            "H19",
+            "I19",
+            "J19"
+          ]
+        }
+      }
+    },
+    "column_sum_validation": {
+      "GLI2": {
+        "sums": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.9999999999999999,
+          1.0
+        ],
+        "absolute_errors_from_one": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.1102230246251565e-16,
+          0.0
+        ],
+        "validated": true,
+        "numerical_tolerance": 8.881784197001252e-16,
+        "tolerance_basis": "Four binary64 positive terms; four ulps at 1.0 is a conservative rounding allowance. Values were not renormalized."
+      },
+      "GLI3": {
+        "sums": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "absolute_errors_from_one": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "validated": true,
+        "numerical_tolerance": 8.881784197001252e-16,
+        "tolerance_basis": "Four binary64 positive terms; four ulps at 1.0 is a conservative rounding allowance. Values were not renormalized."
+      }
+    },
+    "missing_values": {
+      "count": 0,
+      "representation": null,
+      "policy": "Missing measurements are null, never zero. No selected cell was missing; all 72 cells were numeric in the original workbook."
+    },
+    "published_zero_cells": {
+      "GLI2": [
+        "E10",
+        "G10",
+        "B11",
+        "J11",
+        "D12",
+        "E12",
+        "G12",
+        "H12",
+        "J12",
+        "C13",
+        "D13",
+        "E13",
+        "G13",
+        "H13"
+      ],
+      "GLI3": [
+        "E16",
+        "G16",
+        "B17",
+        "D18",
+        "E18",
+        "G18",
+        "H18",
+        "C19",
+        "D19",
+        "E19",
+        "G19",
+        "H19"
+      ]
+    },
+    "zero_interpretation": "A numeric 0 is an explicit published assay-profile value. It is not a missing value and does not prove zero physical binding affinity.",
+    "consumer_contract": {
+      "alphabet": "ACGT",
+      "sequence_length": 9,
+      "maximum_substitutions_from_oriented_consensus": 1,
+      "accepted_strands": [
+        "forward",
+        "reverse_complement"
+      ],
+      "orientation": "Orient the entire input to the consensus strand before identifying its changed position; complement and reverse together.",
+      "reference_profile_ratio": 1.0,
+      "single_substitution_profile_ratio": "profiles[protein][alternate_base][position-1] / profiles[protein][consensus[position-1]][position-1]",
+      "unsupported": "More than one substitution, ambiguous bases, indels, and sequences whose nine-base core is outside the reference-or-single-substitution domain.",
+      "no_multimutant_additivity": true
+    },
+    "interpretation": {
+      "profile_ratio": "Ratio of the published mutant and consensus binding-profile weights at the changed position.",
+      "conditional_affinity_bridge": "This ratio equals relative association affinity only if the published weights are proportional to association constants; applying it to neural enhancer occupancy is an explicit model assumption.",
+      "limits": [
+        "No absolute dissociation constants or binding rate constants are supplied.",
+        "No occupancy or transcriptional foldchange follows from the ratio alone.",
+        "The single-substitution measurements do not establish independence or additivity for multiple mutations.",
+        "Effects were measured in the assay reference sequence context; transferring them to other flanking sequences or full enhancer contexts requires an assumption."
+      ],
+      "normalization_audit_summary": "The Cell paper printed equation fails the consensus boundary. Later primary methods support inverse-Kd then column-sum normalization, but the original processing pipeline was not fully recovered. No extra transformation or pseudocount was applied.",
+      "criticism_source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2830928/",
+      "later_explicit_pipeline_source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3969613/"
+    },
+    "extraction_verification": {
+      "original_workbook_numeric_cells_checked": 72,
+      "intermediate_json_sha256": "c09046282dd1815ae9e800c6c4aef46d2ebce2e9388d6e6ac3c04efc99a827db",
+      "intermediate_matches_original_binary64_cells": true,
+      "reader": "xlrd 2.0.2",
+      "reader_wheel_sha256": "ea762c3d29f4cca48d82df517b6d89fbce4db3107f9d78713e48cd321d5c9aa9",
+      "normalization_applied": false,
+      "rounding_applied": false
+    }
+  },
+  "model": {
+    "genes": [
+      "Pax6",
+      "Olig2",
+      "Nkx2.2",
+      "Irx3"
+    ],
+    "basal": [
+      3.84,
+      2.01263,
+      0.572324,
+      18.72
+    ],
+    "input": [
+      0,
+      180,
+      373,
+      0
+    ],
+    "repression": [
+      [
+        0,
+        1.9,
+        26.7,
+        0
+      ],
+      [
+        0,
+        0,
+        60.6,
+        28.4
+      ],
+      [
+        4.8,
+        27.1,
+        0,
+        47.1
+      ],
+      [
+        0,
+        58.8,
+        76.2,
+        0
+      ]
+    ],
+    "sites_per_repressor": 2,
+    "production": 2,
+    "decay": 2,
+    "gradient_length": 0.15,
+    "gli_binding": [
+      0,
+      18,
+      37.3,
+      0
+    ],
+    "citation": "Herrera-Delgado E, Briscoe J, Sollich P. Tractable nonlinear memory functions as a tool to capture and explain dynamical behaviors. Physical Review Research 2, 043069 (2020), Appendix J.",
+    "doi": "10.1103/PhysRevResearch.2.043069",
+    "url": "https://edgar-hd.github.io/assets/papers/PhysRevResearch.2.043069.pdf",
+    "sha256": "f2babbd1b4fbf078be8412c15ca8b1729c2ca22b9c528608b403145f795614dc",
+    "license": "CC BY 4.0",
+    "affinity_intervention_source": {
+      "doi": "10.1242/dev.112573",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4197706/",
+      "xml_sha256": "8f2d8aec080028b428143beb40e5f0cfe22f4447706e18b74451196760d35624",
+      "scope": "Competitive Gli activator/repressor binding and K=18,37.3 only. The later 2020 baseline parameters are used without fitting."
+    }
+  },
+  "reproduction": {
+    "method": "Independent direct equation transcription with RK4 dt=.02, all zero initial concentrations, duration100 model time units. These are numerical reference values, not biological data.",
+    "states": [
+      {
+        "position": 0,
+        "state": [
+          0.004003962740431093,
+          0.09761137789444961,
+          0.9389982449389984,
+          7.829163921812898e-05
+        ]
+      },
+      {
+        "position": 0.1,
+        "state": [
+          0.004585708637345805,
+          0.05164253046793149,
+          0.9472445471197042,
+          0.0002144866004859684
+        ]
+      },
+      {
+        "position": 0.2,
+        "state": [
+          0.005022607968545802,
+          0.027138444242634743,
+          0.9448849461352564,
+          0.0005210848373525673
+        ]
+      },
+      {
+        "position": 0.3,
+        "state": [
+          0.26126091654619105,
+          0.9587094299831925,
+          0.006286459659159793,
+          0.002593125669951299
+        ]
+      },
+      {
+        "position": 0.4,
+        "state": [
+          0.30174753696284,
+          0.9423577588564807,
+          0.0025560146827506903,
+          0.00410421729122943
+        ]
+      },
+      {
+        "position": 0.5,
+        "state": [
+          0.32682800776404575,
+          0.9074078086249263,
+          0.0012136583497783075,
+          0.005280688375645967
+        ]
+      },
+      {
+        "position": 0.7,
+        "state": [
+          0.7882780804056905,
+          0.007605133486097051,
+          4.1267231491710725e-05,
+          0.8988104782532748
+        ]
+      },
+      {
+        "position": 1,
+        "state": [
+          0.7912078239256347,
+          0.0032805081032910815,
+          1.5430901499423607e-05,
+          0.9292008430607219
+        ]
+      }
+    ]
+  },
+  "observations": {
+    "doi": "10.1101/gad.207142.112",
+    "url": "https://thebrain.bwh.harvard.edu/pubs/Peterson_GenesDev2012_Sox2-Gli-affinity.pdf",
+    "sha256": "361f853897e4a675560bc3e7bfa919adb99c110e4581addd0ea88e87179d9ced",
+    "context": {
+      "species": "Mus musculus",
+      "stage": "E10.5",
+      "anatomical_level": "forelimb",
+      "design": "G0 transient transgenic embryos, pronuclear injection",
+      "count_semantics": "numbers are expressing embryos / total transgenic embryos; they are not intensity or boundary measurements and do not establish calibrated probabilities",
+      "scale_bar_um": 50
+    },
+    "nkx2_2_reporter": [
+      {
+        "figure": "5D",
+        "enhancer": "Nkx2.2(-2kb)",
+        "site": "TGGGTGGTC",
+        "status": "wildtype",
+        "readout": "Hsp68-lacZ::nGFP reporter",
+        "expressing": 4,
+        "transgenic": 6,
+        "phenotype": "reporter expression in pV3 progenitors and floor plate"
+      },
+      {
+        "figure": "5E",
+        "enhancer": "Nkx2.2(-2kb)",
+        "site": "TGGGTGTTC",
+        "status": "single-base engineered lower-affinity site",
+        "readout": "Hsp68-lacZ::nGFP reporter",
+        "expressing": 0,
+        "transgenic": 13,
+        "phenotype": "no reporter activity detected"
+      }
+    ],
+    "missing": [
+      "complete assayed enhancer/backbone sequence and genomic coordinates from inaccessible supplement",
+      "raw per-embryo intensity and spatial boundary measurements",
+      "full-length GliA/GliR and cofactor nuclear concentrations",
+      "reporter detection threshold and integration copy/position controls"
+    ]
+  },
+  "assumptions": [
+    "A published normalized binding-profile ratio is transferred as a relative association-affinity multiplier; the original normalization pipeline is not fully recovered.",
+    "The same chosen GLI profile scales activator and repressor affinity. GLI2 is primary; GLI3 is a sensitivity analysis.",
+    "A nine-base site is assigned to a published Nkx2.2 regulatory context. Other enhancer sequence, chromatin and cofactors are fixed and unmodelled.",
+    "Reporter mode reads promoter occupancy on an unchanged endogenous trajectory. Endogenous mode is a hypothetical genomic edit with feedback.",
+    "Signal is the Gli activator fraction A in [0,1]; repressor fraction R=1-A. It is not a calibrated Shh concentration.",
+    "Time and concentration are model units. No fluorescence scale, detection threshold, biological clock or embryo probability is inferred."
+  ]
+}

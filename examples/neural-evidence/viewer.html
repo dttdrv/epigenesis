@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHE-1 depletion · Epigenesis evidence</title>
+<style>
+:root{color-scheme:light;--paper:#fff;--ink:#111;--muted:#555;--line:#ddd;--green:#111;--rose:#111;--blue:#111}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,sans-serif}main{max-width:1040px;margin:auto;padding:30px 38px 70px}a{color:var(--green);text-underline-offset:3px}button,select{font:inherit;color:var(--ink);border:1px solid #aaa;background:#fff;border-radius:0;min-height:42px;padding:7px 12px}button{cursor:pointer}button:hover{background:#f5f5f5}button:disabled{cursor:default;opacity:.6}:focus-visible{outline:3px solid var(--blue);outline-offset:4px}nav{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding-bottom:18px}nav strong{font-weight:650}h1,h2,h3{line-height:1.15;font-weight:500}h1,h2{font-family:inherit}h1{font-size:30px;max-width:850px;margin:38px 0 20px;text-wrap:balance}h2{font-size:21px;margin:0 0 14px}h3{font-size:18px;margin:0 0 10px}p{margin:10px 0}.lead{font-size:16px;max-width:810px}.muted,small{color:var(--muted)}.study{margin-top:18px;font-size:14px}.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:22px 0;margin-top:15px}label{display:grid;gap:6px;font-size:14px}label select{min-width:165px}section{padding:30px 0;border-top:1px solid var(--line)}.two{display:grid;grid-template-columns:1.4fr 1fr;gap:30px}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}.finding{font-size:18px;line-height:1.4;margin-bottom:13px;max-width:840px}.plot-wrap{overflow-x:auto}.plot-hint{display:none}#plot{display:block;width:100%;min-width:660px;height:auto}#plot circle{cursor:pointer}#plot circle:hover,#plot circle:focus{stroke:#111;stroke-width:3}.inspection{background:#fff;padding:0 0 0 20px;border-left:1px solid var(--line);min-height:110px}.inspection p{margin:4px 0}code,.sequence{font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.sequence{display:block;padding:12px 0;color:#555}mark{background:#eee;color:#111;padding:2px 0}.dna{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px}.dna article{min-width:0}.dna dl{display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;font-size:14px}dt{color:var(--muted)}dd{margin:0}.geometry{display:flex;align-items:center;gap:12px;margin:12px 0}.segment{font-weight:600}details{border-top:1px solid var(--line);padding:14px 0}summary{cursor:pointer;font-weight:600}details p,details ul{max-width:940px}li{margin:8px 0}.scroll{overflow-x:auto;max-height:460px}table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}th,td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}th{background:var(--paper);position:sticky;top:0}td button{min-height:32px;padding:2px 8px;font-size:13px}.source{padding:12px 0;overflow-wrap:anywhere}.source code{display:block;font-size:12px}.status{min-height:24px;color:var(--green);font-size:14px}.note{font-size:14px;color:var(--muted)}::selection{background:#111;color:#fff}table{font-variant-numeric:tabular-nums}footer{border-top:1px solid var(--line);padding-top:20px;font-size:14px}.skip{position:absolute;top:-100px}.skip:focus{top:10px;background:white;padding:10px;z-index:2}.error{padding:24px;color:#111;border:2px solid currentColor}noscript p{padding:20px}
+@media screen and (max-width:700px){main{padding:20px 20px 50px}.two,.dna{grid-template-columns:1fr;gap:20px}.toolbar label{flex:1;min-width:135px}.toolbar select{width:100%;min-width:0}nav{font-size:14px}h1{margin-top:28px}.finding{font-size:18px}.plot-wrap{margin-right:-10px}.plot-hint{display:block}section{padding:24px 0}button{min-height:44px}.scroll{max-height:350px}}
+.print-only{display:none}@media print{h2,h3,summary{break-after:avoid}#interpretation-title+.two>div{break-inside:avoid}section{padding:18px 0}footer{break-inside:avoid;padding-top:8px}footer p{margin:0}.inspection:not(.selected){display:none}#measurements .two{display:block}.print-only{display:block}#representation,.plot-hint{display:none}body{background:white;font-size:11pt}main{padding:0;max-width:none}nav,.toolbar,.actions,.skip,#status{display:none}h1{font-size:22pt;margin-top:0}h2{font-size:15pt}.two,.dna{gap:20px}.inspection{background:white;border:1px solid #aaa}#plot{min-width:0}section{break-inside:avoid}details{display:block}details>*{display:block}.scroll{max-height:none;overflow:visible}#rows-section{display:none}.source{font-size:9pt}a{color:inherit}.sequence{font-size:9pt}}
+</style>
+</head>
+<body>
+<a class="skip" href="#measurements">Skip to measurements</a>
+<main>
+<nav aria-label="Page"><strong>Epigenesis / Neural evidence</strong><a href="#sources">Sources &amp; reconstruction</a></nav>
+<header>
+<h1>What protects expression after CHE-1 depletion?</h1>
+<p class="lead">Does moving a 12-base binding core reproduce the effect of moving a larger DNA fragment? Compare the published measurements, then inspect what else changed in each construct.</p>
+<p class="study" id="study"></p>
+</header>
+<noscript><p>This interactive report requires JavaScript. The accompanying report.json and observations.csv contain all measurements, calculations and source references.</p></noscript>
+<div id="error" hidden class="error" role="alert"></div>
+<div id="workspace">
+<div class="toolbar" aria-label="Comparison controls">
+<label>First construct<select id="first"></select></label>
+<label>Second construct<select id="second"></select></label>
+<label>Plot scale<select id="scale"><option value="counts">mRNA molecules</option><option value="relative">Relative to control mean</option></select></label>
+</div>
+<section id="measurements" aria-labelledby="measurements-title">
+<h2 id="measurements-title">The measured response</h2>
+<p id="finding" class="finding" aria-live="polite"></p>
+<p class="note">Open dots show control; filled dots show auxin. Dots are supplied observations; horizontal lines are group means. All three constructs share the CHE-1 depletion background. No paired changes or confidence intervals are inferred.</p>
+<p class="plot-hint note">Scroll the chart sideways to compare all three constructs.</p>
+<div class="plot-wrap" tabindex="0" role="region" aria-label="Scrollable expression plot"><svg id="plot" viewBox="0 0 960 475" role="group" aria-labelledby="plot-title plot-desc"></svg></div>
+<div class="two">
+<div><p id="retention"></p><p class="note">Retention is the auxin group mean divided by the control group mean. The endpoints are separate observations, not repeated measurements of the same animal.</p></div>
+<div class="inspection" id="inspection" aria-live="polite"><strong>Inspect a measurement</strong><p>Select a dot or a source-table row to see its original workbook cell and raw labels.</p></div>
+</div>
+<div class="actions"><button id="svg-export" type="button">Export plot SVG</button><button id="csv-export" type="button">Export all observations CSV</button><button id="json-export" type="button">Export full report JSON</button><button id="print" type="button">Print / save PDF</button></div>
+<p id="status" class="status" role="status"></p>
+</section>
+<section aria-labelledby="design-title">
+<h2 id="design-title">What changed in the DNA?</h2>
+<p>The donor sequences reconstruct the intended edits. They are not final-clone sequencing. A larger fragment changes more than its surrounding bases: orientation and replacement geometry also differ.</p>
+<div class="dna" id="dna"></div>
+</section>
+<section aria-labelledby="information-title">
+<div class="two"><div><h2 id="information-title">What information does a model lose?</h2><p>A deterministic predictor must return the same value for identical inputs. Compare representations of these two constructs to see whether they can even distinguish the observed means.</p><p class="note">This is an algebraic check on this finite dataset. It is not a fitted predictor, a test of equal population means or evidence that richer inputs will predict a new experiment.</p></div><div>
+<label>Representation<select id="representation"><option value="normalized_core">Core sequence, strand normalized</option><option value="oriented_core">Core sequence, oriented to the gene</option><option value="full_design">Full donor and replacement interval</option></select><span class="print-only" id="representation-value"></span></label>
+<p id="constraint" class="finding" aria-live="polite"></p><p id="constraint-detail"></p>
+</div></div>
+</section>
+<section aria-labelledby="interpretation-title">
+<h2 id="interpretation-title">What this comparison can tell us</h2>
+<div class="two"><div><h3>Supported by these observations</h3><p>The fragment-transfer samples retain more mean gcy-22 expression after depletion than the core-transfer samples. The shared strand-normalized core does not distinguish those constructs.</p><p>This can inform the next comparison: separate core orientation from the surrounding sequence, and preserve the replacement interval and spacing.</p></div><div><h3>Still unresolved</h3><p>Surrounding bases, orientation and geometry vary together. These measurements do not isolate a flank-only mechanism, identify a particular cofactor or measure binding affinity.</p><p>Matched constructs and independently identified biological replicates would be needed to test those explanations.</p></div></div>
+<details><summary>Sampling and interpretation limits</summary><ul id="limitations"></ul></details>
+<details><summary>Conflicting labels in the original sources</summary><div id="conflicts"></div></details>
+</section>
+<section id="rows-section" aria-labelledby="rows-title">
+<h2 id="rows-title">Every observation, at its source</h2>
+<label>Show rows<select id="row-filter"><option value="all">All constructs</option></select></label>
+<p id="row-count" class="note"></p>
+<div class="scroll" tabindex="0" role="region" aria-label="Source observation table"><table><thead><tr><th>Construct</th><th>Condition</th><th>Count</th><th>Batch, raw</th><th>Worm label, raw</th><th>Workbook cell</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section id="sources" aria-labelledby="sources-title">
+<h2 id="sources-title">Sources &amp; reconstruction</h2>
+<p id="background"></p><p>Calculations replay the published Figure 6F column selections from the original workbook. Blanks are excluded; zero counts and repeated labels remain. Unlabelled fragment-auxin column D is not included.</p>
+<div id="source-list"></div>
+<details><summary>Report identity and reproducibility</summary><p>Run <code>python3.11 examples/neural-evidence/evidence.py demo --output /tmp/neural-evidence</code> to regenerate the viewer and exports without a network connection. Use <code>verify --output /tmp/neural-evidence</code> with the same script to compare every output byte with a fresh replay.</p><p id="identity" class="sequence"></p></details>
+</section>
+<footer><p id="license"></p><p>Epigenesis · Measured experiment comparison. Natural-genome-to-brain development remains an open research objective.</p></footer>
+</div>
+</main>
+<script id="evidence-data" type="application/json">__EVIDENCE_DATA__</script>
+<script>
+'use strict';
+try {
+const data=JSON.parse(document.getElementById('evidence-data').textContent);
+const $=id=>document.getElementById(id), fmt=n=>n.toLocaleString('en-US',{maximumFractionDigits:2}), pct=n=>n===null?'undefined':fmt(100*n)+'%';
+const constructs=data.constructs, groups=data.groups, rows=data.observations;
+const byId=id=>constructs.find(c=>c.id===id), group=(id,condition)=>groups.find(g=>g.construct===id&&g.condition===condition);
+const make=(tag,text,parent)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(parent)parent.append(e);return e};
+const link=(label,url,parent)=>{const e=make('a',label,parent);e.href=url;return e};
+function option(select,c){const o=make('option',c.label,select);o.value=c.id}
+for(const c of constructs){option($('first'),c);option($('second'),c);option($('row-filter'),c)}
+$('first').value='core';$('second').value='fragment';
+link(data.case.citation,data.case.doi,$('study'));make('span',' · '+data.case.endpoint+'. '+data.case.treatment+'.',$('study'));
+$('background').textContent=data.case.background;
+$('license').textContent=data.case.license;
+$('identity').textContent='Case SHA-256: '+data.case_sha256+'\nImplementation SHA-256: '+data.implementation_sha256;
+for(const item of data.case.limitations)make('li',item,$('limitations'));
+for(const item of data.case.source_conflicts){const p=make('p',undefined,$('conflicts'));make('strong',item.issue+'. ',p);p.append(document.createTextNode(item.detail))}
+for(const source of data.case.sources){const p=make('div',undefined,$('source-list'));p.className='source';link('Download '+source.file,'sources/'+source.file,p);p.append(' · ');link('Original source',source.url,p);if(source.archive_member)make('div','Archive member: '+source.archive_member,p);make('code','SHA-256 '+source.sha256,p)}
+function inspect(row){const box=$('inspection');box.classList.add('selected');box.replaceChildren();make('strong',byId(row.construct).label+' · '+(row.condition==='auxin'?'24 h auxin':'Control'),box);make('p',row.count+' mRNA molecules · '+row.sheet+'!'+row.cell,box);make('p','Raw batch: '+(row.batch??'not supplied')+'; worm label: '+(row.specimen??'not supplied'),box);link('Original workbook','sources/figure6f.xlsx',box)}
+function svg(tag,attrs,text,parent=$('plot')){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;parent.append(e);return e}
+function draw(){
+ const plot=$('plot');plot.replaceChildren();svg('rect',{width:960,height:475,fill:'#fff'});svg('title',{id:'plot-title'},'gcy-22 expression before and after CHE-1 depletion');svg('desc',{id:'plot-desc'},'Individual observations and group means for core transfer, fragment transfer and native promoter. Select points for exact source cells.');
+ const relative=$('scale').value==='relative', transform=r=>relative?100*r.count/group(r.construct,'control').mean:r.count;
+ const max=Math.max(...rows.map(transform)), step=relative?50:10, top=Math.ceil(max/step)*step, y=v=>310-v/top*255;
+ const textAttrs={'font-family':'Times New Roman, Times, serif','font-size':16,fill:'#000'};
+ svg('text',{transform:'translate(19 183) rotate(-90)','text-anchor':'middle',...textAttrs},relative?'% of control mean':'gcy-22 mRNA molecules');
+ svg('path',{d:'M60 55V310H935',fill:'none',stroke:'#000','stroke-width':1});
+ for(let v=0;v<=top;v+=step){svg('line',{x1:55,x2:60,y1:y(v),y2:y(v),stroke:'#000','stroke-width':1});svg('text',{x:48,y:y(v)+5,'text-anchor':'end',...textAttrs},fmt(v))}
+ constructs.forEach((c,ci)=>{
+  const center=200+ci*295;
+  svg('text',{x:center,y:363,'text-anchor':'middle',...textAttrs,'font-weight':400},c.label);
+  for(const[condition,offset,color]of [['control',-53,'#fff'],['auxin',53,'#111']]){
+   const g=group(c.id,condition),items=rows.filter(r=>r.construct===c.id&&r.condition===condition), seen=new Map();
+   for(const row of items){const n=seen.get(row.count)||0;seen.set(row.count,n+1);const count=items.filter(r=>r.count===row.count).length;const x=center+offset+(n-(count-1)/2)*8;
+    const dot=svg('circle',{cx:x,cy:y(transform(row)),r:3.2,fill:color,stroke:'#000','stroke-width':.8,tabindex:0,role:'button','aria-label':c.label+', '+condition+', '+row.count+' molecules, '+row.sheet+'!'+row.cell});
+    dot.addEventListener('click',()=>inspect(row));dot.addEventListener('focus',()=>inspect(row));dot.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();inspect(row)}});
+   }
+   const mean=relative?100*g.mean/group(c.id,'control').mean:g.mean;
+   svg('line',{x1:center+offset-22,x2:center+offset+22,y1:y(mean),y2:y(mean),stroke:'#000','stroke-width':1.2});
+   svg('line',{x1:center+offset,x2:center+offset,y1:310,y2:315,stroke:'#000','stroke-width':1});
+   svg('text',{x:center+offset,y:337,'text-anchor':'middle',...textAttrs},'n = '+g.n);
+   svg('text',{x:center+offset,y:386,'text-anchor':'middle',...textAttrs,'font-size':13},'mean '+fmt(mean)+(relative?'%':''));
+  }
+ });
+ svg('circle',{cx:66,cy:413,r:3.2,fill:'#fff',stroke:'#000','stroke-width':.8});svg('text',{x:78,y:418,...textAttrs},'Control');
+ svg('circle',{cx:179,cy:413,r:3.2,fill:'#000'});svg('text',{x:191,y:418,...textAttrs},'24 h auxin (1 mM)');
+ svg('text',{x:60,y:445,...textAttrs,'font-size':13},data.case.citation+' · doi:10.7554/eLife.66955');
+ svg('text',{x:60,y:466,...textAttrs,'font-size':13},'ASER smFISH; shared CHE-1 depletion background. Supplied observations; unpaired endpoints; no inferred CIs.');
+}
+function dna(c){const article=make('article',undefined,$('dna'));make('h3',c.label,article);if(c.donor){make('p','Donor '+c.donor+' · '+c.allele,article).className='note';const geom=make('div',undefined,article);geom.className='geometry';make('span',c.reference_bp+' bp',geom).className='segment';make('span','→',geom);make('span',c.insert_bp+' bp',geom).className='segment';const p=make('p','Core in donor orientation: ',article);make('code',c.core,p);const seq=make('div',undefined,article);seq.className='sequence';seq.append(c.insert.slice(0,c.core_start));make('mark',c.insert.slice(c.core_start,c.core_start+c.core.length),seq);seq.append(c.insert.slice(c.core_start+c.core.length));}else{make('p','Native gcy-22 promoter in the CHE-1 depletion background.',article);make('code',c.core,article)}const dl=make('dl',undefined,article);for(const[k,v]of [['Core vs gene direction',c.core_relative_to_gene],['Reference interval',c.reference_interval.accession+':'+c.reference_interval.start+'–'+c.reference_interval.end],['Donor arms',c.donor?c.homology_arm_bp+' bp each':'No promoter edit']]){make('dt',k,dl);make('dd',v,dl)}make('p',c.status,article).className='note'}
+function constraint(){$('representation-value').textContent=$('representation').selectedOptions[0].textContent;const a=byId($('first').value),b=byId($('second').value),c=data.comparisons[a.id+':'+b.id].constraints[$('representation').value];$('constraint').textContent=c.equal_inputs?'These inputs are identical.':'These inputs are distinguishable.';$('constraint-detail').textContent=c.equal_inputs?'Any deterministic predictor using only this representation has a minimum RMSE of '+fmt(c.minimum_mean_rmse)+' molecules across these two observed auxin means, weighted equally. The best common prediction is their midpoint.':'This representation imposes no equality between the two predictions. Its algebraic minimum is zero; no predictor has been fitted or validated here.'}
+function update(){if($('first').value===$('second').value)$('second').value=constructs.find(c=>c.id!==$('first').value).id;for(const o of $('second').options)o.disabled=o.value===$('first').value;const a=byId($('first').value),b=byId($('second').value),delta=data.comparisons[a.id+':'+b.id].auxin_mean_difference;$('finding').textContent=b.label+' has '+fmt(Math.abs(delta))+' '+(delta>=0?'more':'fewer')+' mean mRNA molecules than '+a.label.toLowerCase()+' after depletion.';$('retention').textContent='Mean expression retained: '+a.label+', '+pct(a.retention)+'; '+b.label+', '+pct(b.retention)+'.';$('dna').replaceChildren();dna(a);dna(b);constraint();draw()}
+function table(){const filter=$('row-filter').value, selected=rows.filter(r=>filter==='all'||r.construct===filter);$('row-count').textContent=selected.length+' supplied observations. Blank labels remain “not supplied”; repeated labels are not deduplicated.';$('rows').replaceChildren();for(const r of selected){const tr=make('tr',undefined,$('rows'));for(const value of [byId(r.construct).label,r.condition==='auxin'?'24 h auxin':'Control',r.count,r.batch??'not supplied',r.specimen??'not supplied'])make('td',value,tr);const b=make('button',r.sheet+'!'+r.cell,make('td',undefined,tr));b.type='button';b.addEventListener('click',()=>{inspect(r);$('inspection').scrollIntoView({block:'center'});})}}
+let downloadUrl;
+function download(name,content,type){
+ if(downloadUrl)URL.revokeObjectURL(downloadUrl);
+ downloadUrl=URL.createObjectURL(new Blob([content],{type}));
+ $('status').replaceChildren(document.createTextNode('Export ready. '));
+ const a=link('Save '+name,downloadUrl,$('status'));a.download=name;a.id='download-link';a.click();
+}
+$('first').addEventListener('change',update);$('second').addEventListener('change',update);$('scale').addEventListener('change',draw);$('representation').addEventListener('change',constraint);$('row-filter').addEventListener('change',table);
+$('json-export').addEventListener('click',()=>download('neural-evidence-report.json',JSON.stringify(data,null,2)+'\n','application/json'));
+$('csv-export').addEventListener('click',()=>{const keys=Object.keys(rows[0]),q=v=>'"'+String(v??'').replaceAll('"','""')+'"';download('observations.csv',[keys,...rows.map(r=>keys.map(k=>r[k]))].map(row=>row.map(q).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8')});
+$('svg-export').addEventListener('click',()=>{const clone=$('plot').cloneNode(true);clone.setAttribute('xmlns','http://www.w3.org/2000/svg');download('che1-expression.svg',new XMLSerializer().serializeToString(clone),'image/svg+xml')});
+let printDetails;
+window.addEventListener('beforeprint',()=>{
+ if(printDetails)return;
+ printDetails=[...document.querySelectorAll('details')].map(el=>[el,el.open]);
+ for(const [el] of printDetails)el.open=true;
+});
+window.addEventListener('afterprint',()=>{
+ if(!printDetails)return;
+ for(const [el,open] of printDetails)el.open=open;
+ printDetails=null;
+});
+$('print').addEventListener('click',()=>window.print());table();update();
+} catch(error){document.getElementById('workspace').hidden=true;const box=document.getElementById('error');box.hidden=false;box.textContent='This report could not be displayed: '+error.message+'. Regenerate it with evidence.py and verify the output.';}
+</script>
+</body>
+</html>

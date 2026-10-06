@@ -975,7 +975,7 @@ def development_real_dna() -> None:
             ]
             metadata = archive.read(metadata_name).decode("utf-8")
             entry_points = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 1.5.0\n" in metadata
+            assert "Version: 1.6.0\n" in metadata
             assert "brainc/source.py" in names
             assert "brainc/development_bundle.py" in names
             assert "brainc/validator_development.py" in names
@@ -1311,7 +1311,7 @@ def wheel() -> None:
                 name for name in names if name.endswith(".dist-info/entry_points.txt")
             ]
             entry_points_text = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 1.5.0\n" in metadata_text
+            assert "Version: 1.6.0\n" in metadata_text
             assert "License-Expression: Apache-2.0\n" in metadata_text
             assert (
                 "Universal DNA translation compiler targeting Development Module IR"
@@ -1391,7 +1391,7 @@ def wheel() -> None:
                     "brainc.external_source, brainc.development_bundle, "
                     "brainc.validator_reference, brainc.validator_external, "
                     "brainc.validator_development; "
-                    "assert brainc.__version__ == '1.5.0'"
+                    "assert brainc.__version__ == '1.6.0'"
                 ),
             ],
             check=True,
@@ -1750,6 +1750,7 @@ def sdist() -> None:
                 "README.md",
                 "SPEC.md",
                 "docs/RELEASE-1.5.md",
+                "docs/RELEASE-1.6.md",
                 "docs/CRX_BINDING_AUDIT.md",
                 "docs/PRIOR_ART.md",
                 "docs/STANDARDS.md",
@@ -1770,6 +1771,24 @@ def sdist() -> None:
                 "examples/neural-fate/README.md",
                 "examples/neural-fate/models.json",
                 "examples/neural-fate/experiment.py",
+                "examples/neural-patterning/patterning.py",
+                "examples/neural-patterning/data.json",
+                "examples/neural-patterning/reference.fasta",
+                "examples/neural-patterning/variant.fasta",
+                "examples/neural-patterning/viewer.html",
+                "examples/neural-patterning/README.md",
+                "tests/test_neural_patterning.py",
+                "examples/neural-evidence/README.md",
+                "examples/neural-evidence/evidence.py",
+                "examples/neural-evidence/viewer.html",
+                "examples/neural-evidence/case.json",
+                "examples/neural-evidence/data/figure6f.xlsx",
+                "examples/neural-evidence/data/figure6.ipynb",
+                "examples/neural-evidence/data/donors.docx",
+                "examples/neural-evidence/data/gcy-22.fasta",
+                "examples/neural-evidence/data/che-1.fasta",
+                "examples/neural-evidence/data/article.xml",
+                "tests/test_neural_evidence.py",
                 "examples/neural-regulation/README.md",
                 "examples/neural-regulation/regulation.py",
                 "examples/neural-regulation/data/design.fasta",
@@ -1953,7 +1972,7 @@ def sdist() -> None:
                     "brainc.external_profile, brainc.external_runtime, brainc.external_source, "
                     "brainc.development_bundle, brainc.validator_reference, "
                     "brainc.validator_external, brainc.validator_development; "
-                    "assert brainc.__version__ == '1.5.0'"
+                    "assert brainc.__version__ == '1.6.0'"
                 ),
             ],
             check=True,

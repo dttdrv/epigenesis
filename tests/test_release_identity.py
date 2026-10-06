@@ -16,12 +16,12 @@ ROOT = Path(__file__).parents[1]
 class ReleaseIdentityTests(unittest.TestCase):
     def test_package_release_preserves_compiler_artifact_versions(self) -> None:
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('version = "1.5.0"', pyproject)
+        self.assertIn('version = "1.6.0"', pyproject)
         self.assertIn(
             'description = "Universal DNA translation compiler targeting Development Module IR"',
             pyproject,
         )
-        self.assertEqual(brainc.__version__, "1.5.0")
+        self.assertEqual(brainc.__version__, "1.6.0")
 
         final_producers = (
             source.PRODUCER,
@@ -54,7 +54,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             ROOT / "README.md",
             ROOT / "SPEC.md",
             ROOT / "pyproject.toml",
-            ROOT / "docs" / "RELEASE-1.5.md",
+            ROOT / "docs" / "RELEASE-1.6.md",
             ROOT / "docs" / "STANDARDS.md",
             ROOT / "docs" / "PRIOR_ART.md",
         ]
@@ -63,7 +63,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             for path in public_contracts
             if path.is_file()
         )
-        self.assertIn("Epigenesis 1.5", combined)
+        self.assertIn("Epigenesis 1.6", combined)
         self.assertIn("universal dna translation compiler", combined.lower())
         self.assertIn("common typed source boundary", combined)
         self.assertIn("profile-native", combined)

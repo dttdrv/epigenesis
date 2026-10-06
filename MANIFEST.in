@@ -6,6 +6,9 @@ recursive-include docs *.md
 recursive-include examples *.fasta *.fastq *.json *.md *.py
 include examples/neural-construction/Construction.java
 include examples/neural-construction/viewer.html
+include examples/neural-patterning/viewer.html
+include examples/neural-evidence/viewer.html
+recursive-include examples/neural-evidence/data *.xlsx *.docx *.ipynb *.xml
 include examples/neural-construction/vendor/cx3d-0.03.zip
 include examples/neural-construction/vendor/compatibility.patch
 include examples/neural-construction/vendor/LICENSE.CX3D
