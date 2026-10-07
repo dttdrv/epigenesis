@@ -11,3 +11,7 @@ examples/neural-binding/data/* -text
 examples/neural-binding/data/*.fasta -diff
 examples/neural-binding/data/*.gb -diff
 examples/neural-construction/vendor/compatibility.patch -text -whitespace
+examples/neural-predictor/model.py -text
+examples/neural-predictor/predictor.py -text
+examples/neural-predictor/data/* -text
+examples/neural-predictor/results/* -text

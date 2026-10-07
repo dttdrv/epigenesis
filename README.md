@@ -152,7 +152,7 @@ and checked by the minimal-example release gate.
 A researcher has candidate regulatory DNA edits and a limited experimental
 budget. The next practical milestone is to predict each edit's direction and
 size of effect, then select ten edits from distinct sequence families for
-follow-up measurement. The current target is reporter activity in day-14
+follow-up measurement. The current target is reporter activity in
 WTC11-NGN2 induced neurons.
 
 Success requires better effect prediction and better experimental ranking than
@@ -160,13 +160,37 @@ fixed sequence baselines on held-out families, with uncertainty reported for
 both comparisons. This would establish a useful sequence-to-function link for
 the larger development program and a concrete tool for planning experiments.
 
-The local research workflow already includes family-isolated data intake,
-training and inference, saved model replay, and independent metric verification.
-Eight model-selection rounds have recorded 196 fits, including baselines and
-controls. Their detailed research artifacts remain outside the versioned release.
-Current candidates have not passed both requirements; reserved confirmation
-outcomes remain unopened. The [roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) records
-the frozen protocols, completed experiments, negative results and next decisions.
+A compact [experimental predictor](examples/neural-predictor/README.md) now
+ships with frozen weights and a CPU/Metal inference command. It combines a
+local sequence baseline with two 11,368-parameter attention models using
+[Interlace's rational gate](https://misul.org/interlace). You can score your own
+270-base reference/edited pairs and inspect each component's contribution.
+
+The latest development results are:
+
+| Validation measure | Fixed requirement | Calibrated short model | Two-cycle mixture |
+|---|---:|---:|---:|
+| Effect-size MSE ↓ | < 0.02862511 | 0.02863101 | 0.02862935 |
+| Signed top-ten utility ↑ | > 0.03510890 | 0.07609249 | 0.07158510 |
+
+The mixture's selection utility is **103.9% above the comparator**, while its
+MSE remains **0.01480% above the required limit**. Both requirements must pass.
+These are adaptive validation results on 7,390 edits in 3,029 families; the new
+cohort's confirmation remains unopened. The small MSE gap is a metric difference,
+not a percentage of project completion.
+
+Interlace also improved distant-interaction and local-effect recovery in matched
+synthetic tests, with 51.1% and 64.4% lower error than ordinary attention at equal
+parameter count in one paired training seed. The biological experiment addresses the question of
+whether that capacity transfers to measured neuronal reporter effects.
+
+A completed audit recovers model-based measurement uncertainty for all 21,781
+training edits. Uncalibrated neural corrections worsen error even in the most
+precisely measured group, giving the next experiment a specific failure to
+address. The research ledger records 280 biological fits, including failed
+experiments. [Results and reproduction details](examples/neural-predictor/README.md)
+include model identities, independent replay receipts and the uncertainty audit;
+the [roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) preserves the full development history.
 
 ## More experiments
 

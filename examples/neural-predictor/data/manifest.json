@@ -1,0 +1,123 @@
+{
+  "format": "epigenesis-neuronal-predictor-v1",
+  "status": "experimental; joint biological validation gate unmet",
+  "architecture": {
+    "length": 270,
+    "width": 32,
+    "heads": 4,
+    "hidden": 64,
+    "kernel": 7
+  },
+  "model_sha256": "9409e15a6c492070eaff66e4d8cfab1813d3ac5e2bb79dd0be0728577961eee0",
+  "alphabet": "AGCT",
+  "prediction_batch": 64,
+  "weights": {
+    "long": {
+      "sha256": "e7ded4a90fd1768f79b147570cee1b0d4994e33900a864a121a395672c49a1f0",
+      "source_checkpoint_sha256": "f92f27668dffcada2e99352c43f5c9f57feebcf15fbbdd0e4751d21c04b031d3",
+      "updates": 4096,
+      "parameters": 11368,
+      "loss_scale": 0.02886249466709258,
+      "source_experiment": "attention-fixed-prior",
+      "training": {
+        "updates": 4096,
+        "effective_batch": 128,
+        "microbatch": 16,
+        "checkpoint_interval": 64,
+        "gradient_clip_norm": 1.0,
+        "optimizer": {
+          "max_lr": 0.0005,
+          "weight_decay": 0.1,
+          "betas": [
+            0.9,
+            0.99
+          ]
+        },
+        "scheduler": {
+          "div_factor": 25.0,
+          "pct_start": 0.3,
+          "three_phase": false,
+          "cycle_momentum": false,
+          "anneal_strategy": "cos",
+          "final_div_factor": 10000.0
+        },
+        "seed": 42
+      }
+    },
+    "short": {
+      "sha256": "1523b581711494fd678afc78eaedab2a622c1c32bf822835f9b856dd60d17a62",
+      "source_checkpoint_sha256": "03e12125e20d2826b036ef03705eca361a16b59e1ce2d9a301358c3581bdafcb",
+      "updates": 1024,
+      "parameters": 11368,
+      "loss_scale": 0.02886249466709258,
+      "source_experiment": "attention-short-cycle",
+      "training": {
+        "updates": 1024,
+        "effective_batch": 128,
+        "microbatch": 16,
+        "checkpoint_interval": 64,
+        "gradient_clip_norm": 1.0,
+        "optimizer": {
+          "max_lr": 0.0005,
+          "weight_decay": 0.1,
+          "betas": [
+            0.9,
+            0.99
+          ]
+        },
+        "scheduler": {
+          "div_factor": 25.0,
+          "pct_start": 0.3,
+          "three_phase": false,
+          "cycle_momentum": false,
+          "anneal_strategy": "cos",
+          "final_div_factor": 10000.0
+        },
+        "seed": 42
+      }
+    }
+  },
+  "baseline": {
+    "name": "k5-lambda0.1",
+    "k": 5,
+    "penalty": 0.1,
+    "parameters": 512,
+    "sha256": "49fb544660a7d7aca86d88dffc767366a00c5b35241274089103cd17612736ec",
+    "source_sha256": "956023e41a5331c464fc276e5808065e1bc89ef1124c49ff9de16b83ca6e9ad8"
+  },
+  "mixture": {
+    "coefficients": [
+      0.020655743871331515,
+      0.2223167743737464
+    ],
+    "axis_coefficients": [
+      0.03343051826641839,
+      0.2372804265270488
+    ],
+    "meta_training_mse": 0.02817055726664567,
+    "origin": "least-squares",
+    "design_rank": 2,
+    "singular_values": [
+      0.030244809699519773,
+      0.00830924290728383
+    ],
+    "selection_data": "TRAIN excluded-family predictions only",
+    "training_ids_sha256": "cb9892fe84b83537fd004aca59dcb1d77d63f8ffd7a4489aa8c6f87b365b8a43"
+  },
+  "endpoint": "ALT minus REF log2 reporter activity coefficient in WTC11-NGN2 induced neurons",
+  "training_rows": 21781,
+  "training_families": 8774,
+  "validation_rows": 7390,
+  "validation_families": 3029,
+  "environment": {
+    "python": "3.12.13",
+    "torch": "2.12.1",
+    "numpy": "2.5.1",
+    "machine": "arm64",
+    "macos": "27.2",
+    "device": "mps"
+  },
+  "context": "salomon2026-ngn2-author-a686f1d",
+  "source_code_commit": "a686f1d552f97ebcc0224057b5a835002f7a3dc8",
+  "development_sha256": "ff896c3f1cb0af838d9da272aff88d92e3c51536e2089743ea026514d8b667e3"
+}

@@ -1,0 +1,62 @@
+{
+  "rows": 7390,
+  "validation_outcomes_converted": false,
+  "confirmation_read": false,
+  "new_fits": 0,
+  "files": {
+    "predictor.py": "360c671115750626c1342358eeb49bd2701bf977b2593a67108035ab71f97355",
+    "model.py": "9409e15a6c492070eaff66e4d8cfab1813d3ac5e2bb79dd0be0728577961eee0",
+    "data/manifest.json": "c15c997c9c4c7d8212d8d48903d295efaeb7625d7a1a2ef07c6ad6a4c30c7e8d",
+    "data/baseline.npz": "49fb544660a7d7aca86d88dffc767366a00c5b35241274089103cd17612736ec",
+    "data/long.npz": "e7ded4a90fd1768f79b147570cee1b0d4994e33900a864a121a395672c49a1f0",
+    "data/short.npz": "1523b581711494fd678afc78eaedab2a622c1c32bf822835f9b856dd60d17a62"
+  },
+  "environment": {
+    "torch": "2.12.1",
+    "numpy": "2.5.1"
+  },
+  "devices": {
+    "mps": {
+      "seconds": 6.8629024580004625,
+      "comparison_to_archived_mps": {
+        "baseline": {
+          "exact_values": 7390,
+          "max_absolute_difference": 0.0
+        },
+        "long_correction": {
+          "exact_values": 7390,
+          "max_absolute_difference": 0.0
+        },
+        "short_correction": {
+          "exact_values": 7390,
+          "max_absolute_difference": 0.0
+        },
+        "effect": {
+          "exact_values": 7390,
+          "max_absolute_difference": 0.0
+        }
+      }
+    },
+    "cpu": {
+      "seconds": 22.15632879199984,
+      "comparison_to_archived_mps": {
+        "baseline": {
+          "exact_values": 7390,
+          "max_absolute_difference": 0.0
+        },
+        "long_correction": {
+          "exact_values": 1996,
+          "max_absolute_difference": 3.5762786865234375e-07
+        },
+        "short_correction": {
+          "exact_values": 1704,
+          "max_absolute_difference": 1.1920928955078125e-07
+        },
+        "effect": {
+          "exact_values": 447,
+          "max_absolute_difference": 2.6502224730745594e-08
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "status": "passed",
+  "freeze_sha256": "4fe29717dd5bd47bf25c88e48ca023e1469b84ad505eb9329ee436f470d1b4d4",
+  "experiment_state_sha256": "806ddcf69fac168febae540a4934c20d75fdc59236d27600cb5a2e55ab97c4d1",
+  "checker_sha256": "3de12fba204643860aaf66edbb2173227fcef5a99ecea254ecfe0722d279d08e",
+  "environment": {
+    "python": "3.12.13",
+    "torch": "2.12.1",
+    "numpy": "2.5.1",
+    "machine": "arm64",
+    "macos": "27.2"
+  },
+  "mixture_sha256": "23756e8f53001d6f3701cac9b5bdf736ad2f179e0b807f82ad60f10b156a21cb",
+  "mixture": {
+    "coefficients": [
+      0.020655743871331515,
+      0.2223167743737464
+    ],
+    "axis_coefficients": [
+      0.03343051826641839,
+      0.2372804265270488
+    ],
+    "meta_training_mse": 0.02817055726664567,
+    "origin": "least-squares",
+    "design_rank": 2,
+    "singular_values": [
+      0.030244809699519773,
+      0.00830924290728383
+    ],
+    "selection_data": "TRAIN excluded-family predictions only",
+    "training_ids_sha256": "cb9892fe84b83537fd004aca59dcb1d77d63f8ffd7a4489aa8c6f87b365b8a43"
+  },
+  "independent_optimality": {
+    "profile_mse": 0.028170557266645673,
+    "objective_mse": 0.028170557266645673,
+    "vertex_directional_derivatives": [
+      -3.656630620829045e-21,
+      -1.0923303000399058e-19,
+      2.260045097721332e-20
+    ],
+    "kkt_tolerance": 1.4583691515778801e-16,
+    "objective_tolerance": 3.2031267209500373e-15
+  },
+  "training_rows": 21781,
+  "training_components": 8774,
+  "validation_rows_evaluated": 7390,
+  "exact_prediction_values": 29560,
+  "results": {
+    "interlace": {
+      "validation_mse": 0.028629346485747532,
+      "ranking_utility": 0.07158509978633788,
+      "selected_ids": [
+        "cardiac_neuro_cava_random:ALT_CITED2|ENSG00000164442.10|EH38E3736422_rev_tile1-1_CITED2|ENSG00000164442.10|EH38E3736422|6-139378938-T-C",
+        "cardiac_neuro_cava_random:ALT_TRIO|ENSG00000038382.23|EH38E3627251_fwd_tile1-1_TRIO|ENSG00000038382.23|EH38E3627251|5-14535107-C-T",
+        "cardiac_neuro_cava_random:ALT_FOXP1|ENSG00000114861.24|EH38E3522536_rev_tile1-1_FOXP1|ENSG00000114861.24|EH38E3522536|3-71547463-G-A",
+        "cardiac_neuro_cava_random:ALT_DPYSL2|ENSG00000092964.18|EH38E3824498_fwd_tile1-1_DPYSL2|ENSG00000092964.18|EH38E3824498|8-26615053-C-T",
+        "cardiac_neuro_cava_random:ALT_CHI3L1|ENSG00000133048.13|EH38E2859260_rev_tile1-1_CHI3L1|ENSG00000133048.13|EH38E2859260|1-203229849-T-C",
+        "cardiac_neuro_cava_random:ALT_NF2|ENSG00000186575.19|EH38E2157125_fwd_tile1-1_NF2|ENSG00000186575.19|EH38E2157125|22-29618211-G-A",
+        "cardiac_neuro_cava_random:ALT_CARD11|ENSG00000198286.11|EH38E3754645_rev_tile1-1_CARD11|ENSG00000198286.11|EH38E3754645|7-2911610-G-A",
+        "cardiac_neuro_cava_random:ALT_RELN|ENSG00000189056.15|EH38E2577845_rev_tile1-1_RELN|ENSG00000189056.15|EH38E2577845|7-103844004-C-A",
+        "cardiac_neuro_cava_random:ALT_NCOA1|ENSG00000084676.16|EH38E3331048_fwd_tile1-1_NCOA1|ENSG00000084676.16|EH38E3331048|2-24744222-A-G",
+        "cardiac_neuro_cava_random:ALT_MYPN|ENSG00000138347.17|EH38E2904968_fwd_tile1-1_MYPN|ENSG00000138347.17|EH38E2904968|10-68071379-A-G"
+      ],
+      "checks": {
+        "mse": false,
+        "utility": true
+      }
+    }
+  },
+  "thresholds": {
+    "mse": 0.028625109823009157,
+    "utility": 0.035108902126661234
+  },
+  "nomination": null,
+  "duplicate_endpoint": null,
+  "accounting": {
+    "prior_biological_fits": 279,
+    "new_biological_fits": 1,
+    "total_biological_fits": 280,
+    "neural_fits": 0,
+    "ridge_fits": 0,
+    "coefficient_fits": 1,
+    "start_events": 1,
+    "failed_events": 0
+  },
+  "component_sources": [
+    {
+      "directory": "attention-family-calibration",
+      "freeze_sha256": "255c783b36fa5c4508ce3877465a3576ae9497d5602e1a15241597ff0afcbf96",
+      "state_sha256": "255f0d5b26430f17ed77d7f618105a8d1fa2aabb776381633a5d80ee589d6f95",
+      "review_sha256": "27617df562c40177a7002d99999da62a107a22845af3d5d8601dafdfaa1c17fa",
+      "total_biological_fits": 266
+    },
+    {
+      "directory": "attention-short-cycle-calibration",
+      "freeze_sha256": "28264aef5275175649810b78b914274627da831e89ff7e0b67c1c245f156f811",
+      "state_sha256": "05817beb05103ac53c13c4fec7430f20820486560ed4b53641709e0817ac49a6",
+      "review_sha256": "8880ce3c312d4717e96050aad762d45a6d09f81edbccbd8af54a0bfe4a11b9a2",
+      "total_biological_fits": 279
+    }
+  ],
+  "original_targets_used_for_metrics": true,
+  "direct_cached_columns": true,
+  "validation_after_saved_mixture": true,
+  "potential_contract": "linear composition of independently replayed sequence potentials; no new numerical property inference",
+  "new_fits": 0,
+  "neural_fits": 0,
+  "gpu_calls": 0,
+  "checkpoint_deserializations": 0,
+  "confirmation_read": false
+}

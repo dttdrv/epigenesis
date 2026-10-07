@@ -1,0 +1,123 @@
+{
+  "training_rows": 21781,
+  "training_families": 8774,
+  "full_label_energy": 0.02822584695915057,
+  "uncertainty_covered_family_mass": 1.0,
+  "known_uncertainty_energy_contribution": 0.0174368950304922,
+  "full_uncertainty_energy": 0.0174368950304922,
+  "assumed_latent_second_moment": 0.01078895192865837,
+  "covered_label_energy": 0.02822584695915057,
+  "covered_uncertainty_energy": 0.0174368950304922,
+  "covered_assumed_latent_second_moment": 0.010788951928658372,
+  "covered_fraction_abs_effect_gt_se": 0.4047532267279089,
+  "all_training": {
+    "rows": 21781,
+    "families": 8774,
+    "family_mass": 1.0,
+    "label_energy": 0.02822584695915057,
+    "mse": {
+      "baseline": 0.028175000599396614,
+      "long_unit": 0.029025549498480536,
+      "short_unit": 0.028212989754195304
+    }
+  },
+  "recovered": {
+    "rows": 21781,
+    "families": 8774,
+    "family_mass": 1.0,
+    "label_energy": 0.02822584695915057,
+    "mse": {
+      "baseline": 0.028175000599396614,
+      "long_unit": 0.029025549498480536,
+      "short_unit": 0.028212989754195304
+    }
+  },
+  "unresolved": {
+    "rows": 0,
+    "families": 0,
+    "family_mass": 0.0,
+    "label_energy": null,
+    "mse": {
+      "baseline": null,
+      "long_unit": null,
+      "short_unit": null
+    }
+  },
+  "standard_error_quartile_cutoffs": [
+    0.08982143896047223,
+    0.11440737294131767,
+    0.15134138409871065
+  ],
+  "uncertainty_strata": [
+    {
+      "rows": 5089,
+      "families": 2505,
+      "family_mass": 0.25000285697228314,
+      "label_energy": 0.011653360855827289,
+      "mse": {
+        "baseline": 0.01164472265242127,
+        "long_unit": 0.012121251969298554,
+        "short_unit": 0.01166499139877432
+      },
+      "lower_exclusive": null,
+      "upper_inclusive": 0.08982143896047223,
+      "uncertainty_energy": 0.0060499545917661246
+    },
+    {
+      "rows": 5497,
+      "families": 2880,
+      "family_mass": 0.2500320475536363,
+      "label_energy": 0.01814713068681986,
+      "mse": {
+        "baseline": 0.01804100141681033,
+        "long_unit": 0.018777219768850266,
+        "short_unit": 0.018057713668439637
+      },
+      "lower_exclusive": 0.08982143896047223,
+      "upper_inclusive": 0.11440737294131767,
+      "uncertainty_energy": 0.01041287267149153
+    },
+    {
+      "rows": 5763,
+      "families": 2923,
+      "family_mass": 0.24996631142022305,
+      "label_energy": 0.02929249556887095,
+      "mse": {
+        "baseline": 0.029375779297183175,
+        "long_unit": 0.030212504958610307,
+        "short_unit": 0.029466034850854386
+      },
+      "lower_exclusive": 0.11440737294131767,
+      "upper_inclusive": 0.15134138409871065,
+      "uncertainty_energy": 0.017360176698597768
+    },
+    {
+      "rows": 5432,
+      "families": 2587,
+      "family_mass": 0.2499987840538576,
+      "label_energy": 0.05381215028819378,
+      "mse": {
+        "baseline": 0.05364027268459806,
+        "long_unit": 0.054993014460718054,
+        "short_unit": 0.05366500266077009
+      },
+      "lower_exclusive": 0.15134138409871065,
+      "upper_inclusive": null,
+      "uncertainty_energy": 0.035925686287110487
+    }
+  ],
+  "quality": {
+    "admitted_rows": 21781,
+    "skipped_nontraining_rows": 18669,
+    "status_counts": {
+      "recovered": 21781
+    }
+  },
+  "new_biological_fits": 0,
+  "total_biological_fits": 280,
+  "validation_evaluated": false,
+  "confirmation_evaluated": false,
+  "interpretation": "model-based moderated coefficient uncertainty; no empirical noise ceiling",
+  "preprocessing": "published normalization and empirical-Bayes moderation predate this TRAIN split",
+  "assumption": "latent second moment assumes unbiased coefficient error and correctly estimated variances"
+}

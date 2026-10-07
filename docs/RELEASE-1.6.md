@@ -33,7 +33,7 @@ version changes to 1.6.0; compiler producer identities and serialized contracts
 remain unchanged. Version-1 external closures remain supported alongside the
 version-2 executable, digest-pinned frontend and validator path.
 
-## Research status
+## Research status at the 1.6.0 release
 
 The measured-data workflow is usable independently of predictor development.
 Current neuronal DNA-edit candidates have not passed both predictive acceptance
@@ -46,7 +46,23 @@ Natural-genome-to-brain development remains the research objective. The new
 patterning experiment tests a conditional regulatory mechanism; its biological
 transfer needs independent intervention evidence.
 
-## Verification
+## Subsequent repository update
+
+The experimental neuronal edit predictor is now available as a separate
+[Python 3.12 example](../examples/neural-predictor/README.md), with pinned PyTorch
+and NumPy dependencies, frozen weights, CPU/Metal inference and aggregate
+research receipts. The compiler retains its standard-library-only installation.
+
+The latest two-cycle mixture has validation selection utility 0.07158510,
+103.9% above its comparator, and MSE 0.02862935, 0.01480% above its strict limit.
+The joint gate remains unmet after 280 biological fits. The new cohort's
+confirmation remains unopened. A completed TRAIN-only uncertainty audit covers
+21,781 edits and identifies error increases from uncalibrated corrections in
+all four uncertainty groups. The README now presents current results in a
+compact table; the roadmap retains the experiment history. Package version
+remains 1.6.0; this update does not declare predictive acceptance.
+
+## Verification at the 1.6.0 release
 
 Verified locally on macOS with Python 3.11.15 and Java 21:
 

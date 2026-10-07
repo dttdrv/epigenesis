@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "freeze_sha256": "a6b019a4398aa880b7419ec9d98c2b1570c72fb0b5b77254acefb837bf4a0c90",
+  "checker_freeze_sha256": "62b4db921901079dc51d2280e8050a6ce3cb7f113c9120abb697cc890a36dea2",
+  "diagnostic_state_sha256": "50862d39928520304be55bb34a436dca2a1099683979ebd6257637d2add8657d",
+  "report_sha256": "a69cf0db7d8fbef930bf3fd65fe5dd4b3914ba2dfc4c214c8658d54995419725",
+  "training_export_sha256": "3d5dd5d06c51a25ccdcafffc65b4e82e521545d96be6958b6cd1b95ca14730bd",
+  "source_sha256": "b5894f9099987296df69a496ca97613b6f8f72b7b100395eeea7c1ce51c002ca",
+  "training_ids_sha256": "cb9892fe84b83537fd004aca59dcb1d77d63f8ffd7a4489aa8c6f87b365b8a43",
+  "training_rows": 21781,
+  "training_families": 8774,
+  "exact_reconstructed_train_rows": 21781,
+  "arithmetic_comparison": {
+    "numeric_values": 53,
+    "maximum_absolute_difference": 5.551115123125783e-17
+  },
+  "new_fits": 0,
+  "gpu_calls": 0,
+  "checkpoint_deserializations": 0,
+  "validation_statistics_converted": false,
+  "nontraining_statistics_converted": false,
+  "confirmation_read": false,
+  "nomination": null,
+  "total_biological_fits": 280
+}
