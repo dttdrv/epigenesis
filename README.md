@@ -166,18 +166,38 @@ local sequence baseline with two 11,368-parameter attention models using
 [Interlace's rational gate](https://misul.org/interlace). You can score your own
 270-base reference/edited pairs and inspect each component's contribution.
 
-The latest development results are:
+Current Salomon validation results use 7,390 edits in 3,029 families:
 
-| Validation measure | Fixed requirement | Calibrated short model | Two-cycle mixture |
-|---|---:|---:|---:|
-| Effect-size MSE ↓ | < 0.02862511 | 0.02863101 | 0.02862935 |
-| Signed top-ten utility ↑ | > 0.03510890 | 0.07609249 | 0.07158510 |
+| Predictor or comparator | Effect-size MSE ↓ | Signed top-ten utility ↑ |
+|---|---:|---:|
+| Always predict zero | 0.02875171 | 0 (abstains) |
+| Random selection, TRAIN-selected direction | n/a | 0.01674875 |
+| k5 ridge, protocol's MSE-selected comparator | 0.02862511 | 0.03510890 |
+| k3 ridge, highest utility among 16 baselines | 0.02869761 | 0.21515632 |
+| Calibrated short model | 0.02863101 | 0.07609249 |
+| **Bundled two-cycle mixture** | **0.02862935** | **0.07158510** |
+| Subsequent precision-sampling trial | 0.02862093 | 0.00342057 |
 
-The mixture's selection utility is **103.9% above the comparator**, while its
-MSE remains **0.01480% above the required limit**. Both requirements must pass.
-These are adaptive validation results on 7,390 edits in 3,029 families; the new
-cohort's confirmation remains unopened. The small MSE gap is a metric difference,
-not a percentage of project completion.
+The mixture reduces MSE by **0.426% relative to predicting zero**. Its MSE is
+**0.01480% above k5**, calculated as `100 × (MSE_model / MSE_k5 − 1)`;
+this percentage measures the gap to that comparator, not predictive accuracy.
+MSE itself is in squared log2 reporter-effect units. Centered weighted R² is
+−0.00555, so broad effect-size prediction remains weak.
+
+Ranking utility is 2.04× the protocol's k5 comparator and 4.27× random selection,
+while the k3 baseline ranks better. These are adaptive-validation point estimates
+for ten selected families. Both original requirements remain fixed: MSE below
+0.028625109823 and utility above 0.035108902127. Confirmation is unopened.
+
+Independent inference reproduces **all 29,560 saved Metal values exactly**:
+the baseline, both corrections and their mixture on every validation input.
+This establishes numerical reproducibility; agreement with measured biology is
+reported separately in the table. [Results and definitions](examples/neural-predictor/README.md#validation-results)
+include the complete baseline panel and the underlying aggregate receipts.
+
+The subsequent precision-sampling trial crosses the MSE limit but fails ranking.
+Independent replay matches all 109,300 saved prediction values. It remains a
+failed joint-acceptance result and is not the bundled predictor.
 
 Interlace also improved distant-interaction and local-effect recovery in matched
 synthetic tests, with 51.1% and 64.4% lower error than ordinary attention at equal
@@ -186,9 +206,10 @@ whether that capacity transfers to measured neuronal reporter effects.
 
 A completed audit recovers model-based measurement uncertainty for all 21,781
 training edits. Uncalibrated neural corrections worsen error even in the most
-precisely measured group, giving the next experiment a specific failure to
-address. The research ledger records 280 biological fits, including failed
-experiments. [Results and reproduction details](examples/neural-predictor/README.md)
+precisely measured group. The completed sampling trial uses that uncertainty
+without changing targets or acceptance limits. The research ledger records
+287 biological fits, including failed experiments.
+[Results and reproduction details](examples/neural-predictor/README.md)
 include model identities, independent replay receipts and the uncertainty audit;
 the [roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) preserves the full development history.
 

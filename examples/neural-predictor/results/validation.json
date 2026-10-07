@@ -44,6 +44,184 @@
       "freeze_sha256": "4fe29717dd5bd47bf25c88e48ca023e1469b84ad505eb9329ee436f470d1b4d4",
       "nomination": null,
       "confirmation_evaluated": false
+    },
+    "precision-calibrated": {
+      "alpha": 0.4245090444207542,
+      "validation_mse": 0.02862093459426877,
+      "ranking_utility": 0.0034205686341664014,
+      "checks": {
+        "mse": true,
+        "utility": false
+      },
+      "total_biological_fits": 287,
+      "new_biological_fits": 7,
+      "source_state_sha256": "fda267de8542ad89fdf4cc55de5810ecea6ac09335118e01386014fe39f57b53",
+      "freeze_sha256": "bc112a8f4f6ac757af6cbb9fc4f7dae1cded5099e98d76957fa4fbdedb39de1d",
+      "independent_review_sha256": "09fa7a7c14213345730db35f1f465ee502bd43f796715ebeb47c3d9702578d91",
+      "exact_prediction_values": 109300,
+      "nomination": null,
+      "confirmation_evaluated": false,
+      "bundled": false
     }
+  },
+  "cohort": "Salomon 2026 WTC11-NGN2; 7390 validation edits in 3029 families",
+  "mse_units": "squared ALT-minus-REF log2 reporter-effect units",
+  "baselines": {
+    "zero_mse": 0.028751711602389565,
+    "random_direction": 1,
+    "random_utility": 0.016748752672289795,
+    "selection_rule": "minimum validation MSE within dinucleotide and kmer groups",
+    "selected_dinucleotide": "k2-lambda1",
+    "selected_kmer": "k5-lambda0.1",
+    "highest_utility_baseline": "k3-lambda0.01",
+    "trials": [
+      {
+        "name": "k2-lambda0.01",
+        "k": 2,
+        "penalty": 0.01,
+        "parameters": 10,
+        "validation_mse": 0.028757815499479603,
+        "ranking_utility": 0.016577960175291638
+      },
+      {
+        "name": "k2-lambda0.1",
+        "k": 2,
+        "penalty": 0.1,
+        "parameters": 10,
+        "validation_mse": 0.028753760206696087,
+        "ranking_utility": 0.016577960175291638
+      },
+      {
+        "name": "k2-lambda1",
+        "k": 2,
+        "penalty": 1.0,
+        "parameters": 10,
+        "validation_mse": 0.02874714422095261,
+        "ranking_utility": 0.016577960175291638
+      },
+      {
+        "name": "k2-lambda10",
+        "k": 2,
+        "penalty": 10.0,
+        "parameters": 10,
+        "validation_mse": 0.028750377985053588,
+        "ranking_utility": 0.016577960175291638
+      },
+      {
+        "name": "k3-lambda0.01",
+        "k": 3,
+        "penalty": 0.01,
+        "parameters": 32,
+        "validation_mse": 0.02869760625192353,
+        "ranking_utility": 0.2151563191429975
+      },
+      {
+        "name": "k3-lambda0.1",
+        "k": 3,
+        "penalty": 0.1,
+        "parameters": 32,
+        "validation_mse": 0.028693840203031843,
+        "ranking_utility": 0.02121516259207904
+      },
+      {
+        "name": "k3-lambda1",
+        "k": 3,
+        "penalty": 1.0,
+        "parameters": 32,
+        "validation_mse": 0.028725155677605585,
+        "ranking_utility": 0.02121516259207904
+      },
+      {
+        "name": "k3-lambda10",
+        "k": 3,
+        "penalty": 10.0,
+        "parameters": 32,
+        "validation_mse": 0.028747904285154977,
+        "ranking_utility": 0.02121516259207904
+      },
+      {
+        "name": "k4-lambda0.01",
+        "k": 4,
+        "penalty": 0.01,
+        "parameters": 136,
+        "validation_mse": 0.028635319423122012,
+        "ranking_utility": 0.034196797432873446
+      },
+      {
+        "name": "k4-lambda0.1",
+        "k": 4,
+        "penalty": 0.1,
+        "parameters": 136,
+        "validation_mse": 0.028625609563509034,
+        "ranking_utility": -0.06002189143593175
+      },
+      {
+        "name": "k4-lambda1",
+        "k": 4,
+        "penalty": 1.0,
+        "parameters": 136,
+        "validation_mse": 0.028718578035727048,
+        "ranking_utility": -0.009898441812609415
+      },
+      {
+        "name": "k4-lambda10",
+        "k": 4,
+        "penalty": 10.0,
+        "parameters": 136,
+        "validation_mse": 0.02874784188543443,
+        "ranking_utility": -0.009898441812609415
+      },
+      {
+        "name": "k5-lambda0.01",
+        "k": 5,
+        "penalty": 0.01,
+        "parameters": 512,
+        "validation_mse": 0.0287093976832916,
+        "ranking_utility": 0.01933672946819536
+      },
+      {
+        "name": "k5-lambda0.1",
+        "k": 5,
+        "penalty": 0.1,
+        "parameters": 512,
+        "validation_mse": 0.028625109823009157,
+        "ranking_utility": 0.035108902126661234
+      },
+      {
+        "name": "k5-lambda1",
+        "k": 5,
+        "penalty": 1.0,
+        "parameters": 512,
+        "validation_mse": 0.028727614882279096,
+        "ranking_utility": 0.0452251941726605
+      },
+      {
+        "name": "k5-lambda10",
+        "k": 5,
+        "penalty": 10.0,
+        "parameters": 512,
+        "validation_mse": 0.028749099258306734,
+        "ranking_utility": 0.06502504418313008
+      }
+    ]
+  },
+  "derived_aggregate_statistics": {
+    "source": "existing independently checked validation moments; no new target conversion, inference or fit",
+    "target_mean": 0.016748752672289795,
+    "target_second_moment": 0.028751711602389565,
+    "target_centered_variance": 0.02847119088631203,
+    "mixture_rmse": 0.16920208771096037,
+    "mixture_zero_effect_skill": 0.004255924597958982,
+    "mixture_centered_r2": -0.005554934462244088,
+    "mixture_relative_mse_gap_to_k5_percent": 0.014800511734525124,
+    "mixture_utility_ratio_to_k5": 2.0389444115365007,
+    "mixture_utility_ratio_to_random": 4.2740555781668945,
+    "empirical_between_culture_noise_ceiling": null
+  },
+  "aggregate_source_sha256": {
+    "salomon-training/experiment/run-state.json": "0b83f755eaa10d8cab8ce5ae0122f7b56f03981711c2d8343279f421a8d5be21",
+    "salomon-training/neural-result-review/review.json": "8f7cfac3f242e38158f7a30d493cda111334351fb2af54fd5f7f2372891e5f3b",
+    "salomon-training/baseline-result-review/RESULTS.json": "ba42a2a9c9ed12c04dea38815af59a997f23d59201f3c9597735664fc34b9425",
+    "salomon-training/actual-diagnostic-review/review.json": "2f985c393e15df0cdeb3043a846512c0d23cd6f724a6e4d90c357d0183db9f8d"
   }
 }

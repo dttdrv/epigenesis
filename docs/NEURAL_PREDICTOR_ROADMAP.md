@@ -5,12 +5,22 @@ neural-evidence workbench. A successful new predictor is not a prerequisite for
 that practical deliverable. This document preserves the separate predictor
 research plan and its independent acceptance requirements.
 
-The latest completed ledger is **280 biological fits**. The bundled
+The latest completed ledger is **287 biological fits**. The bundled
 [two-cycle predictor](../examples/neural-predictor/README.md) is runnable on CPU
 and Metal. Its validation utility is 0.07158510 and MSE is 0.02862935; utility
 passes its comparator and MSE remains 0.01480% above its strict limit. The
-TRAIN uncertainty audit is complete. Confirmation for the newer Salomon cohort
+TRAIN uncertainty audit and its seven-fit precision-sampling trial are complete.
+The latter has MSE 0.02862093 and utility 0.00342057: it passes the error limit
+but fails ranking, with no nomination. Confirmation for the newer Salomon cohort
 remains unopened. The sections below retain earlier rounds and their outcomes.
+
+Read the [current baseline table](../examples/neural-predictor/README.md#validation-results)
+with the latest result. The 0.01480% figure is a relative gap to k5 MSE, not a
+prediction error rate. The bundled model improves MSE over zero effect by only
+0.4256%; centered R² is −0.00555. Another baseline, k3 λ=0.01, has higher ranking
+utility. Exact numerical replay and biological predictive accuracy are separate
+results. The 196-fit ledger and MSE near 0.01554 below belong to the older Kosicki
+rounds, whose measurements differ from the current Salomon cohort.
 
 The original Kosicki reserved confirmation is complete and failed acceptance. The fixed
 gapped-six predictor was evaluated on all 3,840 eligible edits in 50 families.
@@ -1210,6 +1220,24 @@ makes the fitted sequence-to-effect calculation available without the local
 research directory. Training orchestration, raw assay tables and the reserved
 confirmation are outside this inference package. No model is promoted by
 packaging it.
+
+The subsequent `attention-precision-sampling/` trial uses reported TRAIN
+coefficient SEs in one prospectively fixed sampling rule. In each fitting
+population, equal-family probabilities p become proportional to p/(SE²+vbar),
+where vbar is that population's equal-family mean SE². Original targets,
+complement priors, loss scales, initialization and the complete 1024-update
+recipe stay unchanged. Six fresh neural fits and one equal-family scalar
+calibration advance the ledger from 280 to 287; no ridge is refitted. Only the
+final calibrated candidate receives a validation evaluation.
+
+The fitted alpha is 0.4245090444. MSE is 0.0286209346, 0.01459% below the original
+k5 limit, while utility is 0.0034205686, below random selection and 90.26% below
+the required comparator. This specific precision rule fails joint acceptance.
+All 109,300 saved prediction values replay exactly. Independent review verifies
+the fit-local sampling, source joins, all checkpoints, folds, calibration,
+metrics and seven-fit ledger. No confirmation is opened and no candidate is
+nominated. The trial closes without a tempering grid, additional mixture or
+metadata-causality claim. See `attention-precision-sampling/RESULTS.md`.
 
 Each successor uses the smallest model justified by training/validation evidence.
 An available pretrained model is eligible only after its exact input, output,

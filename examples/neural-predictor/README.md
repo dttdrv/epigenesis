@@ -85,25 +85,55 @@ excluded-family predictions within TRAIN, then applied unchanged to validation.
 
 | Predictor | Family-weighted MSE ↓ | Signed top-ten utility ↑ |
 |---|---:|---:|
+| Always predict zero | 0.028751711602 | 0 (abstains) |
+| Random selection, TRAIN-selected direction | n/a | 0.016748752672 |
+| Dinucleotide ridge, k2 λ=1 | 0.028747144221 | 0.016577960175 |
+| k5 ridge, λ=0.1; protocol comparator | 0.028625109823 | 0.035108902127 |
+| k3 ridge, λ=0.01; highest baseline utility | 0.028697606252 | 0.215156319143 |
 | Strict requirement | < 0.028625109823 | > 0.035108902127 |
 | Long correction, calibrated | 0.028622834172 | 0.020415119456 |
 | Short correction, calibrated | 0.028631012565 | 0.076092485687 |
 | **Bundled two-cycle mixture** | **0.028629346486** | **0.071585099786** |
+| Subsequent precision-sampling trial | 0.028620934594 | 0.003420568634 |
 
 Ranking selects one edit per family, orders candidates by absolute predicted
 effect, resolves ties by identifier, and takes ten families. Utility is the mean
 of `sign(predicted effect) × measured effect` for those edits. It rewards correct
 direction and measured magnitude; it is not a discovery rate or sign accuracy.
-The table's error and utility limits are the strongest required baseline values
-and need not come from the same baseline.
+The protocol selects one dinucleotide model and one k-mer model by validation
+MSE, then takes the strictest error and utility requirements among those selected
+models, zero effect and random selection. Here k5 supplies both limits. It is
+not the highest-utility model among the 16 baseline fits; k3 λ=0.01 ranks better
+than the mixture. The [aggregate results](results/validation.json) preserve every
+baseline, including this comparison. Random utility is the expected result of
+uniform family selection, a uniform edit within each family, and the direction
+chosen from the TRAIN mean. Predicting zero abstains and has zero signed utility.
 
-The mixture improves utility by 103.89% over the comparator and misses the error
-limit by 0.01480%. The short calibration improves utility by 116.73% but has
-higher MSE. Both criteria must pass together. These are point estimates from
-adaptive model development, not independent confirmation or confidence bounds.
-The research ledger contains 280 biological fits, including failed experiments;
-packaging adds no fits. The original failed confirmation on an earlier cohort
-remains recorded in the [roadmap](../../docs/NEURAL_PREDICTOR_ROADMAP.md).
+The mixture improves utility by 103.89% over the protocol's k5 comparator and
+327.41% over random selection. It misses the k5 error limit by 0.01480%, defined
+as `100 × (MSE_model / MSE_k5 − 1)`. This is a relative baseline gap, not an error
+percentage or closeness to perfect prediction. The short calibration improves
+utility by 116.73% over k5 but has higher MSE. Both criteria must pass together.
+These are point estimates from adaptive model development, not independent
+confirmation or confidence bounds.
+The research ledger contains 287 biological fits, including failed experiments;
+the subsequent precision trial adds seven, while packaging adds none. The
+original failed confirmation on an earlier cohort remains recorded in the
+[roadmap](../../docs/NEURAL_PREDICTOR_ROADMAP.md).
+
+MSE has units of squared log2 reporter effect. The mixture's RMSE is 0.16920
+log2-effect units. Its reduction in MSE relative to always predicting zero,
+`1 − MSE_model / MSE_zero`, is only 0.00425592, or **0.4256%**. This is zero-effect
+skill, not centered R². Independently checked validation aggregates give a target
+mean of 0.01674875 and centered variance of 0.02847119; conventional weighted
+`R² = 1 − MSE_model / variance` is **−0.00555**. The validation-mean predictor in
+that definition is a descriptive reference, not a deployable fitted baseline.
+These summaries are derived from existing aggregate receipts without refitting.
+
+No empirical between-culture noise ceiling has been established for this
+cohort. The TRAIN standard-error audit below does not supply one. Culture
+correlations and MSE values near 0.01554 in the historical roadmap concern the
+earlier Kosicki dataset; they cannot be used to normalize these Salomon results.
 
 ## What the uncertainty audit found
 
@@ -125,12 +155,24 @@ quartile, including the most precisely measured group. The audit does not
 evaluate the calibrated mixtures. It gives further model work a concrete
 failure to explain and adds no fits or gate changes.
 
+The subsequent fixed experiment tests precision-based sampling, with each
+fitting population's probabilities proportional to
+`family_probability / (SE² + E_family[SE²])`. Original targets, k5 priors,
+architecture and 1,024-update recipe are unchanged. Six fresh neural fits
+(full TRAIN and five family-fold complements) and one TRAIN-only scalar
+calibration give alpha 0.42450904. Its MSE is 0.02862093, 0.01459% below k5,
+but utility falls to 0.00342057, below the random comparator. Both original
+criteria remain required, so this trial closes without nomination or a
+replacement of the bundled weights. Independent replay matches all 109,300
+saved values and verifies the seven-fit accounting. Confirmation stays unopened.
+
 ## Verification and scope
 
 The portable inference path reproduces all 29,560 archived Metal values exactly:
 baseline, both corrections and combined prediction for all 7,390 validation
-inputs. The CPU path's largest combined-prediction difference from those Metal
-values is 2.651e-8 on the checked Mac. This portability check reads input
+inputs. These are matches to saved model outputs, not 29,560 exact matches to
+biological measurements. The CPU path's largest combined-prediction difference
+from those Metal values is 2.651e-8 on the checked Mac. This portability check reads input
 sequences and saved predictions, without converting validation outcomes or
 opening confirmation. Floating-point agreement on other hosts remains to be
 measured. The archived biological scores above use the original Metal outputs.
