@@ -1,18 +1,254 @@
 # Neural DNA-edit predictor roadmap
 
-Updated 2026-10-07. Predictor development continues in parallel with the measured
-neural-evidence workbench. A successful new predictor is not a prerequisite for
-that practical deliverable. This document preserves the separate predictor
-research plan and its independent acceptance requirements.
+Updated 2026-10-18. The new fixed measurement and temporal comparisons are
+complete. They resolve the earlier four-source pooling comparison and test
+early-to-late forecasting, including Timestral-5M, Timestral-209M and raw-count
+transfer across infection cultures. The latter test does not demonstrate
+superiority over its controls. The bundled sequence predictor, its weights and
+its unmet acceptance requirements remain unchanged.
 
-The latest completed ledger is **287 biological fits**. The bundled
+## New experiments, 18 October 2026
+
+A fresh DNA-normalized effect comparison completes all eight cross-barcode
+transfers on the original four TRAIN components. BIRD CRPS is 0.51127630 versus
+0.60712982 for pooling, a 15.79% reduction. Both predeclared directional gain
+intervals are positive: [0.08694432, 0.11724122] and [0.05343141, 0.12160532].
+These are conditional 99% Monte Carlo bounds, not biological confidence bounds.
+Independent exact-moment replay reproduces every score. A post hoc zero-effect
+forecast has lower CRPS, 0.42482818; BIRD central 80% empirical intervals cover
+only two of eight observations. The fixed pooling comparison passes, while
+practical effect-prediction superiority and calibration remain unestablished.
+The original failed and unresolved attempts remain unchanged.
+
+The temporal experiment uses measured effects at 0, 3, 6 and 12 hours to forecast
+24, 48 and 72 hours in the Kreimer neural-induction assay. Five whole-family
+outer folds cover 4,143 targeted perturbations in 351 existing TRAIN families.
+Scales and tuning use only each training complement. Original validation and
+test rows are not scored. The publication's pooled activity estimates used
+all-timepoint processing, so this is a retrospective exploratory result.
+
+| Forecast | Family-mean MSE | Within-family selection utility |
+|---|---:|---:|
+| Carry the 12-hour value forward | 0.07963470 | 0.19753080 |
+| Early average and 12-hour value, ridge | 0.06015096 | 0.32444986 |
+| All four early values, ridge | 0.06033572 | 0.32323640 |
+| Timestral-5M median, zero-shot | 0.06533556 | 0.30991853 |
+| Timestral-209M median, zero-shot | 0.07504111 | 0.30814769 |
+
+Utility selects the predicted top 10% of changes within each family, rounded up,
+and measures their observed RMS change from 12 hours. Random selection has
+expected utility 0.19753080. Equal-score boundary ties receive fractional credit.
+All seven error controls and four selection controls were fixed before the ridge
+run. Neither full history nor either Timestral size passes all required controls.
+The two-feature control matches the richer model. Early measurements have useful
+predictive information here; greater model size has not added demonstrated value.
+Both Timestral sizes use the same three-hour grid, missing 9-hour input, signed
+effects and actual late-time offsets. Inference takes 0.67 seconds for 5M and
+10.11 seconds for 209M on one CPU thread, with no GPU.
+
+Independent saved-array scoring reproduces all three candidates and their
+family bootstrap intervals. The temporal analysis adds 420 small nested ridge
+fits and two zero-shot inference runs; the separate 445-fit sequence-model
+ledger and bundled predictor weights remain unchanged. Full protocols, source
+identities, controls and results are preserved locally under
+`build/neural-predictor-reviewed-20261005/bird-effect-complement-followup` and
+`build/neural-predictor-reviewed-20261005/neural-temporal-forecast-20261018`.
+
+The subsequent raw-count experiment holds out both infection cultures and
+sequence families. Early measurements from the other two cultures predict
+changes from 12 hours to 24, 48 and 72 hours in the omitted culture. Its 12-hour
+anchor is label-only. A new same-sample pooled RNA/DNA contrast avoids an
+all-timepoint activity fit; upstream matrix selection remains unresolved.
+
+| Raw-count change forecast | Family-balanced MSE |
+|---|---:|
+| Early mean and 12-hour value, ridge | 0.32132339 |
+| Early-mean ridge | 0.32194217 |
+| Latest-value ridge | 0.32211810 |
+| Zero change | 0.32214740 |
+| Training-population mean change | 0.32201750 |
+
+All four simultaneous nominal 99% gain intervals contain zero; the early-mean
+control also wins in culture 2. The fixed conditional acceptance rule is not met.
+All 15 culture/fold groups are observed. Of 11,860 input-eligible forecasts,
+11,696 have complete targets and 164 remain unscored. Loss averages variants
+within family/culture cells, available cultures within families, then families.
+The intervals resample whole families and are conditional on fitted models,
+supported outcomes and these three cultures, not preparation-population bounds.
+
+The [portable archive](../examples/neural-forecast/README.md) retains count
+totals, support reasons, the frozen protocol, model coefficients, prediction
+seals and all scores. Independent replay agrees within 1.78e-15. Before numerical
+count conversion, 23 synthetic tests passed and 12 deliberate faults were
+detected. The run adds 945 small ridge fits, separately from the 420 pooled-alpha
+fits and 445 sequence-model fits. It completed in 8.99 seconds on one CPU thread.
+
+This is one previously exposed H1 assay with three infected cultures and two
+viral batches whose assignment is unavailable. It is not donor or viral-batch
+validation. The pooled-alpha and raw-count experiments use different observables,
+targets and exclusion schemes; their losses and relative gains are not a matched
+before/after comparison. The new result does not establish why the earlier
+pooled-data gain occurred.
+
+## Earlier predictor and measurement experiments
+
+The Matoba neural-progenitor experiment asks how a DNA edit changes the response
+to Wnt stimulation. Its first bounded model comparison is complete. Rummel's
+complementary neuron-stimulation experiment now has a fixed source partition and
+TRAIN measurements. Its aggregate KCl interaction has weak RNA-view agreement
+and closes at zero fits. A separate baseline-neuron effect screen passes both
+fixed TRAIN comparisons: k5 slightly improves prediction error and improves
+signed edit-selection utility. Independent replay confirms this exploratory
+result. The subsequent independently tuned dinucleotide baseline beats k5 on
+error; k5 retains its selection advantage and fails the combined progression
+rule. The fixed-prediction error diagnosis is independently reproduced. The matched
+anchor/residual comparison now has lower MSE but loses selection utility to
+stronger direct k5. Ten further fits complete without a joint pass; independent
+numerical replay and the root rerun reproduce the result. The subsequent fixed
+full-insert motif comparison completes fifteen fits and fails both endpoints
+against direct k5; independent saved-result replay and the root rerun agree.
+A subsequent zero-fit audit finds that the strongest measured baseline edits
+transfer positively between existing barcode/RNA views in both directions and
+beat the fixed random-selection reference. Independent exact replay and the
+root rerun reproduce both directions and all chromosome omissions.
+A fixed crossover of the existing direct and anchored model selections now
+locates the anchor's full-target utility loss entirely in changed selections;
+both models retain identical signs on those picks. Direct k5's original picks
+also exceed their model-sign random reference in both existing measurement views.
+Independent exact replay and the root rerun agree. Three unavailable anchored
+picks prevent a complete measurement-view comparison of the two models.
+A five-fit joint k2/k5 comparison now improves error over direct k5 but reproduces
+the anchored model's ten selections and signs. It fails the combined progression
+rule; independent replay and the root rerun agree. This fixed recipe is closed.
+A subsequent twenty-fit matched comparison adds 2,210 qualified same-study
+training observations. Fixed k5 pooling worsens both error and edit-selection
+utility against Dev-only training; all ten uncertainty bounds fail. Independent
+saved-fit and score replay and both root reruns agree. The stronger Dev-only
+model is retained. A subsequent source-defined comparison finds negative
+cross-library agreement on 527 jointly eligible identical physical edits
+(r = -0.1126), with both copy directions losing to zero. All 21 chromosome
+omissions preserve these signs; an independent numerical replay agrees.
+A fixed RNA/plasmid decomposition now reconstructs every saved label exactly.
+Disagreement appears across the samples: eight of nine cross-library sample
+correlations are negative, and the ninth is +0.0298. Independent high-precision
+replay agrees. The author-method audit now confirms a concrete estimator
+difference: the paper fits separate-library raw-count models after collapsing
+barcodes, whereas this screen used fixed mean log ratios. Existing aggregate
+counts are now exported and independently verified. Review of current MPRAnalyze
+source rejects the proposed classic two-plasmid-observation setup before fitting.
+A separate exact count-weighted contrast reduces mismatch by 6.7%, but agreement
+remains negative and fails its fixed pooling-repair screen. Independent numerical
+replay agrees. Original labels and the Dev-only predictor remain unchanged.
+A fixed five-fold precision-weighting trial now raises signed selection utility
+from 0.50658 to 0.84756 on the same 948 TRAIN development observations, a 67.31%
+relative score increase. MSE is 0.01294% worse than Dev k5 and also loses to Dev
+k2. Ten of twelve point gates and four of twelve paired interval gates pass;
+the joint rule remains unmet. Independent numerical and score replay agree.
+A fixed zero-fit audit now finds that this selection advantage also holds in
+both existing measurement views, with utility gains of 0.43230 and 0.36292.
+All ten selections have both views available. Two changed picks explain the
+entire gain, with identical predicted directions on both lists. Independent
+exact replay agrees. These related TRAIN measurements support the prioritization
+result; the prior error loss and inconclusive utility interval remain open.
+A subsequent nested combination of Dev k2 and precision k5 completes forty
+inner sequence fits. Its MSE is 0.54542267 and utility 0.50184668, worsening both
+against precision k5. Nine of fourteen point comparisons pass; none of the paired
+interval lower bounds is positive. Independent saved-solution and score replay
+and the root rerun agree. This combination closes without advancement.
+A subsequent ten-fit quadratic-composition comparison improves both point
+scores against all six prior controls: MSE 0.54323404 and utility 0.87841414.
+Its constant-context control selects better (utility 1.18697653), with MSE
+0.54331450. The candidate passes fifteen of sixteen point comparisons and four
+paired interval gates, so the varying-context recipe closes without advancement.
+Independent replay and the root rerun agree. A separate algebraic check shows
+that the stronger selection control reduces to local k2/k5 edit deltas; its
+result identifies useful readout structure without establishing a benefit from
+varying sequence context. A fixed follow-up now attributes its entire selection
+gain to one substituted edit. That edit lacks usable A/B views under the existing
+QC, leaving incremental cross-view support unresolved. Independent exact replay
+and the root rerun agree. Validation/test outcomes remain unopened.
+A subsequent fixed count diagnostic rejects the common-RNA-fraction read model
+for 438 of 948 eligible DevLib edits (46.20%), including the substituted pick.
+Independent full replay agrees. Replicate variation must enter the measurement
+uncertainty work before the pooled Swift sampler can serve as a default model.
+The published BIRD replicate model now has a checked marginal density and an
+independent-draw posterior sampler. Four fixed synthetic cases pass all 20
+distribution comparisons against a separate generative reference. Subsequent
+omitted-RNA forecasts improve CRPS by 11.7% in the fixed four-component pilot.
+The separate DNA-effect comparison remains unresolved under its both-direction
+rule. A full-count treatment-response extension now completes all 32 fixed
+comparisons with 14.3% lower estimated mean CRPS than pooling. Its simulation
+intervals remain too wide for the both-direction acceptance rule. Independent
+replay verifies all 64 model results and the full aggregate. The original
+CPU-limited attempt and the explicit completion amendment remain separate.
+All 11,378 named Matoba design pairs have a
+matching GRCh37 reference placement. Official component tables and assembly
+alignments resolve 676 of the 680 alternate-reference cases to the same complete
+primary interval and edit position. Four retain uncertainty and use conservative
+genomic bounds for grouping. The one unnamed insert is explicitly excluded from
+supervised use while remaining in the original design ledger.
+
+The source-only partition contains 178 genomic families: 7,543 TRAIN pairs in
+109 families, 1,645 validation pairs in 38 families, and 2,190 test pairs in 31
+families. Independent replay reproduces every assignment, and the source
+partition is frozen. Both approved count files are now fully imported and
+verified. Fixed measurement QC retains 6,930 of the 7,543 TRAIN pairs across all
+109 TRAIN families. The alternating-well correlations are 0.4971 for Vehicle
+allele effects, 0.6315 for stimulated allele effects, and 0.1422 for their Wnt
+interaction. These describe agreement conditional on shared barcode QC, not
+independent donor replication or sequence-prediction accuracy. Validation and
+test effects remain unexported. The first bounded TRAIN comparison is complete:
+15 fit attempts across five excluded-family folds. Direct k5 ridge has MSE
+0.01781801 and shared rank-one ridge 0.01776933, versus 0.01750798 for zero
+effect. Sharing reduces error by 0.2732% relative to direct ridge but lowers
+signed selection utility from 0.00071456 to -0.03394066. This sharing recipe
+fails both progression requirements and is closed; independent result replay
+passes and root reproduces it.
+
+| Next step | Current state | Scientific purpose |
+|---|---|---|
+| Resolve designs and freeze genomic families/split | Complete: 11,378 source-eligible pairs in 178 families; one explicit source exclusion; independent replay matches every row | Keep related sequences and every observation of an edit together |
+| Measure condition effects and their repeatability | Complete: 6,930 eligible TRAIN pairs; independent replay confirms all measurements and diagnostics; Wnt-interaction half agreement is weaker than either condition's allele agreement | Identify the measured signal and uncertainty before fitting |
+| Train and compare a predictor | First bounded TRAIN comparison complete and independently replayed: shared ridge improves direct ridge's error slightly but worsens selection; both lose to zero on error | Beat simple baselines on both effect prediction and useful edit selection |
+| Qualify complementary neural perturbation data | Rummel partition and TRAIN measurement complete: 948 eligible pairs in 800 families; the weak aggregate interaction route closes at zero fits | Test whether the assay supplies reproducible supervision before transferring or fitting it |
+| Predict baseline-neuron regulatory edits | 130 Rummel predictor fits complete. Quadratic composition improves both point scores over six prior controls, but its constant-context control selects better; the full acceptance rule fails. Independent replay agrees | Improve prediction and useful selection together on the same complete population |
+| Reuse full-insert motif features | Fixed fifteen-fit comparison independently replayed: full-insert motifs lose error to both matched controls and lose utility to scrambled motifs | Test sequence context that cancels out of raw k-mer deltas |
+| Check whether strong measured edits repeat | Zero-fit audit independently replayed: positive transfer above random in both directions and all 22 chromosome omissions | Test measurement repeatability at the selection tail before another model recipe |
+| Diagnose the model's selection loss | Zero-fit crossover independently replayed: anchor changes membership, with no sign changes on the selected lists; direct picks exceed model-sign random references in both available views | Identify the observed selection failure before choosing another learning objective |
+| Qualify additional same-study training data | Measurement replay complete; 2,210 usable designs expand the training pool to 3,158 observations. Fixed pooling fails the matched predictor test | Source bindings and lossless count export pass. One count-weighting repair reduces mismatch but leaves negative agreement; keep the libraries separate |
+| Confirm on untouched families | Pending a qualifying frozen candidate | Test generalization without another selection opportunity |
+| Rank edits for follow-up experiments | Biological acceptance pending | Help allocate a limited experimental budget |
+
+This addresses an early regulatory step in genome-driven development. Later
+work must connect regulatory effects to developmental trajectories, neural
+structure, activity and learning. The completed earlier predictor rounds below
+remain part of the record, with their original outcomes and acceptance rules.
+
+The earlier completed ledger is **300 biological fits**. Matoba adds **15 fit
+attempts**, all completed: five complement means, five direct ridge and five
+shared ridge. Rummel's baseline-neuron pilot adds **10 completed attempts**,
+five k2 and five k5. Independent k2 tuning adds **15 completed attempts** and
+reuses five prior fits. The matched direct/anchored comparison adds **10 completed
+attempts** with five k2 reuses. The fixed full/overlap/permuted motif comparison
+adds **15 completed attempts**. Joint k2/k5 adds **5 completed attempts**. The
+matched added-data comparison adds **20 completed attempts**. Precision weighting
+adds **5 completed predictor attempts**. Nested combination adds **40 completed
+inner predictor attempts**. The varying/constant composition comparison adds
+**10 completed attempts**, for **445 cumulatively**, plus 25 separately recorded
+nuisance variance fits and five closed-form combination estimates. Zero prediction and independent
+saved-result replay add no fits. The bundled
 [two-cycle predictor](../examples/neural-predictor/README.md) is runnable on CPU
 and Metal. Its validation utility is 0.07158510 and MSE is 0.02862935; utility
 passes its comparator and MSE remains 0.01480% above its strict limit. The
 TRAIN uncertainty audit and its seven-fit precision-sampling trial are complete.
 The latter has MSE 0.02862093 and utility 0.00342057: it passes the error limit
-but fails ranking, with no nomination. Confirmation for the newer Salomon cohort
-remains unopened. The sections below retain earlier rounds and their outcomes.
+but fails ranking, with no nomination. A subsequent six-fit blend of k3 and k5
+has MSE 0.02863000 and utility −0.03630627, failing both gates. The subsequent
+quadratic readout has MSE 0.02862839 and exactly the same signed selections as
+k5, so it misses the MSE limit and ties ranking. Its raw floating-point utility
+flag differs from the exact selection verdict; that discrepancy is retained.
+Confirmation for the newer Salomon cohort remains unopened. The sections below retain earlier
+rounds and their outcomes.
 
 Read the [current baseline table](../examples/neural-predictor/README.md#validation-results)
 with the latest result. The 0.01480% figure is a relative gap to k5 MSE, not a
@@ -107,7 +343,7 @@ zero effect. It failed the required comparison against a dinucleotide model and
 did not establish a benefit from time-specific predictions. The examined test
 remains a historical result, not a fresh selection or confirmation set.
 
-## Roadmap
+## Earlier Kosicki experiment roadmap
 
 | Phase | Work and output | Required result before advancing | State |
 |---|---|---|---|
@@ -1239,6 +1475,460 @@ metrics and seven-fit ledger. No confirmation is opened and no candidate is
 nominated. The trial closes without a tempering grid, additional mixture or
 metadata-causality claim. See `attention-precision-sampling/RESULTS.md`.
 
+The subsequent TRAIN ranking diagnostic is complete, without additional fits.
+It examines the unscaled long, short and precision-sampled corrections in the
+five original excluded-family folds. Their pooled equal-family MSEs are
+0.0290255495, 0.0282129898 and 0.0281834981, respectively, against the common
+fold baseline's 0.0281750006. The long correction worsens MSE in all five folds;
+short improves one fold and precision improves three. Correction energy and
+residual alignment identify excess correction magnitude as part of the observed
+error, without identifying a particular architectural cause.
+
+Each correction improves signed top-ten utility in three folds and worsens it
+in two. In nine of the fifteen comparisons, deleting one common family can
+reverse the sign of the utility difference. All 295 family deletions include
+the next eligible replacement. These are descriptive sensitivity checks on
+fixed predictions, not confidence intervals or five independent confirmations.
+Independent replay verifies all 20 cells, 15 comparisons and 295 deletions;
+the maximum numerical difference is 5.56e-17. Fifteen synthetic tests and eight
+deliberately broken controls qualify the diagnostic. It opens no validation or
+confirmation outcomes. See `train-ranking-diagnostic/RESULTS.md`.
+
+The next bounded trial, `kmer-resolution-mixture/`, tests complementary errors
+between the fixed k3 λ=0.01 and k5 λ=0.1 predictors. Five new k3 fits use the
+original family-fold complements and their own normalized family weights. A
+single convex weight is then fitted to the assembled excluded-family predictions.
+The k5 complement predictions and both full-TRAIN coefficient arrays are reused.
+Selecting k3 after its earlier validation ranking makes this adaptive development;
+the two original baseline roles and strict acceptance thresholds stay fixed.
+
+The learned k3 weight is 0.3699603138. The one validation evaluation has MSE
+0.0286300007 and signed top-ten utility −0.0363062730. MSE is 0.01709% above
+k5, and utility is below the random comparator. Both gates fail. The six fits
+advance the ledger from 287 to 293 without neural training. Both original
+component prediction vectors reconstruct exactly. The trial closes without a
+nominee, a weight sweep or a change to the bundled predictor.
+
+Independent replay uses weighted-design SVD for the five new complement fits;
+their largest coefficient difference is 5.80e-16. All 22,170 validation
+prediction values and selected IDs reproduce exactly. Nine synthetic tests
+and nine broken controls qualify the implementation. A root rerun of the same
+checker agrees. These checks add no candidate or fitting choice. See
+`kmer-resolution-mixture/RESULTS.md`.
+
+A separate source audit identifies a pinned 83 MB barcode-count file with
+three ordinal DNA/RNA assay pairs. A header-only probe confirms the columns;
+the inspected workflow writes nullable integer counts, with blank cells
+distinct from zero. A design-only check maps all 21,781 original TRAIN edits
+across 8,774 families to 30,752 exact count names without split conflicts.
+
+The TRAIN-only importer is implemented and frozen. Ten local tests, thirty
+independent tests and nine deliberately broken controls exercise admission,
+missing values, source identity, split isolation and atomic publication. The
+review caught and repaired an integer-range check and a family-isolation check.
+The importer retains original membership and skips non-TRAIN rows before count
+conversion. The approved download and measurement run are complete: all 30,752
+construct names and both alleles of all 21,781 TRAIN pairs are present. Exact-file
+sample accessions, UMI merging and possible upstream pseudocounts remain unresolved.
+This work adds no model fit or nomination. See `train-replicate-intake/PLAN.md`
+and `train-replicate-intake/RESULTS.md` in the research work directory.
+
+The corresponding TRAIN agreement analysis is also implemented. It compares
+reference-to-alternate log count ratios across the three columns on common
+barcode support, retains original family weights, and reports coverage,
+centered correlation and direct-copy error against zero. Thirteen local tests,
+ten independent test methods and nine deliberately broken controls qualify the
+implementation. Separate synthetic cases show why correlated reporter activity,
+constant effects and shared nonzero means cannot establish repeatable edit
+effects. The fixed estimator and source limitations are in
+`train-replicate-agreement/PLAN.md`.
+
+The measured run admits 2,801,763 barcode rows and retains 1,910,615 (68.19%)
+with all six DNA/RNA cells observed. All 21,781 edits in 8,774 families retain
+positive aggregate counts and their original family weights. Allelic Pearson
+correlations are 0.20311, 0.15860 and 0.18225 for column pairs 1/2, 1/3 and
+2/3. Copying another column's raw effect increases MSE by 53.15%–72.48% versus
+predicting zero. These are descriptive count-contrast results, not a sequence
+prediction ceiling or a reconstruction of the published pooled BCalm targets.
+Independent Decimal/Fraction replay checks all 65,343 effects, every integer
+aggregate and coverage field, and all summary metrics; maximum effect and
+summary differences are 2.22e-16 and 1.11e-16. See
+`replicate-measurements-20261010/RESULTS.md`.
+
+A subsequent fixed comparison uses the previously admitted family-excluded
+k5 predictions and uncalibrated long, short and precision corrections. The
+long and short corrections worsen pooled MSE against all three count columns;
+precision improves column 2 and worsens columns 1 and 3. Short and precision
+have small positive centered covariance with all three k5 residual columns,
+but their correction energy exceeds twice the raw alignment in five of six
+pooled comparisons. Long has negative residual covariance in column 1 and
+positive covariance in columns 2 and 3. This distinguishes a magnitude problem
+from agreement across columns without choosing a new scale or model.
+
+The comparison retains all original pairs, weights and five excluded-family
+folds. Eight tests and seven deliberate faults qualify it. The 90-file freeze
+preserves the earlier input identities before joining predictions to effects.
+Independent replay verifies all 72 model/column comparisons and 54 difference
+covariances; all 1,494 numeric fields match within 2.22e-16.
+The audit is adaptive descriptive work: original model training used pooled
+targets derived from all three assay columns, so it is not an assay-held-out
+prediction test. It adds no fit, new validation evaluation or nomination.
+See `train-replicate-prediction-audit/RESULTS.md`.
+
+The subsequent `attention-quadratic-readout/` trial adds one zero-initialized
+coefficient per squared pooled feature to the Interlace scorer: 32 added
+parameters, 11,400 total. Six models use the original complete 1024-update
+recipe, equal-family sampling, targets and frozen k5 priors. The one
+excluded-family TRAIN calibration chooses alpha 0.15097202949412603. Seven
+begun and completed fits advance the ledger from 293 to 300. The complete
+run takes 513.86 seconds on the local Metal path, including preparation and
+scoring; this is one run duration, not a comparative performance benchmark.
+
+Validation MSE is 0.028628390522333413, above 0.028625109823009157. The candidate
+chooses the same ten ids and directions as k5, in a different order. Its
+NumPy-mean utility is 0.03510890212666124, one step above the stored baseline
+0.035108902126661234. Independent compensated sums and exact rational means
+both give 0.035108902126661234 for both selections. Their exact utility gain
+is zero. The original checker correctly stops on the differing gate flags;
+retain that failure and the frozen runner record. Joint acceptance fails
+under either arithmetic, with no nomination or confirmation. A separate
+companion verifies all prediction arrays exactly and explicitly reports the
+metric discrepancy; the original checker remains failed. The parent saved-array
+reconstruction independently agrees. This trial closes; no nearby coefficient
+or checkpoint search is admitted.
+
+Qualification includes 18 independent CPU cases, nine deliberately broken
+model/scoring variants, and repeated runner tests covering 12 orchestration
+cases, 42 admission cases and nine faults. Two unnormalized CPU/Metal
+gradient stress checks remain failed and documented. A separate predeclared
+check of the actual normalized paired update, gradient accumulation, clipping
+and inference agrees with float64 CPU under unchanged float32 tolerances.
+Those checks establish the exercised arithmetic, not universal backend parity
+or biological accuracy. See `attention-quadratic-readout/RESULTS.md`.
+
+The saved-array utility correction is complete in `ranking-metric-repair/`.
+It reuses the existing compensated-sum reference for both selected baselines
+and six fixed candidates, while retaining the original MSE values and strict
+thresholds. Only the quadratic utility flag changes; no joint acceptance
+decision changes. The original runner fails the cancellation regression; the
+reference passes five contract tests, including ranking permutations, signs,
+family selection and strict improvement. Independent review reproduces all
+eight results. No fit or inference runs during this correction.
+
+A future runner must adopt only the utility correction and retain its admitted
+input checks and original MSE calculation. Substituting the entire reference
+metric also changes MSE reduction order and is outside this repair. Exact
+rational means remain the independent oracle; compensated sums are stable
+floating-point arithmetic, not a guarantee of correctly rounded rational
+means for every input. The original baseline utility threshold is reproduced
+exactly here. Frozen historical sources and records remain unchanged.
+
+The assay source follow-on clarifies separate barcode-export and pooled-fit
+processing: upstream counts may include configured offsets and filtering; the
+pooled model performs its own normalization and weighting. Exact historical
+settings and the author-column-to-culture mapping remain unresolved. Those
+ordinal count ratios cannot be substituted for the original pooled target or
+used as its noise ceiling. Both inspected public BCalm tags override the
+inherited mpra response calculation and preserve missing barcode slots as NA;
+this corrects an earlier default-accessor interpretation. Neither tag establishes
+the historical `0.9.0` identity. The public history search and inspected publisher
+supplement do not supply the missing execution record. See
+`replicate-measurements-20261010/SOURCE_SEMANTICS.md`, `PROVENANCE_SEARCH.md`
+and `SUPPLEMENT_READ.md` in that directory.
+
+A renewed Matoba source audit locates and verifies the author repository's
+150-base FASTA: 22,758 distinct sequences form 11,379 A1/A2 pairs, each differing
+once at position 76. One pair has a missing SNP identifier and remains explicitly
+unidentified. Independent parsing reproduces every pair. This is a candidate
+design for testing DNA effects under vehicle versus Wnt stimulation in primary
+neural progenitors. The source code uses the FASTA for motif analysis; its exact
+connection to the full synthesized and barcode-mapped library remains unresolved.
+The complete authorized barcode-map join now verifies 22,550 named FASTA
+sequences by exact reverse complement, with no same-name sequence conflicts
+or duplicate names. The map lacks 208 FASTA entries: 11,263 original pairs
+have both alleles, 24 have only one and 92 have neither. Independent streaming
+replay reproduces every projected row. These omissions remain explicit in
+the original design population; biological orientation is still unresolved.
+Official GEO metadata establishes **GSE289858** as the MPRA accession; the author
+README's GSE289857 points to an unrelated leukemia study. Published allelic
+results are activity-selected, and interaction results are further selected by
+allelic significance, so those tables alone cannot support an all-variant
+benchmark. No measurement file was opened. Source identity, sequence checks,
+processing discrepancies and the remaining admission steps are recorded in
+`matoba-source-admission/RESULTS.md`; this adds no fits or confirmation result.
+Further source tracing establishes the intended condition-response endpoint as
+`(A2−A1)Stim − (A2−A1)Vehicle`. Historical filtering remains unresolved: source
+defaults use RNA count 1 while the paper specifies 5, and the retained-well
+rules also differ. The prospective measurement contract is now fixed and
+qualified on controlled counts. Coordinate metadata must additionally establish assembly,
+strand and full insert overlap before the 205 preliminary lead-locus groups
+can become independent evaluation families. These source checks precede any
+new model or outcome-selected population.
+
+The upstream coordinate-only projection is now complete. Its 9,331 annotation
+rows each match one exact FASTA pair identifier, declared lead locus and both
+allele bases; there are no duplicate or contradictory matches. **2,048 of the
+11,379 design pairs have no annotation in this file.** All seven design fields
+are retained separately from the thirteen association columns. The file supplies
+no assembly or strand, so it cannot yet establish complete genomic families.
+Seven whole locus groups and parts of 72 others lack annotations. The bounded
+author-history review does not locate a generator or documented omission rule;
+the missing pairs stay in the population accounting.
+The isolated RDS reader is qualified against R-generated fixtures, with explicit
+short-read and negative-length rejection. Source identity, every missing key,
+checks and projection are retained in
+`matoba-source-admission/coordinate-reader/`. The complete map/coordinate
+intersection contains 9,236 pairs, with 2,143 original pairs lacking at least
+one of those criteria. That intersection is not silently admitted as a smaller
+population. The approved broader 11.96-MB source has now been downloaded and
+inspected structurally. It contains 678,579 rows with SNP/allele/phenotype names
+and GWAS statistics, but no chromosome, coordinate, assembly or strand column.
+The statistics were not converted or evaluated. This file supplies no direct
+coordinate table; the missing keys need a separate reference-variant route.
+
+The existing family-graph helper can be reused unchanged after complete
+placement admission. Four source-only controls pass, including 100 small
+comparisons with an independent pairwise graph. Shared loci, chained and
+one-base overlaps, chromosome boundaries and exact DNA/reverse complements
+are covered. The caller must supply both allele records as a materialized
+list and verify assembly, contigs and SNP consistency before grouping.
+An official UCSC hg19 sequence query also resolves the first annotation-row
+example: all 149 unchanged bases match under one-based, plus-strand placement,
+and the full reference matches A2. Root independently reproduces that result;
+the other origin/strand hypotheses differ at 105–121 flank positions.
+This establishes a working reference-check route and a concrete A2-reference
+example, not whole-library placement. No actual families or split have been
+assigned. Evidence is in `matoba-source-admission/family-graph-check/`.
+
+The reviewed batch reference checker has completed all 152 public GRCh37
+batches. All 9,331 available-coordinate pairs have exactly one matching
+origin/strand hypothesis, with all 149 unchanged bases matching and the reference
+edit base equal to A1 or A2. The retained response bodies total 2,102,275 bytes.
+Connection timeouts were resumed from verified complete prefixes; prior attempts
+remain preserved. Independent replay from the original FASTA reproduces all
+37,324 hypothesis records and the exact output bytes; root reran that replay.
+All matching hypotheses use one-based coordinates and forward inserts. The
+reference matches A1 for 4,465 pairs and A2 for 4,866. Evidence is in
+`matoba-source-admission/reference-check/continued-4/` and
+`complete-reference-review/`. This resolves placement
+at supplied coordinates; global genomic uniqueness and the 2,048 missing
+coordinates remain separate questions.
+
+A separate official variant lookup recovers the first missing known-rs design,
+rs12700001, with a complete A1 reference match. Root reproduces both strand
+comparisons. The missing-ID projector and fixed-origin comparator now pass
+seven independent controls and six root controls; eight deliberate faults
+are detected. They preserve aliases, mapping multiplicity and unsupported
+mappings. The complete lookup has now returned all 2,047 known missing IDs,
+including 39 explicit aliases. All 3,836 returned mapping occurrences were
+checked against public reference sequence in 44 batches. Resolving these
+occurrences back to the original 2,048 design rows gives **1,367 unique,
+680 ambiguous and one unknown-ID row**. Every named design has at least one
+one-based placement with all 149 unchanged bases matching, the reference edit
+base equal to A1 or A2, and both source alleles present in the database mapping.
+The 680 ambiguous rows retain exact matches on chromosome 17 and alternate
+reference representations; they are neither duplicated as examples nor assigned
+an arbitrary winning location. These are placement results, not predictor scores.
+The complete ledger is in `reference-check/variant-placement-resolution/`.
+Independent input replay verifies all original owners, mapping occurrences,
+aliases and request windows; root reproduced it. Original-row result review
+also reconciles every row and all mapping checks. Ten independent controls pass
+and five deliberate faults fail; root reran the controls. This result review
+checks saved evidence and aggregation, not an independent replay of the actual
+source DNA. A later coordinate-projection stage resolves alternate equivalence
+as described below; it preserves this original strict placement ledger.
+The one unknown-ID insert has no exact 149-flank match anywhere in its declared locus's bounded
+119,923-base reference neighborhood, while all 98 known locus controls match.
+Root reproduced that result from the original FASTA. The unknown pair stays
+explicitly unresolved. The subsequent prospective source policy excludes it from
+every supervised role before count access; its full identity and declared
+lead-locus family remain recorded. A broader placement search can be separate
+future work and does not create an independent singleton here.
+
+The official Ensembl release-116 GRCh37 component tables bind `HSCHR17_1` and
+`HG1146_PATCH` to accessioned scaffolds `GL000258.1` and `JH720447.1`. NCBI GFF3
+alignments then project each complete insert and its edit position to primary
+chromosome 17. Of the 680 originally ambiguous rows, 676 agree completely;
+three have incomplete alignment and one has a 37-base discrepancy. Seven root
+and five independent controls pass, including all strand combinations and
+alignment gaps. Root reran the independent controls. An independent coordinate
+replay reproduces all 805 alternate comparisons. It checks coordinate equivalence;
+the earlier reference checks supply the separate DNA-match evidence.
+
+`reference-check/ALTERNATE_PROJECTION_FREEZE.json` preserves this result.
+The four unresolved rows retain their exact primary intervals and uncertainty.
+Their official MAPT parent envelope is used only to join potentially related
+families, reducing 179 primary-only components to 178. The existing admission
+plan explicitly permits conservative bounds and a frozen source-only exclusion
+for the unknown pair. `PARTITION_PLAN.md` adopts both options before assigning
+the fixed hash-modulo-10 TRAIN/validation/test split. All 11,379 source rows
+remain accounted for; 11,378 are eligible before measurement QC. Available
+canonical IDs and aliases have no shared owners across this population.
+Independent graph replay reproduces all assignments, hashes and partitions.
+Root reran six independent code/join checks and the complete graph replay.
+Eight deliberate code faults and four graph-replay faults fail their controls.
+`PARTITION_FREEZE.json` records source admission before any count body was opened.
+The fixed split has 7,543/1,645/2,190 TRAIN/validation/test source pairs in
+109/38/31 families. The excluded unknown retains its source family but cannot
+enter any supervised role. No family is reassigned after measurement QC.
+
+Full count ingestion completed through the qualified adapter on one
+low-priority CPU in 1,245.8 seconds, using 34.7 MB peak memory and no GPU.
+It validated every row in both complete compressed streams and retained
+1,221,929 Vehicle and 1,223,082 Stim rows with unique global barcode assignments.
+Post-import reconciliation finds no mismatched barcode owner or undeclared
+condition. The subsequent visible measurement work is TRAIN-only. A
+selector review found and repaired a mutable-row isolation defect before use:
+validated TRAIN execution identities are now captured before the first count
+query. An independent regression fails on the prior code and passes on the
+repair; root reran it and the three selector checks. The fixed diagnostic
+compares alternating seven-well sets separately within each condition, retaining
+the original full interaction target and giving eligible families equal weight.
+Its agreement is conditional on shared QC; it is not independent replication
+or a sequence-prediction noise ceiling. The atomic export retains every one of
+the 7,543 TRAIN rows, including 613 explicitly rejected measurements. All 109
+families retain eligible pairs. This measurement export preceded the bounded
+model comparison reported below.
+
+| TRAIN target | Half-well correlation | Zero-half MSE | Copy-other-half MSE |
+|---|---:|---:|---:|
+| Vehicle allele effect | 0.49713141 | 0.02964355 | 0.03014207 |
+| Stim allele effect | 0.63152902 | 0.02703192 | 0.02015096 |
+| Wnt interaction | 0.14221374 | 0.03069569 | 0.05274442 |
+
+Every nonempty eligible family has equal weight. The full interaction's
+zero-effect MSE is 0.01750798 in squared log2 reporter-effect units, not an
+error percentage. Copying one interaction half to predict the other is worse
+than zero; this does not determine a sequence-model noise ceiling or prove
+that the interaction is unlearnable. The stronger within-condition allele
+agreement motivates a controlled comparison of shared and direct interaction
+learning, while retaining the Wnt interaction as the primary target. The actual
+outputs and fixed method are in `matoba-measurement/train-measurements/` and
+`TRAIN_DIAGNOSTIC_PLAN.md`. Independent replay reproduces every TRAIN row,
+eligibility decision, reduced well/condition/full/half target and all family
+contributions. Its 70,652 numerical comparisons pass; root reruns the checker
+and reproduces the complete result. This checks arithmetic after barcode QC,
+not an independent experiment.
+
+The bounded sharing comparison is now implemented and has completed its 15
+frozen attempts. It compares zero, a fold-complement mean, direct k5 ridge,
+and rank-one joint prediction of the common allele effect and Wnt interaction.
+The fixed k5 penalty is 0.1, with complement-only RMS scales and five complete
+family folds. Independent linear condition heads would merely reproduce direct
+interaction ridge; rank one introduces an actual sharing constraint.
+
+Prospective review changed primary selection to two distinct-family edits
+strictly within each excluded fold, ten choices across five batches. Pooled
+out-of-fold top-ten selection would allow a family's labels to affect its own
+selection through other folds' fitted models. An excluded-target perturbation
+test now verifies unchanged coefficients, scales, predictions and selection
+within that fold. Exact rational arithmetic on saved IEEE values determines
+both progression endpoints. All 19 focused and independent synthetic checks
+pass; deliberately broken solver and caller variants are rejected.
+
+| TRAIN excluded-family model | Family-weighted Wnt MSE | Signed selection utility |
+|---|---:|---:|
+| Zero effect | 0.0175079789 | 0.0000000000 |
+| Complement mean | 0.0175332147 | 0.0832594014 |
+| Direct k5 ridge | 0.0178180113 | 0.0007145589 |
+| Shared rank-one k5 ridge | 0.0177693295 | -0.0339406594 |
+
+All 6,930 eligible pairs and 109 families remain in the comparison, with all
+613 rejections retained. Sharing improves direct ridge's MSE by 0.2732%, but
+its MSE is still 1.4928% above zero and selection worsens. Both progression
+requirements fail. The mean control uses a fold-level offset and lexical tied
+choices; its positive utility does not establish sequence discrimination.
+This closes the fixed rank-one/k5/0.1 recipe without a parameter sweep or a
+nomination. It does not identify measurement uncertainty as the sole cause.
+Independent result replay verifies every source row, fold, coefficient,
+prediction, exact metric, signed selection and ledger event. Root reproduces
+all replay fields except runtime and peak memory. `matoba-model-pilot/PLAN.md`,
+`FREEZE.json` and `experiment/complete/` retain the exact prospective contract,
+coefficients, predictions and fit ledger. Validation and test labels stay closed.
+
+A prospective count-to-response core is now implemented in
+`matoba-measurement/`. It excludes wells 12/13 before QC, uses fixed paired
+DNA/RNA thresholds and one-pass Tukey outliers, and preserves missing values.
+Each condition requires at least ten shared physical wells for A1 and A2.
+The target is the difference between condition means of paired-well A2−A1
+log2 reporter ratios. It is an explicit new reanalysis, distinct from the
+published mpralm normalization and weighted coefficients. Fourteen root and
+nine independent controls pass; eight deliberate faults are detected. Review
+repaired an equal-ratio rounding error that could change barcode eligibility.
+
+The complete barcode index contains **2,880,805 unique assignments**. Its
+global occurrence rule excludes 19,117 duplicated identifiers, including
+same-owner repetitions. All 56 source variants with empty barcode fields
+remain represented with zero assignments. Of the original 11,379 pairs,
+11,234 have assignments for both alleles, 32 for only one, and 113 for neither;
+every pair remains accounted for. The complete index took 23.92 seconds and
+about 60 MB peak memory on one CPU. Seven root and seven final independent
+controls pass, including empty-field preservation and failure cleanup.
+
+All 64 sample-to-column identities are now verified directly from GEO
+metadata. A bounded header-only probe confirms the two count matrices'
+33-column schemas; their combined compressed size is 1,401,246,348 bytes.
+The raw-count adapter connects synthetic map assignments and condition CSVs
+to the qualified measurement core. Its transaction tests caught and repaired
+partial imports under SQLite autocommit; all eight root controls now pass.
+Independent adapter checks pass across all three transaction modes and detect
+four deliberately wrong behaviors. The complete-file runner now passes five
+root and eight independent controls; eight removed protections are detected.
+It binds conditions to a separate source contract, verifies complete compressed
+bytes and a private map snapshot, and publishes only a complete database.
+Independent review reproduced and fixed a condition-swap defect in the original
+caller; root replayed the final independent checks. Both approved full count
+downloads are complete. Independent streamed hashes reproduce both downloaded
+identities, exact byte counts and earlier source prefixes. `SOURCE_CONTRACT.json`
+binds each condition to the verified public file, with source metadata and
+approval provenance in `DOWNLOADS_VERIFIED.json`. The source-only partition,
+complete count import, TRAIN measurement export and first bounded model
+comparison are now completed as recorded above. Held-out evaluation remains ahead.
+Evidence is in `matoba-measurement/barcode-index/` and `count-source/`.
+
+The immediate scientific decision is whether the paired condition effects are
+repeatable across measurements and predictable across independent sequence
+families. More observations or a different architecture do not settle that
+question. [Guo et al. 2023](https://www.nature.com/articles/s41588-023-01533-5)
+is a complementary source candidate with measured allelic effects across neural
+cell states. A source-only inventory identifies 23 deposited RNA files across
+seven ES/neural/astrocyte contexts and a shared plasmid baseline. Exact insert
+DNA, replicate-to-file correspondence and count processing still need resolution;
+these files are not assumed to be 23 independent biological replicates. Its
+145-base lentiviral assay needs a separate adapter from Matoba's 150-base,
+paired-well Wnt assay. `guo-source-feasibility/` retains the primary-source review;
+count bodies and outcome workbooks remain unopened.
+Lee remains the previously recorded unresolved library-design route. These
+datasets cannot be pooled as interchangeable Wnt-response labels.
+[Nucleotide Transformer](https://pmc.ncbi.nlm.nih.gov/articles/PMC11810778/)
+provides evidence for genome pretraining followed by supervised adaptation.
+The [TACO preprint](https://arxiv.org/html/2503.07981v1) instead uses RL to design
+sequences under learned fitness rewards and documents surrogate exploitation.
+These are different tasks: pretraining is a testable representation choice;
+RL would need an independently qualified reward and candidate evaluation.
+This literature comparison adds no fits and changes no acceptance criteria.
+
+The next representation investigation admits 347 representative composite
+binding profiles from the pinned Xie2025 CAP-SELEX source. All differ exactly
+from the prior 532-profile library, including reverse complements. A fixed
+source-only alignment produces 312 independently composed single-factor
+controls; 35 composites remain unavailable because a partner is missing or
+too wide. Independent code reproduces every transformed matrix, selection,
+placement and control exactly. This supplies a concrete comparison for joint
+sequence preference beyond separately measured factor preferences. An exact
+synthetic witness also distinguishes sequences with identical pooled k2–k5
+counts, and independent high-precision scoring checks all 624 matrices. The
+fixed no-fit diagnostic on original TRAIN fold 0 then conditions these features
+against k5 and independent-factor features. It returns **STOP**: the three
+cross-assay alignments are 0.000407700193, -0.000472964916 and -0.000905385925.
+All 1,755 whole-family deletion means remain negative. Independent replay checks
+every global and deletion term and reproduces STOP. The fixed representation
+is closed without another fold or feature-selection retry. This was a
+descriptive TRAIN screen, with no new predictor fit or confirmation access;
+the fit ledger stays at 300. Source construction and the complete frozen result
+are recorded in `composite-motif-source/RESULTS.md` and
+`composite-train-diagnostic/RESULTS.md` in the research work directory.
+
 Each successor uses the smallest model justified by training/validation evidence.
 An available pretrained model is eligible only after its exact input, output,
 training data, checkpoint, license and runtime are verified. Do not invent assay
@@ -1248,6 +1938,1425 @@ informed supervised pretraining, checkpoint selection, tuning or calibration.
 If that exposure cannot be resolved, the model's result is exploratory only.
 If the chosen dataset cannot support the declared experiment, return to phase 1
 with the reason recorded.
+
+## Rummel neuron-stimulation source qualification
+
+The final publisher's Table S2 is now recovered and hashed. Its actual download
+link and four sheet schemas resolve the earlier access limitation. Source-only
+inspection finds 2,559 DevLib DNA pairs, each 160 bases long with one declared
+single-base difference. Public GEO metadata establish three baseline and three
+KCl RNA samples in N1 human neurons. The published treatment is five hours at
+55 mM KCl on day 49. eQTLLib has three deposited human baseline samples but no
+deposited human KCl GSM; it cannot supply a verified matched stimulation cohort.
+
+The workbook also exposes specific input hazards. In eQTLLib, 2,243 sequence
+pairs disagree with the order of their declared reference/alternate bases.
+Across libraries, 1,542 identical DNA pairs have numeric coordinate labels offset
+by two. After six fixed reference-genome witnesses, a complete DevLib check
+matches all 2,559 original pairs locally to GRCh37. Every match is forward-strand,
+with the full F/refSequence allele matching exactly and the edited base two
+positions before the numeric name. This resolves the offset row by row; it
+does not establish genome-wide unique mapping.
+
+The source sequences retain restriction sites that the methods say were changed
+before synthesis. DevLib has 152 pairs containing KpnI or XbaI sites; 15 overlap
+the single edited base. The third listed enzyme, SfiI, adds 17 affected pairs,
+making 169 in total. The remaining 2,390 pass this provisional sequence screen.
+This is not a measured usable-pair count or an admitted evaluation population.
+No substitution, allele swap or coordinate correction has been guessed.
+
+Independent source parsing and root replay reproduce the sequence counts and
+cross-library offsets. Independent SfiI scanning reproduces the three-enzyme
+union, and literal negative controls reject incorrect projection, allele
+position and motif boundaries. All 2,390 provisionally screened rows also pass
+the complete reference check. The six initial witnesses replay locally.
+Root also replays all 2,559 complete-library placements at their pinned origin.
+The saved source, audits and current decision are in
+`rummel-source-admission/ADMISSION.md` in the research work directory.
+
+Source grouping now reproduces 2,059 strict overlap/exact-DNA components and
+22 chromosome groups across all 2,559 pairs. Independent graph replay agrees on
+every membership and hash. Whole-chromosome grouping is a conservative candidate
+because the source supplies no complete lead-locus membership map. It also leaves
+few independent evaluation units: chromosome 6 alone contains 947 of the 2,390
+provisionally screened pairs. Nine exposed variant IDs now have verified GRCh37
+placements, seven at exact DevLib edits. Their chromosome groups and unresolved
+gene-only or prior-study exposure must be accounted for before a fresh split.
+No evaluation roles have been assigned. Details and fault checks are in
+`rummel-source-admission/family-feasibility/ASSESSMENT.md`.
+
+The complete prior-source audit finds 280 distinct DevLib pairs overlapping
+earlier libraries: 218 with Kosicki, 55 with Salomon and 10 with Matoba; these
+counts overlap and must not be added. H1 has no detected interval or full-insert
+containment match. Both alleles and all earlier physical source copies are
+retained. Independent replay reproduces all 1,016 hit records. Cross-assembly
+comparison uses every aligned chain block, verified against an independent
+parser and 589 existing regions; one DevLib window retains a three-base mapping
+gap. Source membership remains distinct from outcome exposure or fitted
+membership. Under the conservative whole-source, whole-chromosome exclusion,
+21 of 22 groups are touched, leaving five pairs on chromosome 13. This cannot
+support fresh confirmation. The next design step must establish defensible
+finer genomic families or retain this cohort for a separately declared
+exploratory role. No acceptance requirement or evaluation assignment changed.
+The evidence and limits are in
+`rummel-source-admission/prior-overlap/ASSESSMENT.md`.
+
+The next route is prospective, within-assay exploratory development. A contract
+review confirms that whole-chromosome exclusion is an optional fallback, not a
+general requirement of the sequence-family contract. Propagating prior-source
+hits, known published-example matches and the mapping gap through local
+sequence/interval components leaves 2,260 source pairs, including 2,105 passing
+the provisional sequence screen, in 1,818 components. Independent replay
+reproduces every count. These are candidate source counts, not measured
+eligibility or independent biological replicates. Unresolved publication
+ownership still prevents fresh-confirmation certification. Both numerical
+acceptance requirements remain unchanged.
+
+The approved DevLib download and design-only inspection are complete. The
+39,678,063-byte archive passes the pinned gzip integrity check. All six
+human-neuron RNA columns match their exact GEO owners. The reader explicitly
+handles the deposited lowercase `eid` field; ambiguous aliases are rejected.
+All 4,685 SNP IDs match original Ref/Alt ownership without allele, base or
+chromosome conflicts. Of the original 2,559 pairs, 2,274 have both metadata IDs,
+80 have Alt only, 57 have Ref only and 148 have neither. Every original pair
+remains in the ledger; these counts do not establish measured eligibility.
+The 222 control designs remain separate.
+
+All raw SNP boundaries are one greater than the qualified source boundaries.
+The observed offsets are retained without inferring a coordinate convention or
+changing the source graph. The count file's `reference_name` supplies rsID
+annotations, whereas exact element IDs join to the original coordinate names.
+The count metadata does not resolve the 169 synthesis-sensitive sequence pairs.
+Root and independent replay agree on every metadata record. Ten focused tests
+pass, and three deliberately broken identity implementations are rejected.
+The schema adaptation also passes independent fault checks.
+
+The design-only phase established the inputs needed to freeze source admission,
+the split, measurement and dependence sensitivity before TRAIN analysis. Its
+evidence is preserved in
+`rummel-source-admission/COUNT_DESIGN_ASSESSMENT.md` and
+`rummel-source-admission/COUNT_DESIGN_CHECKPOINT.json`. Earlier preparation
+records and their original file versions remain preserved.
+
+This is a separate KCl-response target in mature neurons. It cannot be pooled
+as an interchangeable Wnt-response label. The subsequent phase below fixes
+source ownership, genomic families, exclusions and the split, then measures
+shared-plasmid normalization and TRAIN repeatability. The Matoba paired-well
+reducer is not applicable by analogy.
+ValLib retains its result-selected ascertainment and is not fresh confirmation.
+The original design-only phase is complete. The subsequent fixed TRAIN
+measurement and diagnostic results are recorded below. Validation/test expression
+values and the result workbook remain unopened; no new predictor fits were added.
+
+### Rummel TRAIN measurement and diagnosis
+
+The source-only partition retains all 2,559 original pairs: 1,209 TRAIN in 986
+families, 416 validation in 342 families, 421 test in 352 families and 513 excluded
+in 379 families. Exclusions propagate through the complete sequence/interval
+graph, including unresolved synthesis changes and prior exposure. Availability
+of count rows did not determine split membership. This is exploratory within-assay
+development; unresolved broader locus and publication exposure prevent calling
+it fresh external confirmation.
+
+The prospective estimator sums each allele's barcode counts, then computes log2
+RNA/DNA allele effects. The KCl-minus-baseline interaction cancels the shared
+plasmid term algebraically. Its units and estimator differ from the author's
+published MPRAnalyze coefficient. Every original TRAIN row is retained, including
+261 unmeasurable pairs. The complete-case population contains 948 pairs in 800
+families. An independent raw-count replay reproduces all 2,418 allele aggregates,
+ownership and rejection records exactly. Validation/test numerical cells were
+skipped before parsing.
+
+The archive's `variantMapped` field contains literal Ref/Alt labels despite its
+GEO description as Boolean. The first reader stopped before count parsing. The
+corrected reader requires equality to both the pinned allele and element suffix;
+all 429,217 retained TRAIN barcode rows satisfy this condition. Both attempts,
+their protocols and checks are preserved. This correction changed no estimator,
+source role or outcome-based eligibility rule.
+
+| Fixed TRAIN diagnostic | Result |
+|---|---:|
+| Interaction correlation between one-sample and two-sample RNA views | -0.017139 |
+| Interaction zero-effect loss on the full target | 0.359968 log2 squared |
+| Mean zero-effect loss across the two diagnostic views | 0.883472 log2 squared |
+| Copying one view to predict the other: loss | 1.796600 log2 squared |
+| Baseline / KCl condition-effect view correlation | 0.497909 / 0.425463 |
+
+These losses describe measurements, not sequence-model accuracy. Copying a view
+loses to zero in both directions. Omitting each chromosome leaves interaction
+correlation between -0.065879 and 0.017018. Condition-effect agreement includes
+shared-plasmid error and is not independent biological replication.
+
+A declared exploratory follow-up retains the full population and original family
+weights. Interaction disagreement increases as RNA counts decrease, but its mean
+is 8.28 times an independent-Poisson counting proxy. All four fixed count-scale
+quarters have negative interaction correlation; the highest-coverage quarter is
+-0.048499. All nine ways to divide the three samples per condition into one
+versus two have correlations from -0.113492 to 0.082041. These checks support
+measurement/data diagnosis before fitting this interaction. They identify
+variation beyond simple counting but cannot separate its biological and technical
+causes. No favorable count cutoff, sample split or replacement target was selected.
+
+Evidence is in `rummel-measurement/PLAN.md`, `PRE_RUN.json`,
+`train-measurements/`, `aggregate-replay/` and `COUNT_DIAGNOSIS.json` under the
+reviewed build directory. The preceding roadmap is preserved as
+`rummel-measurement/PRE_MEASUREMENT_ROADMAP.md`.
+
+The subsequent matched barcode diagnostic is complete. SHA256 parity assigns
+barcodes to two fixed halves; each view uses distinct RNA samples and barcode
+counts. Its shared-versus-separate DNA comparison keeps the RNA numerators,
+eligible pairs and original weights identical. All 1,209 original rows remain;
+825 pairs in 704 families satisfy this diagnostic's support requirements,
+retaining 86.8646% of the original eligible weight. This does not replace the
+948-pair primary measurement population.
+
+| Common allele-effect view correlation, same 825 pairs | Result |
+|---|---:|
+| Original full-barcode support | 0.671273 |
+| Split barcode RNA with pooled DNA | 0.089945 |
+| Same split barcode RNA with separate DNA | 0.226116 |
+
+Separate DNA improves the matched comparison. These results therefore do not
+attribute the stronger original full-support agreement to shared-DNA reuse
+alone. The separate-DNA common correlation remains 0.192401–0.244275 across
+chromosome omissions. This is modest conditional reporter agreement within the
+same library/preparation, not independent biological replication. The matched
+interaction remains exactly unchanged by DNA normalization (correlation
+-0.082899), and all its chromosome-omission correlations are negative. The
+fixed aggregate interaction route closes at zero new fits.
+
+`BARCODE_DIAGNOSIS_PLAN.md`, `BARCODE_PRE_RUN.json`, `barcode-diagnosis/` and
+`barcode-numeric-replay/` retain the follow-up. Independent arithmetic replay
+matches every row, weight and chromosome omission within 3.11e-15. A separately
+declared baseline-neuron allele-effect feasibility experiment can address the
+roadmap's original edit-prioritization use case. It must retain all 948 original
+eligible TRAIN pairs, keep the unsuccessful interaction route intact and pass
+both effect-error and signed-selection comparisons before advancing.
+
+### Rummel baseline-neuron sequence feasibility
+
+The separate baseline-effect experiment retains the full 948 eligible pairs
+in 800 families and all 261 original measurement rejections. Its five folds
+derive from all 1,209 original TRAIN source pairs before measurement eligibility.
+Raw canonical-RC delta features and ridge penalty 0.1 are fixed in advance.
+Five k2 and five k5 fits use complement targets and complement family weights
+only. Each excluded fold contributes two signed selections from distinct
+families; no pooled ranking of OOF predictions is used.
+
+| Fixed TRAIN arm | Family-weighted OOF MSE, log2 squared | Signed selection utility, log2 |
+|---|---:|---:|
+| Zero effect | 0.545893481102489 | 0 |
+| k2 ridge | 0.5459176190298981 | -0.1324492889630082 |
+| k5 ridge | 0.5456427270552119 | 0.4291458089483617 |
+
+K5 strictly beats both comparators on both predefined point-estimate endpoints.
+The MSE reduction against zero is only **0.0459346%**; this is relative loss
+improvement, not prediction accuracy. Error improves over zero in two of five
+folds and signed utility is positive in four. Independent replay reproduces all
+predictions, exact scores and decisions without refitting; root reruns that
+checker successfully. The run completes exactly ten starts on one CPU thread
+with no GPU. Validation/test outcomes remain unopened.
+
+This permitted the next declared TRAIN comparison. K5 stayed fixed while k2 was
+independently tuned by minimum exact pooled MSE over the existing penalty grid.
+All fifteen new starts completed; the five completed 0.1 fits were reused.
+The selected k2 penalty is 1.0, with MSE **0.5441471964408893** and utility
+**-0.17583489422728787**. Fixed k5 now loses on MSE by 0.274839% while retaining
+its selection advantage, so the stronger joint progression rule fails. Independent
+replay reproduces all fits, reuses, exact scores and decisions; no candidate is
+nominated and no held-out outcomes are opened.
+
+A declared no-fit diagnosis decomposes k5's excess MSE of 0.0014955306 into
+extra prediction energy of 0.0120581392 minus additional target alignment of
+0.0105626086. Chromosome 6 contributes +0.0051663086 to the total gap; only its
+deletion reverses the saved-prediction comparison. Independent replay and the
+root rerun reproduce all 170 exact diagnostic values. No chromosome is dropped or
+reweighted. Independent source-only grouping finds 22 chromosome blocks, with
+chromosome 6 holding 37–39% of each role's source families. Held-out chromosomes
+also occur in TRAIN; subsequent uncertainty must respect this concentration and
+retain the family-held-out scope.
+
+This work assesses a possible useful sequence baseline for the assay. K5 remains
+the prior k-mer comparator for later candidates; the result establishes no
+improvement over that same mechanism. The uncertainty-aware acceptance rules
+below remain in force. Evidence is in `rummel-baseline-pilot/RESULT.md`,
+`FREEZE.json`, `experiment/complete/`, `result-review/` and `root-replay/` under
+the reviewed build directory. `PRE_PILOT_ROADMAP.md` preserves the preceding
+roadmap. The stronger comparison and its diagnosis are retained in
+`rummel-baseline-tuning/RESULT.md`, `experiment/complete/`, `result-review/`,
+`ERROR_DIAGNOSIS.json` and `chromosome-block-design/`.
+
+### Fixed short-context anchor and matched control
+
+The next fixed TRAIN comparison reuses each fold's exact tuned k2 lambda-1
+coefficients. It fits direct k5 and a k5 correction to the complement-only k2
+residual, both at lambda 1. All ten new starts complete; five k2 fits are reused.
+The original 948 pairs, 800 families, 261 rejections and source folds remain.
+
+| New model | Family-weighted excluded-fold MSE | Signed selection utility |
+|---|---:|---:|
+| Direct k5, lambda 1 | 0.5441923391392202 | 0.5065788215037964 |
+| k2 anchor + k5 residual, lambda 1 | 0.5429088350809197 | 0.3585836973244997 |
+
+The anchor improves MSE against all four required comparators: zero, tuned k2,
+prior k5 and matched direct k5. It reduces MSE by 0.546745% relative to zero,
+a modest relative loss reduction rather than an accuracy percentage. Selection
+utility is below prior and direct k5, so the joint rule fails. The direct control
+is not automatically promoted. This fixed recipe closes without nomination;
+held-out outcomes remain unopened. Independent source qualification and root
+synthetic tests pass. Independent numerical replay checks all reused/new normal
+equations, predictions, scores and selected edits without refitting; root
+reproduces every non-resource field. No existing comparator score drifts.
+
+A source-only follow-up confirms a specific representational limit: unchanged
+distant sequence cancels in raw k2/k5 deltas. The existing ROUND3 nonlinear
+whole-sequence motif scorer distinguishes a synthetic pair of edits with the
+same local context and different distant motifs. Full-sequence motif attention
+also already exists. Reusing these on DevLib would test transfer to this assay;
+it would not establish architectural novelty. No new biological fit follows
+from that synthetic distinction. The current result and exact evidence are in
+`rummel-anchored-pilot/RESULT.md`, `FREEZE.json`, `experiment/complete/`,
+`source-review/`, `root-source-review/`, `result-review/`, `root-replay/` and
+`CONTEXT_REPRESENTATION_CHECK.json`.
+
+Source reuse is now checked separately in `rummel-motif-source/ADMISSION.json`
+and `ADMISSION.md`: the exact 532-profile list and both matrix-source identities
+match the existing admission. All profile widths are 5–19 bases and fit DevLib's
+160-base inserts. Eligibility rests on declared binding-construction methods;
+original pipelines and curation decisions are not exhaustively reconstructed.
+Only fixed profiles/scoring helpers transfer, with no old reporter-trained
+readout or 270-base outcome loader. This source qualification adds zero fits and
+no downloads. The following comparison uses these admitted sources.
+
+### Fixed full-insert, edit-overlap and permuted motifs
+
+The frozen fifteen-fit comparison retains all 948 eligible pairs in 800 families,
+all 261 rejections and the original source-family folds. Each arm fits ridge at
+lambda 1 on raw k5 deltas plus 532 motif deltas. Each feature block's scale is
+computed separately from its fitting complement's equal-family energy. The
+same scale is applied to the excluded fold; targets and penalties stay fixed.
+Real full-insert motifs are the sole candidate. The two controls use only windows
+overlapping the edit, or full inserts with the inherited fixed column permutation.
+
+| Model | Family-weighted excluded-fold MSE | Signed selection utility |
+|---|---:|---:|
+| Zero effect | 0.5458934811024890 | 0 |
+| Tuned k2, lambda 1 | 0.5441471964408893 | -0.1758348942272879 |
+| Prior k5, lambda 0.1 | 0.5456427270552119 | 0.4291458089483617 |
+| Direct k5, lambda 1 | 0.5441923391392202 | 0.5065788215037964 |
+| k2 anchor + k5 residual | 0.5429088350809197 | 0.3585836973244997 |
+| Full-insert motifs + k5 | 0.5469254262339630 | 0.0841159425382546 |
+| Edit-overlap motifs + k5 | 0.5445503752013403 | -0.0854566345787301 |
+| Permuted motifs + k5 | 0.5426603027598709 | 0.3873616652724990 |
+
+Full-insert motifs fail MSE against every comparator. Their utility exceeds zero,
+k2 and the overlap control, but loses to the remaining four comparators. The
+strict seven-comparator joint rule fails. Permuted motifs are an ineligible
+control and also lose utility to direct k5. No control is promoted and this fixed
+recipe closes without nomination, retries or a parameter sweep.
+
+The result gives no predictive reason to prefer these real motifs in this assay.
+It does not establish that distant context is useless: full-versus-overlap tests
+this scorer's unchanged-window mass, while one permutation is a limited feature
+control. Equal-energy scaling does not equate covariance or effective ridge
+capacity. The repeated TRAIN-family screen supplies development evidence only.
+
+Source qualification detected and repaired omitted-cache and omitted-source-pin
+guards before biological fitting. Independent feature checks cover 255 rational
+synthetic cases and 3,192 admitted-profile comparisons; four feature mutants fail.
+Root tests cover a rational ridge solution, complement isolation, every strict
+comparator endpoint, cache identity, failure accounting and output preservation;
+four deliberate numerical/gate/fold faults fail. Fifteen starts and completions
+are retained, adding no validation/test outcome access. Independent numerical
+replay and the root rerun reproduce all eight exact score/selection reports and
+all fifteen fitted solutions. Independent probability-product scoring reconstructs
+all three feature arrays within the declared floating-point allowance; exact
+motif identities, permutations and edit positions match. The checker has fourteen
+passing synthetic tests and rejects five deliberate faults. Its initial setup
+error looked for population files in the tuning cache; the corrected ownership
+check is qualified and the failed attempt remains recorded. No biological fit
+was repeated. The exact plan, source, inputs and outputs are under
+`rummel-motif-pilot/`, including `FREEZE.json`, `experiment/complete/`,
+`feature-review/`, `source-qualification-final/`, `root-source-review/`,
+`result-review/` and `root-replay/`.
+
+### Selection transfer between existing baseline measurement views
+
+The next zero-fit diagnostic asks whether large measured effects repeat at the
+ten-edit budget, even though the existing global separate-DNA correlation is
+only 0.19091. It freezes both directions between the previously exported barcode/
+RNA views. The 825-pair, 704-family availability mask is inherited, retaining
+8339/9600 of the original pair-weight mass. All 1,209 source records, 948 primary
+eligible pairs, 261 original exclusions and 123 additional unavailable records
+stay in the ledger. The full-barcode model target and training population remain.
+
+Within each original fold, select two distinct families by absolute discovering-
+view effect, with lexical source-ID ties, then score the discovering sign times
+the other view's effect on those exact edits. The random reference selects
+available families uniformly and an available pair uniformly within each family,
+using that pair's discovering sign. Exact expected utility and observed utility
+are averaged equally across the five folds. This is a conditional selection
+reference, separate from original family weights used for coverage.
+
+| Direction | Transferred signed utility | Random expectation | Difference |
+|---|---:|---:|---:|
+| View A selects; view B measures | 0.4184015661 | 0.1257793756 | 0.2926221904 |
+| View B selects; view A measures | 0.8046773388 | 0.1413481176 | 0.6633292212 |
+
+Both directions exceed zero and their fixed random reference. All 22 declared
+chromosome omissions retain both comparisons; no omission is selected. This is
+observable repeatability of the measured selection tail on the existing matched
+support. It supports investigating useful edit prioritization in this assay.
+It does not show that DNA alone predicts those edits, estimate a biological noise
+ceiling, supply confidence bounds or nominate a model. The views share library,
+cultures and processing and have unequal one-versus-two RNA precision. Their
+utilities are not directly comparable to the models' full-barcode utilities.
+
+Four root tests and independent exact-arithmetic source qualification pass.
+Four injected ranking/family/random-reference/gate faults are rejected after
+adding a one-direction-only counterexample; the initially nondiscriminating
+fault check is retained. The missing digest-owner pin was repaired before views
+were inspected. The audit adds zero fits, downloads or held-out outcome access;
+the cumulative fit ledger remains 365. Independent saved-result replay and the
+root rerun agree on the complete source ledger, every exact value, all selected
+edits and all 22 chromosome omissions. All 77 frozen source/evidence pins remain
+unchanged. The next predictor decision can now target the repeatable selection
+tail while retaining the original full-barcode error and utility requirements;
+this diagnostic supplies no new model nomination or eligible subset.
+Evidence is under `rummel-selection-repeatability/`: `PLAN.md`, `FREEZE.json`,
+`audit/complete/`, `TEST.log`, `MUTATIONS.json`, `final-review/` and
+`ROOT_REPLAY.json`.
+
+### Fixed model selections and predicted directions
+
+A zero-fit crossover keeps the direct-k5 and anchored models' original selections
+over all 948 primary rows: two distinct families per original fold. It scores
+each model's signs on both lists. The full-barcode target gives this exact table:
+
+| Selected list | Direct model signs | Anchored model signs |
+|---|---:|---:|
+| Direct k5 | 0.5065788215037964 | 0.5065788215037964 |
+| Anchored k2 + k5 residual | 0.3585836973244997 | 0.3585836973244997 |
+
+Both fixed-sign membership contrasts are -0.14799512417929678; both fixed-list
+sign contrasts are exactly zero. Thus changed selections explain the observed
+utility loss. This is a mechanical decomposition of saved predictions, not an
+identified biological cause or proof that a rank-only loss is better.
+
+The direct model's original ten picks have both existing measurement views.
+Their signed utility is 1.1961566121 versus a model-sign random expectation of
+0.0541504951 in A, and 0.1524460024 versus 0.0128678675 in B. The reference samples
+available families uniformly and a pair uniformly inside each family, using
+the named DNA model's sign. It differs from the prior measured-view selector's
+sign reference. These comparisons support continuing edit-prioritization research.
+They are descriptive TRAIN results: the views share library, cultures and
+processing, overlap the original training target, and have unequal precision.
+Their utilities must not be compared directly to full-barcode model utilities.
+
+Three anchored picks have unavailable views, so both complete anchored-view
+endpoints and view crossover decompositions remain unavailable. No edit is
+replaced or omitted from the selection budget. All 1,209 source records,
+948 primary pairs, 800 families and original folds remain represented; the
+matched-view support stays 825 pairs/704 families. No model is newly nominated.
+
+Three root tests and independent exact hand checks pass; four deliberate faults
+are caught. Independent replay and the root rerun reproduce every cell, random
+reference, selected row, missing-value decision and contrast without fitting.
+The 32 frozen pins remain unchanged. Evidence is in
+`rummel-selection-diagnosis/{PLAN.md,FREEZE.json,RESULT.md,RESULTS.json,source-review/,ROOT_REPLAY.json}`.
+The accompanying primary-source learning review retains supervised effect
+regression: the ideal conditional mean optimizes both current endpoints.
+Reliability weighting remains conditional on qualified assay-specific precision
+estimates; guessed weights or a blind return to the failed prior precision trial
+are not a next experiment. Cumulative biological fit starts remain 365.
+
+### Joint short- and longer-word regression
+
+One frozen candidate jointly fits the existing raw k2 and k5 feature blocks at
+lambda 1, using the original targets, 948 eligible pairs, 800 families and five
+source-family folds. Each complement supplies its own equal-family weights.
+Eight saved comparator reports are reused without refitting. Joint fitting
+changes coefficient allocation and regularization; it adds no sequence context.
+
+| Model | Family-weighted excluded-fold MSE | Signed selection utility |
+|---|---:|---:|
+| Direct k5 | 0.5441923391392202 | 0.5065788215037964 |
+| k2 anchor + k5 residual | 0.5429088350809197 | 0.3585836973244997 |
+| Joint k2/k5 | 0.5429573411680731 | 0.3585836973244997 |
+
+Joint fitting reduces MSE by 0.22694% relative to direct k5 but selects exactly
+the same ten edits, with the same signs, as the anchored model. It loses MSE to
+the anchor and permuted-motif control, and loses utility to direct k5, prior k5
+and permuted motifs. Tying anchored utility also fails the strict rule. The
+recipe closes without nomination, retries, a sweep or held-out outcome access.
+
+All five starts complete. Four implementation tests and independent source
+qualification pass; five deliberately broken implementations fail. The independent
+checker has thirteen passing synthetic tests and detects three deliberate faults.
+Independent replay and the root rerun verify all five saved joint solutions,
+predictions, nine exact reports and sixteen comparisons without refitting.
+Review caught inherited closed-comparator advancement fields in the runner and
+checker before biological execution; regression checks preserve the repairs.
+Evidence is under `rummel-joint-pilot/`, including `PLAN.md`, `FREEZE.json`,
+`RESULT.md`, `experiment/complete/`, `source-review/`, `result-review/` and
+`root-replay/`. The 124 pre-fit pins remain unchanged. Cumulative starts are 370.
+
+The next direction is source-only qualification of the same study's eQTLLib
+baseline measurements. The frozen design map and independent reconstruction agree
+on all 4,325 eQTLLib plus 2,559 DevLib rows. Exactly 1,542 eQTLLib pairs overlap
+DevLib by whole-allele DNA identity. Another 2,783 components have no DevLib owner
+at this graph scope; genomic overlap and exposure may add dependencies. Original
+DevLib roles remain fixed. Raw sequence order reverses declared allele order in
+2,243 rows. The malformed source row 867 remains unresolved.
+
+Independent literal reference matching and root replay now agree on every one of
+the 4,325 source rows. All 4,324 valid pairs have a unique local GRCh37 match in
+column F, forward strand, at the named coordinate. The existing cache supplied
+313 rows; 70 bounded requests supplied the remaining envelopes in 986,915 response
+bytes. A timeout after 66 batches and the explicit four-batch continuation remain
+in the evidence. Row 867 has no guessed SNP envelope.
+
+The augmented graph has 4,296 components over all 6,884 designs. Independent
+reconstruction and root replay preserve all original owners and match every
+output. Genomic overlap reveals a 13-row eQTLLib component linking a TRAIN family
+to a test family: `dev:2254 -> eqtl:3828 -> dev:549`, with 66- and 56-base overlaps.
+The original DevLib windows are separated by 38 bases. Keep their roles unchanged
+and exclude new supervision from this component. Another eight-row eQTLLib group
+touches a synthesis-excluded DevLib family and TRAIN.
+
+The unchanged four-study prior audit covers 4,324 qualified pairs and identifies
+392 with prior-source overlap. Independent replay agrees on all 1,445 physical
+owner hits and every cross-assembly projection. The malformed isolated row 867
+remains explicitly excluded, with incomplete physical prior screening.
+Propagating available exposure, synthesis, mapping and owner exclusions retains
+3,019 source candidates in 2,503 components: 2,279 rows in 1,929 components with
+no DevLib owner, and 740 rows in 574 original-TRAIN components. These are not yet
+admitted measurements. Additional publication leads, construct identity and
+count eligibility remain open. The separate 28,368,772-byte eQTLLib archive was
+downloaded after explicit approval under `rummel-eqtl-admission/COUNT_ACCESS_PLAN.md`.
+Its design-only inspection is complete; numerical count analysis remains closed.
+The publication follow-up maps the already recorded rs3764512 example to
+GRCh37 chr18:52,495,324 and finds no overlap with current inserts. The two known
+LRP1 identifiers were already included in the exclusion seeds. These checks leave
+3,019 source candidates. A GATA1/OL43 benchmark context is identified, but the
+original snippet provenance and exact construct membership remain unresolved.
+An incidental EML1/OCR caption lacks an assembly in the retrieved excerpt and
+remains an explicit exposure lead. `publication-followup/RESULT.md` records the
+bounded checks; no gene name is used to invent a variant coordinate.
+Independent literal reconstruction and the root rerun reproduce the point join,
+all original owners and unchanged candidate counts. A positive-hit control catches
+deliberately omitted seed propagation, which the real zero-hit case cannot test.
+The subsequent source-only inner-fold audit finds one candidate component with
+11 eQTLLib rows connecting original development folds 1 and 2. Preserving fold
+membership requires whole-component fitting exclusions: fold 1 additionally
+purges DevLib 2022; fold 2 additionally purges DevLib 2009, 2382 and 2383. Both
+omit the 11 connected added rows. Future baseline arms need identical purges;
+closed trial scores cannot stand in for those changed fits. The existing outer
+TRAIN/test bridge also needs explicit treatment of its retained TRAIN owners
+before a component-disjoint outer evaluation. `fold-admission/RESULT.md` and
+`FOLD_GUARDS.json` retain the complete design-only constraints. No new fitting
+protocol, role reassignment or measurement admission follows from this audit.
+Independent reconstruction agrees with all 2,913 guard entries and the report;
+the root rerun reproduces the independent audit. Both deliberately broken fold
+guards fail the focused test.
+
+The approved count archive passes its recorded length, SHA256 and complete gzip
+integrity checks. The unchanged whitelist reader retains 8,133 distinct metadata
+IDs and exposes no numerical counts or barcode support. The complete source join
+preserves all 4,325 designs: 3,817 have both IDs, 121 only Ref, 153 only Alt and
+234 neither. All 7,908 matched IDs resolve to their physical DNA columns:
+3,938 Ref IDs to F and 3,970 Alt IDs to G, despite reversed workbook declarations.
+There are no conflicting ID metadata or physical-base mismatches. All matched
+intervals have a (+1,+1) offset from verified zero-based half-open placements;
+the source convention is recorded as unresolved, without changing placements.
+The 225 unmatched IDs remain explicit: 214 typed controls and eleven SNP-tagged
+unknowns. Malformed source row 867 remains unresolved and has neither allele ID.
+
+Among the unchanged 3,019 source candidates, 2,711 have both IDs, 81 only Ref,
+88 only Alt and 139 neither. Identifier presence does not establish read-depth
+eligibility. The three deposited human baseline columns map to GSM7056974–76;
+the eleven mouse columns stay unselected. The `count` column is designated for
+original-plasmid normalization, not an RNA replicate. Shared replicate names across
+libraries do not establish paired preparations or independent donors.
+
+Independent reconstruction and root replay reproduce the safe projection and
+every source join record. Sample ownership is checked against retained GEO lines;
+the physical-allele test passes and catches both deliberately broken mappings.
+`COUNT_RESULT.md`, `COUNT_IDENTITY_JOIN.json`, `COUNT_DESIGN_SUMMARY.json` and the
+two count-review directories retain the evidence. Full synthesized-construct
+identity, remaining exposure decisions, count QC and the TRAIN-only measurement
+contract remain open. The augmented inner-fold and outer-owner exclusions must
+be fixed before a new evaluation. No numerical eQTLLib count analysis or new fits
+were performed.
+Existing TRAIN Ref/Alt aggregates could supply activity supervision, but they
+reuse the same measurements, and earlier auxiliary-training trials failed the
+combined gates. No new training recipe follows from that availability alone.
+`rummel-eqtl-admission/RESEARCH.md` records this decision, alternative sources
+and incidental published-example exposure leads. `RESULT.md`, `design-map/`,
+`reference-complete/`, `genomic-map/`, `prior-adapter/`, `source-exclusions/`
+and their review directories retain the completed source-map evidence.
+This direction adds the one approved eQTLLib count archive and zero fits.
+
+### Additional baseline-neuron measurements
+
+The subsequent intended-insert admission and fixed TRAIN measurement are complete.
+Screening the documented 190-base synthesis constructions identifies three new
+KpnI adapter-junction risks, at eQ source rows 1075, 1809 and 2559. Their singleton
+components have no DevLib owners and are excluded before count access. This is
+a design-derived cloning risk, not observed truncation. The initial source ledger
+is preserved; final admission retains 3,016 rows in 2,500 augmented components.
+The intended 160-base core and physical F/G mapping define this exploratory
+reporter target. Deposited orientation proportions and narrative exposure leads
+remain unresolved, preventing an independent external-confirmation claim.
+
+Fixed count QC yields 2,210 eligible designs in 1,892 components, with all 806
+measurement rejections retained. Of these, 308 lack one or both element IDs and
+498 fail positive RNA support. Equal-component first-RNA versus other-two-mean
+correlation is 0.2397759825; directional copy gains are -0.1871447392 and
+-0.4524115501. Full-label zero-effect MSE is 0.3520286241 squared log2 units.
+All 22 chromosome omissions retain modest correlations, 0.23383–0.25011.
+Shared DNA and unequal RNA precision limit the interpretation; these values are
+not an independent noise ceiling. No outcome-dependent exclusions were added.
+
+Independent replay and the root rerun verify all 6,032 allele aggregates, every
+measurement and rejection, all component contributions and chromosome omissions.
+Integer values match exactly; the largest floating difference is 8.99e-15 over
+38,403 fields. Seven root tests and independent synthetic/mutation checks qualify
+the access boundary, physical allele sign, plasmid term and component weights.
+All 72 pre-run pins remain unchanged. Evidence is in `rummel-eqtl-measurement/`,
+including `ADMISSION.md`, `PLAN.md`, `PRE_RUN.json`, `train-measurements/`,
+`RESULT.md`, the retained reviews and `ROOT_NUMERIC_REPLAY.json`.
+
+The reviewed next comparison preserves original folds and quarantines Dev TRAIN
+684, 2254 and 2381 from fitting and scoring because their augmented components
+reach excluded or held-out owners. Whole-component inner-fold purges apply to
+every arm. The source-only union is 4,222 observations in 2,908 components before
+measurement QC. Repeated cross-library pairs remain dependent observations.
+The next fixed-recipe comparison will measure the effect of adding these data
+against newly fitted, matched Dev-only and sequence baselines on the same Dev
+outcomes, preserving both endpoint requirements. This phase adds zero fits;
+cumulative starts remain 370 and validation/test outcomes remain unopened.
+
+### Matched training-data augmentation
+
+One fixed comparison fits raw canonical-RC k2 and k5 ridge at lambda 1 with
+Dev-only and Dev-plus-eQ supervision. All 20 declared starts complete once in
+4.19 seconds with one CPU/BLAS thread and no GPU. The sole candidate is augmented
+k5; no model selection, penalty sweep or control promotion occurs.
+
+| Model | Component-weighted Dev OOF MSE | Signed selection utility |
+|---|---:|---:|
+| Dev-only k5 | 0.5440146661 | 0.5065788215 |
+| Augmented k5 | 0.5457496034 | 0.4012182070 |
+| Dev-only k2 | 0.5439540581 | -0.1758348942 |
+| Augmented k2 | 0.5461453315 | 0.1049741352 |
+| Zero effect | 0.5457358786 | 0 |
+
+Added supervision increases candidate MSE by 0.3189% relative to matched Dev-only
+training and reduces utility by 0.1053606145 log2 units. It also loses MSE to zero.
+Utility exceeds both k2 arms, zero and the two fixed random references, but the
+combined criterion fails. All 2,000 paired chromosome draws are evaluable and all
+ten improvement lower bounds are nonpositive. This closes the fixed pooling
+recipe and retains the stronger Dev-only model.
+
+All 948 original eligible Dev designs remain evaluation targets, grouped into
+798 augmented components. The 2,210 added observations create a 3,158-record
+training pool with 2,235 components. The three quarantined source TRAIN rows
+already lacked eligible measurements. Original folds are preserved, component
+purges use all source owners before QC, and a bridging component is counted once
+in pooled loss. Selection remains two distinct components per original fold;
+bootstrap copies are tagged resampling occurrences, not duplicate real edits.
+No held-out outcome is opened.
+
+Ten root tests and independent population, scoring and runner qualification pass.
+Every source row, guard and fitting weight agrees with independent reconstruction.
+Review repairs are supported by deliberate fault witnesses. `rummel-augmentation-pilot/`
+retains the frozen 202-file input contract, all starts, coefficients, predictions,
+draws and scores. Independent replay verifies all 20 normal equations, every
+prediction and fit event, exact rational point reports, all 2,000 resamples and
+22 chromosome omissions. Both root reruns agree. The largest scoring arithmetic
+difference is 1.08e-15 across 8,297 floating fields; this measures replay agreement.
+Cumulative biological fit starts are 390. The next source-defined diagnostic is agreement
+between identical physical edits across libraries; pooling failure alone does
+not identify measurement bias, distribution shift or a biological cause.
+
+
+### Cross-library agreement at identical physical edits
+
+A source-only literal ordered 160 nt Ref/Alt match identifies 695 physical units
+in 574 augmented components, each with one source observation per library.
+Swapped and reverse-complement alternatives match zero additional eQ rows. The
+membership and analysis rule are fixed before the numeric join. Existing QC
+leaves 527 complete pairs in 454 components; 37 are Dev-only, 27 eQ-only and 104
+neither. Every source row and rejection remains in the ledger.
+
+Component-weighted Dev/eQ correlation is **-0.11255317**. Copying measurements
+between libraries gives MSE **0.79909687**, compared with zero-effect MSE
+**0.43915958** on Dev and **0.28101260** on eQ. Both directional copy gains are
+negative. All 21 source-chromosome omissions preserve negative correlation
+(-0.1381 to -0.0633) and both negative gains. These are complete-case agreement
+diagnostics and sensitivity checks, not independent biological confirmation.
+
+The finding supports investigating library compatibility before treating the
+added labels as interchangeable supervision. Separate barcode/plasmid pools,
+unresolved culture/batch pairing and unknown orientation proportions remain
+possible explanations. Copying noisy labels can fail even when estimating a
+shared conditional mean is useful; this diagnostic establishes neither a causal
+measurement defect nor impossibility of sequence prediction. It changes no
+training eligibility, target or model-selection rule.
+
+Three root tests, four independent hand tests and a required-input boundary
+witness pass; seven deliberate statistical/ledger faults are detected across
+the two test sets. Root repeats the independent tests and reconstructs all source
+matches. Independent matrix arithmetic reconstructs the complete measurement
+ledger and verifies 5,312 numeric fields, including component contributions and
+all omissions, within 8.88e-16. `rummel-shared-pairs/` retains the fixed 44-file
+contract, complete result and checks. This phase adds zero fits, downloads or
+raw-count reads; cumulative biological fits remain **390**. The next narrow
+question is whether RNA/plasmid terms account for the disagreement, under a new
+fixed diagnostic on these same source-defined pairs.
+
+
+### RNA/plasmid accounting on the shared edits
+
+A fixed zero-fit diagnostic keeps the same 527 complete pairs in 454 components
+and preserves all 695 source units. Exact sample/header bindings and 2,108 allele
+IDs reassert; each normalized sample effect and original full label reconstructs
+exactly from the sealed aggregates. No sign, sample or denominator is changed.
+
+Weighted cross-library mismatch decomposes as **2.25333470** RNA-ratio mismatch
+plus **1.61089629** plasmid-ratio mismatch minus **3.06513412** from their cross
+term, giving the previous **0.79909687** full-effect mismatch. The four signed
+covariance contributions are -0.07589098 (RNA/RNA), +0.04381258 and +0.01126957
+(the two mixed terms), and -0.01867711 (plasmid/plasmid), totaling -0.03948593.
+The existing normalization reduces mismatch relative to raw RNA ratios; correlated
+terms do not identify causal fractions of noise or justify dropping normalization.
+
+Eight of nine DNA-normalized cross-library sample correlations are negative
+(-0.14298 to -0.00538); the ninth is +0.02979. Within-library correlations are
+higher but share a plasmid denominator and do not establish independent
+reliability. Every chromosome omission preserves negative raw-RNA and full-effect
+covariance and lower mismatch after normalization. Individual cross-sample signs
+vary, with five to nine negative correlations per omission. The result points
+away from an obvious single-sample repair without excluding a library-wide
+source-method problem.
+
+Three root and five independent tests pass, as do six required-input boundary
+cases and a source-binding review. Root repeats the independent checks. An
+independent 60-digit Decimal/population-covariance replay verifies 7,514 fields
+within 2.95e-15. `rummel-pair-decomposition/` retains the fixed 46-file contract,
+complete ledger, six-sample matrices, all 21 omissions and witnesses. No new
+fits, raw-archive reads, downloads or held-out outcomes; cumulative fits remain
+**390**. The next bounded task compares the author's barcode QC, normalization
+and estimation with this fixed aggregate-ratio target before a corrective model
+or new pooling recipe is considered.
+
+### Author count-model preparation
+
+The source-method audit identifies a specific next comparison. Rummel's methods
+collapse barcodes into allele-specific pEE counts, fit each library separately
+with RNA replicate+status versus replicate, and retain DevLib measurements for
+duplicate SNPs in a merged report. Our closed augmentation experiment tested a
+different supervision hypothesis; the method difference is not a retroactive
+implementation bug. The existing means of log ratios also differ from the
+paper's count-likelihood estimator. [Cell methods](https://doi.org/10.1016/j.cell.2023.09.015).
+
+The existing sealed allele aggregates now supply separate-library count matrices
+without another assay download. Preparation retains the same eligible designs,
+all rejected records and the component quarantine. Each pair has two original
+plasmid allele observations and six baseline RNA observations, with explicit
+allele/accession annotations. No shared DNA count becomes an independent DNA
+replicate. Existing QC and labels remain intact. All 4,225 TRAIN records remain
+in the ledger; 25,264 exported integer values for 948 Dev and 2,210 eQ observations
+match exactly on independent readback. A Dev metadata-name mismatch stopped the
+first export before publication; a repaired adapter and regression witness now
+match the actual Dev/eQ schemas.
+
+Exact historical reproduction remains unresolved: the author invocation, package
+version, abundance-cutoff inequality and normalization universe were not recovered.
+A prospective estimator must fix these choices explicitly and qualify its DNA/RNA
+design, coefficient sign, units and convergence on synthetic cases using the actual
+package. Current MPRAnalyze 1.30.0 source drops the allele DNA term from the proposed
+two-observation `~status` design. Retaining both singleton DNA means instead creates
+a saturated Gamma likelihood with no finite shape maximum. That proposed classic
+setup closes before biological fitting. An isolated R runtime request is deferred;
+the smaller diagnostic below uses the existing Python runtime. See the local
+`build/neural-predictor-reviewed-20261005/rummel-count-model/` protocol and audits.
+
+Method searches returned incidental published narrative. The named designs were
+already present in the exclusion ledger; computed validation/test counts remain
+closed. The retained source audit records that exposure explicitly.
+
+### Fixed count-weighting diagnostic
+
+One prospective contrast conditions on each RNA sample's allele total and treats
+the original plasmid counts as fixed exposures. Its exact estimate is the log2
+ratio of summed Alt/Ref RNA counts minus the plasmid log2 ratio. An independent
+derivation and synthetic unequal-DNA, allele-swap and low-support sign controls
+qualify this formula. It changes weighting, with no change to eligibility or
+physical matching; it is not MPRAnalyze or an estimate of DNA uncertainty.
+
+On the same 527 complete pairs in 454 components, correlation changes from
+-0.11255317 to -0.08231955. Copy MSE falls from 0.79909687 to 0.74521677, a 6.7426%
+reduction, but both copy gains remain negative (-0.31712427 toward Dev and
+-0.48273905 toward eQ). All 21 chromosome omissions preserve negative correlation
+and both negative gains. The fixed pooling-repair rule fails; no target or
+predictor is replaced. Lower mismatch by itself would not pass, because the
+alternative estimator can change scale.
+
+The complete 695-unit ledger is preserved. Independent exact rational ratios,
+60-digit Decimal logs and matrix statistics verify 7,548 numeric fields within
+1.655e-14; the root reruns the independent synthetic driver. The phase computes
+1,118 closed-form measurement estimates, with zero new predictor fits, raw-archive
+reads, downloads, heldout outcomes or GPU work. Details and the fixed rule are in
+`build/neural-predictor-reviewed-20261005/rummel-count-weighting/`.
+
+### Fixed DevLib precision-weighting trial
+
+One new candidate estimates an affine RNA variance trend inside each purged
+training complement, then fits the existing k5 ridge model with normalized
+inverse-variance weights. The original mean-log labels, 948 observations,
+798 augmented genomic components, folds and evaluation weights remain fixed.
+All five saved predictor controls and the same chromosome draws are reused.
+The working variance trend is motivated by empirical MPRA precision weighting;
+it does not estimate shared DNA error or reproduce mpralm's smoother.
+
+Signed selection utility rises from 0.50657882 to 0.84756018, a 67.31% relative
+score increase for the fixed ten-edit budget. MSE changes from 0.54401467 to
+0.54408508, 0.01294% worse, and remains above the Dev k2 value 0.54395406.
+Ten of twelve point gates pass. Four paired interval lower bounds are positive;
+the utility improvement interval against Dev k5 spans [-0.25270804, 0.64449673].
+All 2,000 chromosome draws are evaluable. The utility point gain survives 21 of
+22 chromosome omissions, while its MSE gain survives only five. The fixed
+recipe closes without advancement or further tuning.
+
+Five sequence fits and five nuisance variance calibrations complete once in
+4.49 seconds on one CPU thread. Independent Decimal variance calculations and
+augmented least-squares replay reproduce weights and predictions, with prediction
+differences below 1.354e-16. Independent saved-score replay and the root rerun
+agree on all reports, gates, draws and omissions; 9,956 floating fields agree
+within 1.087e-15. Controls remain unchanged. No GPU, raw archives, additional
+downloads or validation/test outcomes are used.
+
+The plan, result, fixed predictions and independent receipts are in
+`build/neural-predictor-reviewed-20261005/rummel-dev-precision/`. The follow-up
+below checks the new picks against existing separate-barcode/RNA views,
+preserving all selections and missing observations.
+
+### Precision-model selections across existing measurement views
+
+The fixed zero-fit follow-up confirms a positive selection difference in both
+existing views. View A utility rises from 1.19615661 to 1.62846156; view B rises
+from 0.15244600 to 0.51536151. Both models exceed their respective conditional
+model-sign random references in both views. Every selected edit has both views;
+no missing edit is replaced or removed from the ten-edit budget.
+
+Two substitutions account for the complete gain: `chr12_2314999` to
+`chr6_28583394` in fold 2 and `chr9_7172500` to `chr5_109046212` in fold 4.
+Each improves the signed effect on the full target and both views. Predicted
+directions are identical on both fixed lists, so the exact crossover assigns
+the gain entirely to selection membership.
+
+The audit preserves the original 1,209-source ledger and its 261 exclusions.
+It joins 825 available views to the current 948-observation, 798-component model
+population, with 123 unavailable views retained explicitly. Available current
+component weight is 8321/9576; the historical 800-family source weighting remains
+separately reported. Independent replay and the root rerun reproduce every value
+exactly, including pooled MSE, all twelve crossover cells and both paths.
+
+These TRAIN views share library, cultures, processing and source measurements;
+they support the observed prioritization gain without providing independent
+biological replication. This audit changes neither the prior error result nor
+its paired uncertainty gates. Precision k5 remains closed without advancement.
+No new fits or heldout outcomes are used; the cumulative predictor count stays
+395. The frozen plan, results and replay receipts are in
+`build/neural-predictor-reviewed-20261005/rummel-precision-views/`.
+
+### Nested combination of the error and selection models
+
+One new candidate learns a convex combination of the matched Dev k2 and
+precision-k5 predictions. Each outer fold's weight uses inner excluded-fold
+predictions only, with complete pre-QC genomic ownership excluding both folds
+from each learner and its RNA-variance calibration. Component-weighted MSE
+determines one clipped analytic weight; no mixture grid or ranking adjustment
+is introduced. Saved outer predictions and all six controls are reused.
+
+The outer precision fractions are 1, 0.96609037, 0.98643489, 0 and 0.26208259.
+Their resulting MSE is 0.54542267, versus 0.54395406 for Dev k2 and 0.54408508
+for precision k5. Signed selection utility is 0.50184668, versus 0.50657882 for
+Dev k5 and 0.84756018 for precision k5. Nine of fourteen point comparisons pass;
+none of the fourteen paired interval lower bounds is positive. All 2,000 draws
+are evaluable. All 22 chromosome omissions preserve the MSE loss to Dev k2 and
+utility loss to precision k5. The fixed combination closes without advancement.
+
+Forty inner sequence fits, twenty variance calibrations and five analytic
+combination estimates finish once in 4.98 seconds on one CPU thread. Independent
+replay and the root rerun verify all fitted equations, count-derived weights,
+five combinations, source ownership, 130 fit events and complete scoring reports.
+All exact point fields and decisions agree; 11,615 floating score fields agree
+within 1.371e-15. This establishes execution consistency. The preceding precision
+model's measured selection gain remains intact, while this attempted combination
+fails to carry it into a better joint predictor.
+
+No raw archives, additional downloads, GPU work or heldout outcomes are used.
+Cumulative predictor starts are 435, with 25 variance calibrations and five
+combination estimates separately recorded. Evidence is under
+`build/neural-predictor-reviewed-20261005/rummel-nested-stack/`.
+
+### Whole-insert composition and the constant-context control
+
+The fixed ten-fit comparison adds 55 quadratic canonical-dinucleotide contrasts
+to raw k5 edit deltas, with off-diagonal sqrt(2) scaling and normalization by the
+159 source-defined dinucleotide windows. Its control replaces each row's count
+midpoint with the fitting complement's precision-weighted mean. Both use the
+same saved precision weights, lambda 1, 948 rows, 798 components and complete
+pre-QC ownership purges. No nuisance model is refitted.
+
+| Model | Component-weighted MSE | Signed selection utility |
+|---|---:|---:|
+| Varying composition | 0.5432340389 | 0.8784141358 |
+| Constant composition, ineligible control | 0.5433145027 | 1.1869765263 |
+| Previous precision k5 | 0.5440850847 | 0.8475601833 |
+| Dev k5 | 0.5440146661 | 0.5065788215 |
+| Dev k2 | 0.5439540581 | -0.1758348942 |
+| Zero | 0.5457358786 | 0 |
+
+The sole candidate improves both point metrics over all six prior controls.
+Relative to precision k5, MSE falls 0.1564% and utility rises 3.6403%. Its MSE
+improvement interval [-0.000029333, 0.001940829] and utility improvement interval
+[-0.425327, 0.450478] include zero. Its one failed point comparison is utility
+against the constant-context control: the loss is 0.30856239. All 22 chromosome
+omissions retain that loss, alongside a small MSE advantage over the control.
+Fifteen of sixteen point gates and four of sixteen interval gates pass; all
+2,000 draws are evaluable. The complete rule fails and the recipe closes without
+nomination or tuning. No control is promoted after observing its result.
+
+The constant-context control has 40.0463% higher utility and 0.1416% lower MSE
+than precision k5. A post-result, zero-fit algebraic witness reduces its readout
+to fold-specific k2 coefficients beside k5: all 948 binary-coefficient rational
+identities hold, rounded predictions differ by at most 1.388e-17, and every
+selected ID and sign is retained. This verifies a local additive representation.
+Added k2 directions, the induced ridge penalty and jointly refitted k5 weights
+all contribute to the changed procedure; regularization alone is not isolated.
+Whole-insert composition includes the edit neighborhood and discards position.
+Neither the design nor this result identifies a causal biological interaction.
+
+Ten sequence fits finish in 5.39 seconds on one CPU thread, raising the ledger
+to 445 starts (130 Rummel), with no new variance calibrations. Independent source
+and feature checks, saved-solution replay and the root rerun pass. All exact
+point fields and decisions agree; the largest difference across 13,274 floating
+score fields is 1.333e-15. No raw archive, GPU work or heldout outcome is used.
+The fixed plan, full eight-model table, attempts, algebraic witness and independent
+receipts are in
+`build/neural-predictor-reviewed-20261005/rummel-context-interaction/`.
+
+A parallel primary-source review identifies [BIRD](https://www.geneprediction.org/bird/)
+as a separate future measurement option matching one DNA pair and three RNA
+pairs. Its model propagates finite-read DNA uncertainty and RNA sample variation
+with published priors. Its latent shrunken effect differs from the current mean
+log-ratio label; runtime, posterior behavior and assay assumptions need separate
+qualification. Full BIRD inference has not run, and no labels change. The cited
+review is retained in that directory's `count-method-research/`.
+
+### Count-uncertainty sampler qualification
+
+The [historical Swift source](https://github.com/bmajoros/BIRD/blob/746ef6c49d3c915069beb82c2b392a757aadea83/swift.C)
+provides a small two-stage alternative that runs with the installed NumPy.
+Source history resolves a material discrepancy: a later change replaced the
+documented constant concentration with an allele-asymmetric adaptive rule.
+The new research kernel follows the older fixed-concentration distribution,
+with explicit count orientation and the symmetric zero-count correction.
+It returns stable signed log-effect draws and fails explicitly on invalid
+inputs or numerical endpoints. It does not copy the author's defective median
+routine or assume an independently seeded simulation reverses exactly.
+
+Five root tests, two independent controlled checks and four independent distribution
+and boundary tests pass. Root reruns reproduce both independent suites. The latter includes
+joint DNA/RNA moments, so matching each marginal distribution alone is insufficient.
+A concentration-input regression fails before repair and passes afterward;
+deliberate formula faults are rejected. All fixtures are synthetic. This qualifies
+the specified sampling kernel, not biological calibration or a new predictor.
+
+Swift pools RNA replicates and uses a modular approximation in which RNA does
+not update the DNA fraction. It therefore models finite-read uncertainty without
+estimating RNA replicate heterogeneity or unobserved DNA preparation variation.
+The existing labels and acceptance decisions remain fixed. A real measurement
+experiment still requires a defined summary, calibration checks and its own
+prospective comparison. No dependency installation, biological count read,
+predictor fit or heldout outcome is added; the ledger remains 445 predictor starts.
+Code, source history and qualification evidence are in
+`build/neural-predictor-reviewed-20261005/swift-fixed-qualification/`.
+
+### Measurement support for the constant-context selections
+
+A fixed zero-fit comparison now traces the control's full-target gain over
+precision k5 to one substituted edit: chr5_60696427 replaces chr11_130745047
+in fold 1. The other nine picks remain unchanged, and both models predict the
+same directions on all eleven edits in their union. Membership accounts for
+the entire utility increase of 0.3394163430; direction changes contribute zero.
+
+| Target | Precision k5 utility | Constant-context utility | Difference |
+|---|---:|---:|---:|
+| Full | 0.8475601833 | 1.1869765263 | +0.3394163430 |
+| A | 1.6284615583 | unavailable | unavailable |
+| B | 0.5153615077 | unavailable | unavailable |
+
+The new edit has no usable A/B views under the existing joint measurement QC.
+Its ledger records nonpositive or missing half-0 reference counts for DNA,
+baseline RNA R3 and stimulated RNA R2. Both complete contrasts are therefore
+unavailable. No missing edit is replaced or averaged away. These QC facts leave
+support unresolved; they do not establish a cross-view loss or a false full effect.
+The 40.05% full-target selection gain remains an observed control result.
+
+Independent replay and the root rerun reproduce every value across 107 frozen
+pins and three published outputs. Synthetic checks reject the old-model binding
+and original-family remapping faults. No new fit, target, QC threshold or
+acceptance opportunity is introduced. The control remains ineligible, the
+composition recipe stays closed, and the ledger remains 445 predictor starts.
+The fixed comparison, complete outputs and receipts are in
+`build/neural-predictor-reviewed-20261005/rummel-constant-views/`.
+
+### RNA replicate homogeneity
+
+A fixed count diagnostic now tests whether the three baseline RNA samples share
+one alternate fraction under independent binomial reads. Conditioning on their
+totals and total alternate count removes the unknown fraction. Each of the same
+948 eligible TRAIN edits receives 99,999 multivariate-hypergeometric null tables;
+exact integer comparisons measure the predeclared alternate-fraction range.
+The p-value is (b+1)/100000 with inclusive ties. Bonferroni correction uses all
+1,209 original source pairs, assigning the 261 excluded pairs p=1 without reading
+their counts. At alpha=0.05, rejection requires b<=3.
+
+The working model rejects for 438 edits, 46.20% of the tested population.
+The changed selection chr5_60696427 has RNA Ref/Alt counts 7/159, 27/90 and
+24/97. Its alternate-fraction range is 407/2158, about 18.86 percentage points.
+Two null draws meet that discrepancy, giving p=0.00003 and corrected p=0.03627.
+This is a finite Monte Carlo test; no exactly enumerated tail is claimed and
+no near-threshold row is rerun. The fraction of rejected edits is descriptive.
+
+The result requires the next uncertainty model to account for replicate
+variation. It cannot separate biological variation from technical effects,
+barcode/PCR dependence or other violated read assumptions. It does not declare
+the selected effect false or resolve missing A/B views. Original-universe
+correction gives unconditional control under the specified count null, not a
+biological discovery guarantee or a correction for earlier adaptive research.
+Nonrejection does not establish calibrated pooled uncertainty.
+
+Three root kernel tests, four independent kernel checks and two independent
+driver tests pass, including root reruns and deliberate-fault witnesses. A
+separately prepared checker, qualified by two tests and two rejected faults,
+replays all 94,799,052 null tables once. Every scientific field in all three
+outputs matches exactly, with all 64 frozen pins intact. Root verifies all
+5,688 input count cells, fixed decisions and complete independent result equality.
+No sequence model is fitted, relabeled or advanced; the ledger remains 445.
+The protocol, complete results and primary-source references are in
+`build/neural-predictor-reviewed-20261005/rummel-rna-homogeneity/`.
+
+### Replicate-aware posterior inference
+
+The BIRD author model now has a qualified marginal density and a bounded
+rejection sampler for independent posterior draws. The density integrates each
+RNA replicate's Beta fraction and retains the full shared-DNA posterior. An
+independent rational/80-digit reference checks 430 comparisons; four root tests
+and three further mathematical checks also pass. Eight deliberately introduced
+mathematical faults fail. Review found and repaired loss of the RNA fraction at
+extreme concentration values.
+
+Four fixed synthetic cases compare 60,000 draws per method against a separately
+implemented generative count-equality sampler. All 20 marginal CDF comparisons
+pass: the largest distance is 0.00836667 against the fixed simultaneous limit
+0.01939913. The total is 480,000 retained states. All eight sampler calls finish
+within their proposal and CPU caps; combined sampling time is 1.341 seconds in
+this run on one CPU thread. Independent deterministic replay verifies all 20
+CDF distances and 120 quantile intervals from the eight saved arrays.
+
+These results qualify inference on the fixed synthetic cases. The next
+scientific test must compare prediction of an omitted RNA repeat under this
+model and a pooled baseline, with a fixed TRAIN-only design. No target changes
+or predictor advancement follow from the numerical pass. The ledger remains
+445 predictor starts and heldout outcomes remain unopened. Code, protocols,
+complete posterior draws and review evidence are in
+`build/neural-predictor-reviewed-20261005/bird-marginal-qualification/` and
+`build/neural-predictor-reviewed-20261005/bird-iid-qualification/`.
+
+The subsequent real-count pilot selects four Dev TRAIN sources from four
+distinct merged genomic components before reading their count values, with
+three RNA omission roles each. It stops at the first source, 259, omission 0:
+the prior rejection sampler retains only 610 of 20,000 required states within
+2,000,000 proposals. No omission finishes and no aggregate score is produced.
+The failed attempt is preserved without a retry or budget extension. This
+identified assay-scale inference efficiency as the next implementation problem.
+Four root tests, four independent driver tests and five rational score tests
+pass, including omitted-count isolation and a repaired missing-input-pin guard.
+The frozen plan, failure and evidence are in
+`build/neural-predictor-reviewed-20261005/bird-predictive-pilot/`.
+
+### Omitted RNA repeat prediction
+
+A new weighted integration method preserves the BIRD author posterior while
+retaining each integrated likelihood contribution. It uses a fast lifted-Gamma
+ratio, a uniform weight bound from Beta log concavity, and fixed independent
+prior particles. Exact rational and finite-product references qualify the
+likelihood, bound, pooled Beta-binomial forecast and score calculations. Eleven
+root tests and seventeen independent kernel/reference tests pass; eleven
+deliberate numerical faults fail. Five further driver tests check original data
+hashes, omitted-count isolation and failed-attempt retention. The qualification
+is in `build/neural-predictor-reviewed-20261005/bird-importance-qualification/`.
+
+The first weighted run completes the same four TRAIN sources and all twelve
+omissions with 500,000 raw particles per job. Its gain estimate is 0.00730225,
+but its conditional 99% simulation interval crosses zero. It stays closed as
+unresolved. A separately frozen precision follow-up changes only the particle
+count to 2,000,000 per job and uses fresh random streams. Its result alone is the
+final precision inference; no particles or intervals are pooled between runs.
+
+| Fixed four-component comparison | Mean CRPS loss |
+| --- | ---: |
+| BIRD repeat model | 0.05490723648280356 |
+| Pooled Beta-binomial | 0.06219211366022381 |
+| Pooled minus BIRD | 0.007284877177420252 |
+
+The full conditional 99% Monte Carlo gain interval is
+[0.004364886143923947, 0.009756654633382796]. The fixed aggregate comparison
+passes, with 11.71% lower estimated loss. All four component mean gains are
+positive. One omission, source 325 role 2, favors pooling and stays included:
+gain -0.01653387, interval [-0.01970678, -0.01277616]. This is a comparison of
+predicting RNA allele fractions from the other repeats, with CRPS on the
+fraction scale. It does not measure sequence-predictor accuracy.
+
+All twelve jobs finish within the 45 CPU-second cap, on one CPU thread with no
+GPU. Their summed wall time is 24.581 seconds in this single execution, excluding
+entry/exit checks. Independent replay verifies all 172 pins and twelve moment
+archives, recovering the aggregate gain within 4.4e-16 and every score within
+5.7e-15. A separate 720-state check on the actual training count pairs agrees
+with the finite-product likelihood within 8.74e-11 log units.
+
+The interval covers simulation error conditional on these four selected TRAIN
+components; it is not a biological population confidence interval. Coverage of
+the exact author posterior additionally assumes the qualified 1e-8 log-error
+allowance holds over the prior. Admission already used the three RNA repeats.
+The two methods differ in priors, DNA use and heterogeneity, so the comparison
+does not isolate one mechanism. The next measurement test must address wider
+coverage and DNA-normalized edit effects before changing predictor labels.
+The predictor ledger stays at 445 and held-out outcomes remain unopened.
+Complete plans, results and independent replay are in
+`build/neural-predictor-reviewed-20261005/bird-weighted-predictive-pilot/` and
+`build/neural-predictor-reviewed-20261005/bird-predictive-precision/`.
+
+### DNA-normalized effect prediction
+
+The next fixed comparison uses the same four TRAIN components and separate
+barcode halves. A contains half0 DNA and baseline RNA R3; B contains half1 DNA
+and baseline R4/R5. Each model forecasts the other view's DNA and RNA counts
+jointly, conditional on its totals. A prospectively fixed symmetric half-count
+defines a finite log2 RNA-odds minus DNA-odds effect. This is a new observable,
+distinct from the original unsmoothed effect and latent BIRD theta. Inherited
+eligibility still includes KCl; no unavailable row is replaced.
+
+The first run stops after four of eight jobs because a rounded point CDF exceeds
+one. A twenty-particle synthetic counterexample reproduces 1.0000000000000002;
+the failed real histogram was not saved. The incomplete attempt stays sealed.
+The repair caps the point CDF at its mathematical upper bound and saves raw
+moments before scoring. Fourteen affected numerical tests and seven controlled
+driver/repair tests pass. A separately frozen follow-up retains the model,
+cohort, budget and acceptance rule, with fresh samples and no pooling of attempts.
+
+All eight repaired comparisons complete, with 32 million proposals in sixteen
+model-jobs. Mean CRPS is 0.5105277260763628 for BIRD and 0.6072364029592754 for
+pooling, a 15.926% estimated reduction. The score is in log2-effect units; this
+percentage is a relative loss reduction, not an error percentage.
+
+| Gain: pooled minus BIRD | Estimate | Conditional 99% simulation interval |
+| --- | ---: | --- |
+| A to B | 0.10229415308172436 | [0.07301889919057131, 0.12283729312501623] |
+| B to A | 0.09112320068410087 | [-0.016084221784680497, 0.13674844805547964] |
+| Equal mean of eight comparisons | 0.09670867688291263 | [0.0284673387029454, 0.12979287059024794] |
+
+All eight point gains are positive. The fixed primary rule requires positive
+lower bounds in both directions, so its decision is **unresolved**. Source 259
+B-to-A has the widest gain interval, [-0.3057030992967357, 0.11850868640566226],
+and remains included at equal weight. The positive overall interval does not
+override that directional requirement.
+
+Independent replay verifies all 104 frozen inputs and all sixteen raw/scored
+archive pairs. Exact rational point-CDF normalization reproduces the scored
+results within 1.12e-15. The run uses one CPU thread, no GPU, and completes within
+the 120 CPU-second cap; summed model-job wall time is 17.9154 seconds in this
+single execution. No automatic precision extension follows this result.
+
+This is technical prediction on four previously exposed TRAIN components, with
+numerical assumptions and conditional simulation bounds. Shared cultures,
+preparation and cross-half DNA exchangeability limit its biological scope.
+CRPS improvement can reflect better uncertainty estimates without improving point
+labels. Labels, predictor gates and the 445-fit ledger remain unchanged; validation
+and confirmation stay closed. Artifacts and independent replay are in
+`build/neural-predictor-reviewed-20261005/bird-effect-predictive-pilot/` and
+`build/neural-predictor-reviewed-20261005/bird-effect-repair/`.
+
+## Broader measurement coverage
+
+A deterministic diagnosis attributes most of the earlier reverse-direction
+simulation interval to source 259. A separately qualified CDF calculation now
+uses both prefix and suffix importance moments, with the full simultaneous
+probability budget. Independent exact-rational checks cover 202 interval corners;
+fault tests reject the old normalization and unsafe squared-weight underflow.
+The earlier four-source result remains closed and unresolved.
+
+A new fixed sixteen-component comparison then stops before sampling: three
+selected sources lack views under the inherited barcode rule. Sources 195 and
+675 have supported integer-zero cells; source 850 also has an empty reference
+half because its two reference barcodes share the same hash parity. Independent
+closeout and root replay preserve all sixteen sources, the 32-direction ledger
+and zero completed jobs. No unavailable source is replaced.
+
+A separate experiment qualifies balanced barcode assignment: sort barcode
+IDs by hash within each source and physical allele, then alternate halves.
+Assignments are sealed before reading selected counts. The original full-count
+baseline/KCl admission remains; new baseline views allow an observed zero allele
+count at positive combined totals, while preserving missing values. The same
+sixteen sources, finite half-count effect, models and both-direction CRPS rule
+remain fixed. This changes the measurement views, not the sequence predictor.
+
+The balanced construction recovers usable views for **15 of the 16** fixed
+components. Source 850 now has one reference and one alternate barcode in each
+half, but half1 baseline RNA R4 has zero combined reads. Its required view remains
+unavailable under the declared positive-total rule. All sixteen components and
+32 direction entries are retained; the comparison closes **incomplete with zero
+simulation draws**. The source is neither replaced nor assigned an imputed
+measurement. Independent closeout and root replay agree on all 257 frozen inputs,
+assignments and ledger entries. This supplies a concrete support diagnosis, not
+a score for either model.
+
+Nine independent synthetic reader groups and ten deliberate faults verify the
+assignment, zero/missing distinction, physical allele ownership and count-sum
+reconciliation. Four preparation tests and four controlled driver tests cover
+the frozen file identities, selected-only parsing, separate DNA denominators,
+fixed cohort and unchanged directional gate. An initial preparation manifest
+omitted the imported count parser; its source check stopped before archive
+access. That failed attempt is preserved. The corrected manifest uses identical
+code and the same unused random-stream recipe.
+
+Evidence is retained under `bird-complement-qualification/`,
+`bird-effect-coverage/`, `bird-coverage-admission-diagnosis/` and
+`bird-balanced-effect/` and `bird-balanced-effect-run/` in the reviewed build
+directory. Predictor fits remain 445, with validation and confirmation unopened.
+
+## Full-count treatment-response forecasts
+
+The measurement task now returns to the predictor's actual response target:
+the KCl-minus-baseline difference in allele effects. The shared DNA log term
+cancels exactly from that difference, as the original measurement contract
+already specifies. Baseline DNA-effect forecasts are indirect evidence for this
+target. The implemented two-condition extension shares one DNA posterior and
+fits separate baseline/KCl repeat-variation distributions. It forecasts the
+difference between mean half-count-smoothed RNA log odds, using the original
+full counts. This finite observed target remains distinct from the original
+unsmoothed predictor labels. Cultures in the two conditions are unpaired.
+
+All sixteen fixed components have the required full-count views. The first
+attempt saved one model's two million proposals, then stopped on squared-weight
+underflow: some tiny positive weights had squares rounded to zero. A separately
+qualified arithmetic repair retains that mass and accounts explicitly for the
+rounding loss. The continuation reused the saved archive exactly and preserved
+the models, cohort, random streams, confidence family and both-direction rule.
+
+The continuation completed **31 of 32 paired comparisons** before the remaining
+117 CPU seconds expired. All **62 saved model results** independently replay,
+with a maximum numerical difference of 5.69e-13. The final source-direction has
+an input record only; its interrupted proposals were not saved. The full
+32-comparison ledger remains intact, and no overall average or directional
+acceptance decision is reported for this incomplete run. The cap closes this
+plan; the final comparison is not silently retried or dropped.
+
+An explicit, independently reviewed operational amendment then permits one
+15-CPU-second process to finish only the two missing original random streams.
+It preserves all 62 completed model records and archives byte for byte, including
+their scores. The final comparison completes in 3.92 wall seconds. All sixteen
+components, 32 paired comparisons and 64 model jobs are now present. The earlier
+incomplete runs remain immutable; the original CPU limit was not met.
+
+The complete experiment has the following descriptive CRPS estimates; lower
+loss is better. Gain is pooled loss minus BIRD loss. The intervals bound
+simulation uncertainty conditional on the fixed data, model and declared
+numerical assumptions.
+
+| Training view | BIRD CRPS | Pooled CRPS | Gain interval |
+|---|---:|---:|---:|
+| One repeat per condition → other two | 0.74815 | 0.81868 | [-3.21985, 0.13245] |
+| Two repeats per condition → other one | 0.64273 | 0.80490 | [-14.48194, 0.57873] |
+| All 32 comparisons | 0.69544 | 0.81179 | [-8.85089, 0.35559] |
+
+The estimated overall loss is **14.3% lower** than pooling, with positive point
+gains in both directions. Both directional intervals cross zero, so the fixed
+decision is **unresolved**. Precision is insufficient to establish the gain;
+this result does not advance the predictor. The original simultaneous confidence
+family applies to the complete experiment; it is not a new 99% guarantee
+conditional on the 31 scores already seen when the completion was planned.
+
+Independent replay verifies the 186 copied job files, the last input, the two
+new model scores and all 32 aggregate contributions. Root replay agrees. The
+comparison contains 128M unique scientific proposals; physical work also
+includes an unknown duplicated prefix from the interrupted job. No proposal
+count is inferred for those unsaved draws.
+
+This test asks whether accounting for assay variation improves forecasts of
+repeated treatment-response measurements. The next inference question is how
+to obtain sufficiently precise estimates at low CPU cost without changing the
+target or weakening the acceptance rule. Improved sampler efficiency must be
+measured by valid interval width per CPU time, not effective-sample-size estimates
+alone.
+
+Predictor fits remain 445; labels and predictor acceptance requirements are
+unchanged, and validation and confirmation remain unopened.
+
+Evidence is retained under `bird-interaction-design/`, `bird-interaction-pilot/`,
+`bird-moment-underflow/`, `bird-interaction-resume/` and
+`bird-interaction-completion/` in the reviewed build directory. The original
+numerical failure and the CPU-limited continuation are both preserved.
+
+### Locating the inference bottleneck
+
+A zero-draw diagnostic now replays the normalization bounds of all 64 models
+exactly. Independent scalar arithmetic and the root replay agree within
+1.39e-17. Five BIRD jobs have zero lower bounds: source 2227 in the first
+direction, and sources 1528, 2227, 195 and 445 in the second. Their bounded-range
+terms account for 87.6% to 99.0% of the normalization radius. Even setting the
+empirical variance to zero leaves the diagnostic radius above each saved mean;
+the worst ratio is 245.45. This diagnoses the current calculation at its saved
+mean, rather than predicting how a new sample will behave.
+
+Consequently, a proposal that merely lowers variance while retaining the same
+loose weight bound is not yet a precision remedy. The simple half-prior defensive
+mixture would halve the expected scaled denominator while keeping that bound,
+doubling the relative range penalty. A useful proposal needs a demonstrably
+better bound as well as useful samples. Changing the confidence allocation after
+inspecting these draws would be a separate method analysis, not fresh
+confirmation.
+
+The diagnostic and independent replay are retained under
+`bird-interaction-precision-replay/`. Its first attempt passed all numerical
+comparisons but failed to serialize a NumPy Boolean; that attempt and partial
+output remain under `bird-interaction-precision-diagnosis/`. The output repair
+passes a regression that fails on the original code. No labels, predictor fits,
+validation outcomes or acceptance decisions changed.
+
+A deterministic follow-up intersects every saved CDF band with known full-count
+support and monotonicity. This preserves coverage on every realization covered
+by the original confidence event, with no new probability allocation. All 64
+models replay independently and in the root check with exact agreement. Only
+the outer endpoint bounds change; all model, directional and overall CRPS
+intervals are unchanged. The result remains unresolved. This closes support
+and monotonicity alone as a precision repair for these saved forecasts.
+Four root checks and four deliberately broken variants qualify the change;
+evidence is retained under `bird-cdf-refinement/`. No additional simulation was
+needed.
+
+A second follow-up tightens the global likelihood bound itself. For two
+nonnegative RNA kernels under a common latent law, their integrated product is
+at most one quarter of the squared maximum kernel sum. Exact rational cells
+bound that sum over the full unit interval. This covers all latent Beta
+parameters, including their tails, and leaves the saved weights unchanged.
+The independent coverage review establishes a common minimal-range confidence
+event while retaining the existing numerical assumptions and failure budget.
+
+The bound decreases for 12 BIRD jobs and tightens 10 CRPS intervals. The
+two-training-repeat gain interval narrows by 19.69%, from
+`[-14.48194, 0.57873]` to `[-11.57646, 0.51875]`; the overall interval becomes
+`[-7.39816, 0.32560]`. Point forecasts retain their 14.33% mean CRPS reduction
+against pooling. Four normalization lower bounds remain zero and both
+directional intervals cross zero, so the decision remains unresolved.
+
+All 64 scores pass independent replay; the largest arithmetic difference is
+`3.98e-13` in a squared-error interval. The retained checker reproduces the
+independent reports byte for byte. Four tests detect three deliberate faults.
+The scoring replay takes 9.68 seconds and uses no new draws or predictor fits.
+Evidence is retained under `bird-amgm-envelope/`.
+
+The next two source-only prototypes test stronger bounds. A compact
+two-parameter Beta search retains the trivial bound one at its fixed 128-split
+budget. A unimodal uniform-mixture construction with nine weights also fails
+to improve the hardest example. Both negative results remain recorded under
+`bird-compact-envelope/` and `bird-unimodal-envelope/`.
+
+Refining that construction to 129 weights reduces the source-2227 two-repeat
+joint bound by 27.57%, from `0.07004757` to `0.05073612`. Independent integer
+arithmetic verifies all 4,096 kernel-cell bounds and both condition certificates.
+The full 64-score replay changes only that job's normalization interval; its
+lower endpoint remains zero. All point scores, CDF bands and CRPS intervals
+remain exactly as in the accepted AM-GM result, and the decision remains
+unresolved. This isolates the remaining calculation problem: a qualified
+inference method or separately fixed sampling budget is needed to resolve the
+weak normalization. Evidence is retained under `bird-unimodal-weights/` and
+`bird-unimodal-replay/`. No new draws or predictor fits were used.
+
+A finite prior-region proposal now addresses the range penalty itself. It
+partitions the shared DNA state and each condition's scale, concentration and
+RNA logit, retaining every tail. An exact 288-state oracle verifies the
+importance-weight identity and detects lost shared-DNA and tail contributions.
+A cheap likelihood cell bound passes 924 independent exact Beta comparisons.
+
+On the already inspected source-2227 two-repeat training example, the fixed
+table estimates a weight bound of `0.0010985474`, compared with `0.0507361212`,
+a 46.18-fold reduction. The 60- and 80-digit tables agree below `4.83e-42`
+relative error across 2,612 numeric values and finish in 0.70 seconds together.
+These are proposal-design measurements. CDF arithmetic and truncated sampling
+still require qualification before the estimate can become a certified weight
+bound or improve forecast intervals. No new samples or fits were run, and the
+acceptance result is unchanged. An independent 100-digit reconstruction checks
+2,610 computational entries per table and all 1,018 file identities. The retained
+root replay matches its scientific output exactly. Evidence is under
+`bird-stratified-proposal/`.
+
+The proposal's prior-probability block now passes on the fixed representable
+grid. All 24 Beta/Gamma bin masses have positive directed-Decimal enclosures;
+all tails and the original zero-target concentration mass are retained. The
+fixed calculation takes 0.744 CPU seconds. Independent reconstruction verifies
+every interval, its sums and widths, source ownership and all 1,092 file pins;
+root replay matches. Six root test groups and 216 independent exact Beta cases
+cover arithmetic, tail loss and source guards. Evidence is under
+`bird-proposal-priors/`.
+
+A separately checked sampler design uses explicit Normal density envelopes and
+zero weights for missed cells, avoiding a conditional Normal CDF per particle.
+Its 32-state exact oracle preserves the target and weight-range identity. The
+new density-envelope table, truncated Beta/Gamma draw laws and full numerical
+weight calculation remain to implement and qualify before a prospective run.
+The earlier 46-fold table estimate does not certify this different proposal.
+Forecast acceptance and predictor fit counts remain unchanged.
+
+The explicit density-envelope table now has a certified exact-law range of
+`0.0033101627`, 15.327 times smaller than the previous `0.0507361212` bound.
+The fixed calculation takes 0.310 CPU seconds. Independent review checks all
+2,048 proposal bounds, 512 likelihood bounds, 1,024 scheme decisions and 1,172
+file identities. Exact rational composition verifies the range; an independent
+directed-Decimal calculation reproduces every interval. Root replay matches.
+Seven source test groups pass and five deliberate faults fail. Evidence is
+under `bird-proposal-envelope/`.
+
+The complete sampler now passes sixteen root test groups and independent
+selection, prior-draw, mixture-weight and forecast-integration checks. The
+130-digit full-weight oracle covers fifteen fixed cases across all eight DNA
+cells and every proposal branch. Its maximum log-weight error is
+`3.3998e-11`, within the unchanged `2.01e-8` allowance. Root replay reproduces
+the independent numerical results. Evidence and regression failures are under
+`bird-proposal-sampler/`. This qualification generated no scientific random
+draws and fitted no predictor. A fixed two-million-attempt replacement for the
+weak source-2227/direction-1 estimate is prepared under `bird-proposal-forecast/`;
+it preserves the model, target and both-direction acceptance rule. Its confidence
+family covers all 64 original streams and the one replacement.
+
+That fixed run completed in 26.308 CPU seconds. At the same two-million-attempt
+budget, effective particles rose from 22.960 to 912.779, and the normalization
+lower bound rose from zero to `2.63989e-8`. The CRPS interval narrowed 44.633%.
+These are improvements in sampling precision for the same model and target;
+the replacement's point CRPS moved from 0.19603 to 0.22477 and remains in the
+comparison. Independent and root replay reproduce all 65 scores, CDF hashes
+and aggregates exactly. Directional gain intervals remain
+`[-3.21990, 0.13247]` and `[-10.12452, 0.51882]`, so forecast acceptance is
+unresolved. Three original normalization lower bounds remain zero
+(2227/direction 0, 195/direction 1 and 445/direction 1); the new interval also
+needs further precision. No predictor fits were run; validation and confirmation
+remain closed.
 
 ## Evaluation contract
 
@@ -1312,10 +3421,11 @@ its own intervention evidence. The full
 
 - [Kreimer, Ashuach, Inoue et al., 2022](https://doi.org/10.1038/s41467-022-28659-0): the existing seven-timepoint H1 reporter experiment, whose test is already examined.
 - [GSE152404](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152404): independent modern/archaic sequence-pair experiments; preparation and stage compatibility require an explicit contract.
-- [GSE225817](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE225817): neural reporter variant experiments under metadata review.
+- [Rummel et al., 2023](https://doi.org/10.1016/j.cell.2023.09.015), [GSE225815](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE225815): DevLib baseline/KCl source partition and TRAIN count analysis complete; weak interaction repeatability directs further measurement diagnosis. This MPRA subseries sits within GSE225817.
 - [Deng et al., 2024](https://doi.org/10.1126/science.adh0559): 270-base developing-cortex and organoid reporter experiments; usable pretrained checkpoints have not yet been verified.
 - [Kosicki et al., 2025](https://doi.org/10.1038/s41467-025-60064-1): selected experiment; 270-base reporter sequences in WTC11-derived excitatory neurons, infected on day 7 and measured on day 14. Sequence and measurement intake are verified.
 - [Ghandi et al., 2014](https://doi.org/10.1371/journal.pcbi.1003711): regulatory classification precedent for gapped sequence patterns; the seventh round adapts these features to paired neuronal reporter effects.
 - [Gosai et al., 2024](https://doi.org/10.1038/s41586-024-08070-z): measured regulatory activity and original Malinois model/data used by the MPAC source under audit.
 - [MPAC author export](https://github.com/Reilly-Lab-Yale/coda_mpac/tree/965fea279de8dace4580c81150b02136521fd890/hf_export): pinned model/input/strand contract; supervised-exposure admission remains under review.
 - [Salomon et al., 2026 preprint](https://doi.org/10.64898/2026.07.16.738760): 270-base neuronal regulatory-variant experiment; the pinned primary-cohort design, overlap checks and processed-coefficient admission pass independent replay. [Pinned author code](https://github.com/kircherlab/80K-Analysis/tree/a686f1d552f97ebcc0224057b5a835002f7a3dc8).
+- [Matoba et al., 2026](https://doi.org/10.1038/s41593-026-02454-2): 150-base cortical-variant reporter experiment in primary neural progenitors under vehicle and Wnt stimulation; source admission, count import, fixed TRAIN measurement export and first bounded model comparison complete; shared ridge fails the TRAIN progression screen. [GSE289858](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE289858).

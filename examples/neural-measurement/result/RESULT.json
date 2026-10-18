@@ -1,0 +1,45 @@
+{
+  "status": "complete",
+  "jobs": 12,
+  "raw_particles": 24000000,
+  "gain": 0.007284877177420252,
+  "gain_interval": [
+    0.004364886143923947,
+    0.009756654633382796
+  ],
+  "decision": "bird_better",
+  "components": [
+    {
+      "source": {
+        "source_row": 259,
+        "family": "4e22540ef2e82d70ceaf6320914c5a1fa818e29a097a7dc8c7a9d18ba1b01622",
+        "component": "12ea2bb21a8e4434689fb589494093b1e156cc7709aba607dce1db666569407b"
+      },
+      "gain": 0.006831981545568816
+    },
+    {
+      "source": {
+        "source_row": 1446,
+        "family": "6de0fc94a2680b2d193a22ac6c39f4f84bbe3b3debbd4716ec9a15a534fd6e47",
+        "component": "f8c5497c97ef5a5d34ac6f557235cb245d78bbdd8347b995b8aa67ef2f837a7b"
+      },
+      "gain": 0.013838143070720012
+    },
+    {
+      "source": {
+        "source_row": 325,
+        "family": "5f8d1b4a8f2b825e790e11ccbaed881900c63e02e59c0c4e92d6fd0c99ad07e6",
+        "component": "b4a828427f50711473e17b81be262978b3d37992cc3d098de675de7c82053aed"
+      },
+      "gain": 0.0015288915238599692
+    },
+    {
+      "source": {
+        "source_row": 1260,
+        "family": "86e600777b768c4c982a7bdc0c241dc410eb42516afc9caed83a196538828aa0",
+        "component": "d146d7ddd29b2610b81c3cba5def96de7dc9f20bb14a55f0f6c8033ea219f8c1"
+      },
+      "gain": 0.006940492569532213
+    }
+  ]
+}

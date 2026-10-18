@@ -161,7 +161,10 @@ The complete 2013 cortical G-code program was not recovered. This is a new
 local construction program using the published substrate, not a reproduction
 of the [2013 cortical model](https://doi.org/10.1371/journal.pcbi.1003173).
 Genetic developmental programming has prior art; this example makes no claim
-that the broad idea is new.
+that the broad idea is new. In particular, the
+[2011 G-code instruction language](https://doi.org/10.3389/fncom.2011.00057)
+already demonstrated self-construction from gene-like instructions in a single
+progenitor using CX3D.
 
 CX3D retains its GPL-3.0-or-later license and copyright notices in the archive
 and [`vendor/LICENSE.CX3D`](vendor/LICENSE.CX3D). Its modifications remain covered

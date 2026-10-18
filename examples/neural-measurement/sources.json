@@ -1,0 +1,38 @@
+{
+  "original_freeze_sha256": "a7fd8a92c2dc1b5ee1c6be20fc44d3b868489d51eba6f23f006fd94724efcea2",
+  "original_independent_checker": {
+    "path": "build/neural-predictor-reviewed-20261005/bird-predictive-precision/result-review/check.py",
+    "sha256": "2b4fd968fbb21a17af54eec9aeaf8f2e7546b7e03cc67490c02c4700817a27a4"
+  },
+  "original_result_replay_receipt_sha256": "95328bcccfe9f0636946fa2e4ccdf124edf4f2c3d3c2fc592dd4fecc1562d09e",
+  "original_runtime": {
+    "python": "3.12.13",
+    "numpy": "2.5.1"
+  },
+  "current_export_scope": "unchanged saved counts, raw importance moments and results; no RNG, fitting, data intake, or revalidation of original sampling",
+  "sources": [
+    {
+      "name": "Rummel et al. 2023, neuronal stimulation MPRA DevLib",
+      "doi": "10.1016/j.cell.2023.09.015",
+      "geo": "GSE225815",
+      "counts_url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE225nnn/GSE225815/suppl/GSE225815_DevLib_countMatrix_final_barcode_raw.txt.gz",
+      "distribution": "selected aggregate numeric count pairs only; original matrix and paper not included"
+    },
+    {
+      "name": "BIRD author hierarchy",
+      "commit": "93110bdc1cd90c01402dfbf1791d99272cd5806a",
+      "url": "https://github.com/bmajoros/BIRD/blob/93110bdc1cd90c01402dfbf1791d99272cd5806a/BIRD.stan",
+      "distribution": "model source not included; model was used only to generate archived moments"
+    },
+    {
+      "name": "Maurer and Pontil 2009, Theorem 4",
+      "url": "https://arxiv.org/pdf/0907.3740"
+    },
+    {
+      "name": "Gneiting and Raftery 2007, section 4.2",
+      "url": "https://sites.stat.washington.edu/people/raftery/Research/PDF/Gneiting2007jasa.pdf"
+    }
+  ],
+  "code_license": "Apache-2.0; repository LICENSE copied unchanged; no upstream BIRD code or publication included",
+  "count_license": "numerical count excerpts are attributed to GSE225815; no dataset-specific license was found in the retained local source records"
+}

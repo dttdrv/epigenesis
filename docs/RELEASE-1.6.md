@@ -46,21 +46,72 @@ Natural-genome-to-brain development remains the research objective. The new
 patterning experiment tests a conditional regulatory mechanism; its biological
 transfer needs independent intervention evidence.
 
-## Subsequent repository update
+## Research and presentation update, 18 October 2026
 
-The experimental neuronal edit predictor is now available as a separate
-[Python 3.12 example](../examples/neural-predictor/README.md), with pinned PyTorch
-and NumPy dependencies, frozen weights, CPU/Metal inference and aggregate
-research receipts. The compiler retains its standard-library-only installation.
+The fixed follow-up studies are complete, with the bundled predictor unchanged.
+The sequence-model research ledger records 445
+fits. The two-cycle mixture has validation utility 0.07158510 versus k5's
+0.03510890, and MSE 0.02862935 versus k5's 0.02862511. It has not passed both
+requirements; confirmation remains unopened. The corrected quadratic-readout
+receipt preserves its exact ranking tie and the original rounding discrepancy.
 
-The latest two-cycle mixture has validation selection utility 0.07158510,
-103.9% above its comparator, and MSE 0.02862935, 0.01480% above its strict limit.
-The joint gate remains unmet after 280 biological fits. The new cohort's
-confirmation remains unopened. A completed TRAIN-only uncertainty audit covers
-21,781 edits and identifies error increases from uncalibrated corrections in
-all four uncertainty groups. The README now presents current results in a
-compact table; the roadmap retains the experiment history. Package version
-remains 1.6.0; this update does not declare predictive acceptance.
+A new [measurement example](../examples/neural-measurement/README.md) makes the
+completed RNA-repeat pilot portable. It includes all twelve original count-pair
+inputs, moment archives and results, independent scoring functions, exact
+arithmetic tests, source identities and methods. The command verifies relative
+hashes and reproduces the saved calculations without fitting or sampling.
+BIRD mean CRPS is 0.05490724 versus 0.06219211 for pooling, an 11.7% reduction
+on four fixed TRAIN components. The 99% interval covers simulation error on this
+cohort. A fresh DNA-normalized comparison reduces CRPS by 15.8% versus pooling
+and passes both directional checks; a post hoc zero-effect forecast scores
+better. The treatment-response comparison remains inconclusive.
+
+Temporal forecasting now includes both Timestral-5M and Timestral-209M. A simple
+two-feature ridge control outperforms both on the pooled-activity task. The
+subsequent raw-count test holds out infection cultures and sequence families;
+its four-control acceptance rule is not met. All 15 evaluation groups complete,
+with 11,696 scored curves and 164 retained predictions lacking complete targets.
+These are separate targets and comparisons, not a shared percentage-error scale.
+
+The new [forecast archive](../examples/neural-forecast/README.md) includes the
+frozen protocol, unchanged analysis source, count totals, coefficients, seals,
+support ledgers and results. Its portable independent replay reproduces the
+observable and all scores without fitting. The two temporal studies add 420
+and 945 small ridge fits to their own ledgers; sequence weights remain fixed.
+
+The README leads with the working neuroscience use case and links the complete
+research history. A [presentation guide](NEUROSCIENCE_PRESENTATION.md) provides
+an offline demonstration, a development map, the measured result and a proposed
+controlled experiment. The [prior-art comparison](PRIOR_ART.md) now includes
+neural self-construction, Gli regulation, BIRD and COMBINE archives.
+
+Package version remains 1.6.0. Compiler contracts and predictor weights are
+unchanged. Both replays are included in the source archive and CI; their NumPy
+dependency does not enter the compiler wheel.
+
+## Verification of the prepared update
+
+Checked on macOS, 18 October 2026:
+
+- Main suite: 504 tests, 501 passed and 3 skipped. The skips still require the
+  absent sibling runtime (two) or Linux address-space limits (one).
+- All 15 release checks passed, including the installed wheel and the source
+  archive tested outside the checkout. Five predictor contract tests and the
+  CPU inference command passed with the pinned dependencies.
+- Measurement replay reproduced all twelve archived calculations; its largest
+  absolute discrepancy was 3.40e-13 across the compared values. Four independent
+  arithmetic tests passed. Relocation passed; altered counts, a missing moment
+  archive, a reversed gain and a deliberately wrong CRPS calculation were rejected.
+- Raw-count forecasting passed 23 synthetic checks before count conversion;
+  12 deliberately introduced faults were detected. Independent replay verified
+  all 15 evaluation groups and 30 sealed prediction files within 1.78e-15.
+  Three portable-archive tests cover relocation, altered counts and a deliberately
+  wrong feature calculation. The failed scientific acceptance result is retained.
+- Neural evidence generation and byte replay passed. Patterning passed all
+  twelve mechanism checks. Browser inspection exercised a measurement's source
+  record, passive-reporter mode, model-time selection and intervention disclosure.
+
+These are local checks. Remote CI and untested platforms require their own runs.
 
 ## Verification at the 1.6.0 release
 

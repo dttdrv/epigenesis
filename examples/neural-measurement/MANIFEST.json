@@ -1,0 +1,79 @@
+{
+  "format": "epigenesis.archived-rna-repeat-pilot",
+  "version": 1,
+  "selected": [
+    {
+      "source_row": 259,
+      "family": "4e22540ef2e82d70ceaf6320914c5a1fa818e29a097a7dc8c7a9d18ba1b01622",
+      "component": "12ea2bb21a8e4434689fb589494093b1e156cc7709aba607dce1db666569407b"
+    },
+    {
+      "source_row": 1446,
+      "family": "6de0fc94a2680b2d193a22ac6c39f4f84bbe3b3debbd4716ec9a15a534fd6e47",
+      "component": "f8c5497c97ef5a5d34ac6f557235cb245d78bbdd8347b995b8aa67ef2f837a7b"
+    },
+    {
+      "source_row": 325,
+      "family": "5f8d1b4a8f2b825e790e11ccbaed881900c63e02e59c0c4e92d6fd0c99ad07e6",
+      "component": "b4a828427f50711473e17b81be262978b3d37992cc3d098de675de7c82053aed"
+    },
+    {
+      "source_row": 1260,
+      "family": "86e600777b768c4c982a7bdc0c241dc410eb42516afc9caed83a196538828aa0",
+      "component": "d146d7ddd29b2610b81c3cba5def96de7dc9f20bb14a55f0f6c8033ea219f8c1"
+    }
+  ],
+  "calculation": {
+    "raw_particles_per_job": 2000000,
+    "rna_repeats": 3,
+    "mc_delta": 0.01,
+    "log_tolerance": 1e-08
+  },
+  "files": {
+    "METHODS.md": "de71d4bebdc3623efdd0c062f623ff526a4f411328e2b13e60d09765cc19b140",
+    "README.md": "349070a0c0f82d0d116ac0a66752070844e2186330f69625d3d29c567fe1c3bd",
+    "replay.py": "4e9a7074a34dc0d29004ebdab6b6d39d34f46419591639cf3f85927980b48a47",
+    "requirements.txt": "fb2a203f80ce37499ff60f11ccfea4145a9e4b0ad4c9e6e84d571e82135ecca7",
+    "result/ATTEMPT.json": "f8286f8d006abb986d0aa20b17dbbdb2bcbbb0f6db44f040c98eed047b5042ce",
+    "result/RESULT.json": "a86683806dae177238d7190fa5e8fb5ee070ecb93d3f215e8ae4f71e6f2f1581",
+    "result/dev-1260-0/INPUT.json": "cbc641f1fa14eb1b388f011fc5ddc9cd2bf5e2e6a96534a8975782c56aa80eba",
+    "result/dev-1260-0/RESULT.json": "476cb319a7018bb4dfc5f1612924866b8305d7c554f10e53fdf032de9e6e76a4",
+    "result/dev-1260-0/moments.npz": "819a9099d8bcfac371d016e9b1f774e5f26953b3d08e3521704bafc46129d609",
+    "result/dev-1260-1/INPUT.json": "647a61ee02011d64cc3c459f75afa9a1a096594aa4052233bfbd37876019bfb9",
+    "result/dev-1260-1/RESULT.json": "ec665f937b5aa63264cd8575e5cf64ddafca8e463e460cfef9408bf3634fca51",
+    "result/dev-1260-1/moments.npz": "2be7214613dcbc4f1b10fd81c26a5bd979840da5bcc1426f0b06b3dc74a6e84b",
+    "result/dev-1260-2/INPUT.json": "c33284ad7ea27d95eb9123f420b58226b98b0c9c83cd51631740fa0b4a8188f8",
+    "result/dev-1260-2/RESULT.json": "226e8f09eb89c8de9caca3d6acf4f50b7fc92eaec46e53aaf0085cacebab567e",
+    "result/dev-1260-2/moments.npz": "c6bded52701b80b47b9e8fc221bb14b557c44d989267d8dc7ac461f2b65e57d3",
+    "result/dev-1446-0/INPUT.json": "739a4b42aa516728ced3579e42c47ec22fc403c9627902a5407b49aa02fc11e9",
+    "result/dev-1446-0/RESULT.json": "33ce8b35e9aea013453f7a021d1c2e05ae3a273f849a5add15e85ce3071bb22f",
+    "result/dev-1446-0/moments.npz": "0f7e5f7b0e1f0bc68f760a411061b78bd996b7623d2c5bdd668a3ee344dbe971",
+    "result/dev-1446-1/INPUT.json": "3652473e79ac4486dd717039a5543564db30406f39de21113d5b5fe45a7dde7d",
+    "result/dev-1446-1/RESULT.json": "c7db01e0b096018e6ef1dee20090293ab7a96c26c47b2a863b018a98acc3a4f9",
+    "result/dev-1446-1/moments.npz": "ef83a4baf1204b38190a477d8ee683df15cce5183094775af40d65cbede1274e",
+    "result/dev-1446-2/INPUT.json": "b7f1f38f83647d1b97890e295efd0e4483725b863ba1e1e4d6d6c42d2eca7dc3",
+    "result/dev-1446-2/RESULT.json": "c8a413a48782fdceb09c261fd7a061e8f676ae068528f62c08e8aa23e62cf1a5",
+    "result/dev-1446-2/moments.npz": "3c121b809989bcd381c1271812a1656ed61ac3cdbb5e233ff876fdb5a50b95a8",
+    "result/dev-259-0/INPUT.json": "b57c5cf4b073b89ade26642fdf7fc8ffc1fa608e3d4bfbdf6315c20734a48a9d",
+    "result/dev-259-0/RESULT.json": "b241849bd50ffbee148ca68a54fbd6f98283bff303376592dd92a08da6d47efa",
+    "result/dev-259-0/moments.npz": "af44afde036a5daf7c61321417bff7b209b6af5dadb7f190f207a282c0ad5f23",
+    "result/dev-259-1/INPUT.json": "490557faf64afdc50d95d03e656c97faeeebda79c7f7ad15289b70f6762da04d",
+    "result/dev-259-1/RESULT.json": "217a9934ca33184ff29bf485d55c77c1263df2f57029ea11e7971d98f0e822a0",
+    "result/dev-259-1/moments.npz": "b30314c6ff7cacf7f18605c6c386e28da9e62bdb2990ea1845b04b50335359d3",
+    "result/dev-259-2/INPUT.json": "d48bb74d000e693768847a8bdc12cad8a8cd54ecb06f89ea7456b5ac31ce9b3a",
+    "result/dev-259-2/RESULT.json": "c8c37f394a4d1d712e23ca755c109b762aa2f931a124354784714ef575e82146",
+    "result/dev-259-2/moments.npz": "25c88f5614e027981c80c04837b395636c4fe7e875bb6595dc4d72b59844ff70",
+    "result/dev-325-0/INPUT.json": "95e0cbaf6c7d03e73b28b2b51dff727ffb91f93dd1ced4726cfbd2f5438a38c4",
+    "result/dev-325-0/RESULT.json": "fa60da76d134a633a50f911649aeb12a8c792f7b640646d4123e5a99d35b1fd4",
+    "result/dev-325-0/moments.npz": "8476674f6de8dab210596b3970f42b9d3ca0e4f05cd614bfc45f207d6061cad3",
+    "result/dev-325-1/INPUT.json": "26aeefc8c850946fdb60bca01f6c7b7b0c78be79e5f626ceb754d7113f7306f2",
+    "result/dev-325-1/RESULT.json": "88fd0d16e854ebd82bff3f9a6fe8a3888e49221419dac20e172efc45d832050d",
+    "result/dev-325-1/moments.npz": "4b43f211916e60acbebe937979524ee378f87c6b550007613259e981690bd001",
+    "result/dev-325-2/INPUT.json": "4cde6f4f550bbad188d0e87f006638ca106214092b16d5ef3827a9cd4e8cc1c5",
+    "result/dev-325-2/RESULT.json": "d6446a94667f69f72cadff13ffa472d4fba7b70da01038dad32f48ce88ebb3a5",
+    "result/dev-325-2/moments.npz": "e03a92b2dd8ba14084839008cfeefb3c88e73ab486cb036ef71f5876b82da956",
+    "scoring.py": "46e2214658409f423b9a047070b80a5a9cc9ad38af607d2507710dc6006ba33d",
+    "sources.json": "40540ea0d70442ebc24004e32d087d6677e36338cb3eae28b975c96a678710b5",
+    "test_scoring.py": "5e9e3af76c35d75e26c6da30844ef08457c906b1e3e4b57110d3703cd9aa9cee"
+  }
+}

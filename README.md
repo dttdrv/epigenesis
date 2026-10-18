@@ -13,6 +13,12 @@ conditions produce a nervous system, and what changes when we intervene?
 Epigenesis makes proposed mechanisms executable, connects them to biological
 evidence, and preserves the source-to-result chain needed to examine them.
 
+Today it helps a researcher answer a concrete question: which DNA intervention
+would distinguish competing explanations of a neural regulatory response?
+The working examples connect original measurements, reconstructed DNA edits,
+binding models and developmental dynamics. A separate measurement pilot improves
+omitted-repeat forecasts on four neuronal-assay components.
+
 ## Working components
 
 Version 1.6 combines a universal DNA translation compiler with executable
@@ -34,7 +40,8 @@ The two new 1.6 workflows, neural evidence and neural patterning, run offline
 with Python's standard library. They are the quickest entry points below.
 
 [Release notes](docs/RELEASE-1.6.md) · [Specification](SPEC.md) ·
-[Research roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md)
+[Research roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) ·
+[Neuroscience presentation](docs/NEUROSCIENCE_PRESENTATION.md)
 
 ## Start with a real experiment
 
@@ -147,71 +154,79 @@ and checked by the minimal-example release gate.
 
 </details>
 
-## Next proof: choose useful DNA edits
+## Measurement result
 
-A researcher has candidate regulatory DNA edits and a limited experimental
-budget. The next practical milestone is to predict each edit's direction and
-size of effect, then select ten edits from distinct sequence families for
-follow-up measurement. The current target is reporter activity in
-WTC11-NGN2 induced neurons.
+Before learning DNA effects, we need reliable measurements of those effects.
+A [BIRD-based forecast](https://doi.org/10.1093/bioinformatics/btz545) predicts an
+omitted RNA repeat from the other repeats in a fixed neuronal-assay pilot:
 
-Success requires better effect prediction and better experimental ranking than
-fixed sequence baselines on held-out families, with uncertainty reported for
-both comparisons. This would establish a useful sequence-to-function link for
-the larger development program and a concrete tool for planning experiments.
+| Twelve omissions across four TRAIN components | Mean CRPS loss, lower is better |
+|---|---:|
+| Pooled Beta-binomial | 0.06219211 |
+| BIRD repeat model | 0.05490724 |
+| Relative loss reduction | 11.7% |
 
-A compact [experimental predictor](examples/neural-predictor/README.md) now
-ships with frozen weights and a CPU/Metal inference command. It combines a
-local sequence baseline with two 11,368-parameter attention models using
-[Interlace's rational gate](https://misul.org/interlace). You can score your own
-270-base reference/edited pairs and inspect each component's contribution.
+The gain's conditional 99% simulation interval is [0.00436489, 0.00975665].
+All four component means improve; one individual omission favors pooling and
+remains included. The interval describes numerical integration uncertainty for
+this selected cohort. Broader biological generalization remains an open test.
+BIRD and pooling also differ in priors and DNA use, so this comparison does not
+isolate repeat variation as the cause of the gain.
 
-Current Salomon validation results use 7,390 edits in 3,029 families:
+[Replay the archived calculation](examples/neural-measurement/README.md) without
+training, new random draws or access to private local paths. The package checks
+saved forecast moments and score arithmetic; the original sampling run is
+recorded separately. CRPS is a distributional forecast loss on RNA allele
+fractions, not a percentage error in predicting a DNA edit.
 
-| Predictor or comparator | Effect-size MSE ↓ | Signed top-ten utility ↑ |
-|---|---:|---:|
-| Always predict zero | 0.02875171 | 0 (abstains) |
-| Random selection, TRAIN-selected direction | n/a | 0.01674875 |
-| k5 ridge, protocol's MSE-selected comparator | 0.02862511 | 0.03510890 |
-| k3 ridge, highest utility among 16 baselines | 0.02869761 | 0.21515632 |
-| Calibrated short model | 0.02863101 | 0.07609249 |
-| **Bundled two-cycle mixture** | **0.02862935** | **0.07158510** |
-| Subsequent precision-sampling trial | 0.02862093 | 0.00342057 |
+Follow-up results remain visible in the
+[research record](docs/NEURAL_PREDICTOR_ROADMAP.md#dna-normalized-effect-prediction).
+A fresh DNA-normalized forecast reduces mean CRPS by 15.8% relative to pooling
+and passes both fixed directional comparisons. A post hoc zero-effect forecast
+scores better, keeping practical effect prediction unresolved. The separate
+treatment-response comparison has a 14.22% point reduction but inconclusive
+directional intervals. These are different targets and comparisons.
 
-The mixture reduces MSE by **0.426% relative to predicting zero**. Its MSE is
-**0.01480% above k5**, calculated as `100 × (MSE_model / MSE_k5 − 1)`;
-this percentage measures the gap to that comparator, not predictive accuracy.
-MSE itself is in squared log2 reporter-effect units. Centered weighted R² is
-−0.00555, so broad effect-size prediction remains weak.
+A new [temporal experiment](docs/NEURAL_PREDICTOR_ROADMAP.md#new-experiments-18-october-2026)
+forecasts later enhancer responses from four early measurements. Across 351
+excluded families, full-history ridge reduces error by 24% versus persistence
+but matches a simpler averaging control. Timestral-5M and 209M also complete
+the same test; neither improves on that control.
 
-Ranking utility is 2.04× the protocol's k5 comparator and 4.27× random selection,
-while the k3 baseline ranks better. These are adaptive-validation point estimates
-for ten selected families. Both original requirements remain fixed: MSE below
-0.028625109823 and utility above 0.035108902127. Confirmation is unopened.
+A subsequent [raw-count experiment](examples/neural-forecast/README.md) holds out
+both sequence families and infection cultures. Its two-feature forecast has MSE
+0.32132339 versus 0.32214740 for zero change, a 0.26% point improvement. All four
+gain intervals include zero, and the early-mean control wins in one culture.
+The completed test does not establish transferable forecasting superiority.
+Its portable replay checks all 15 evaluation groups and preserves 164 forecasts
+whose held-culture outcomes lack complete measurements. This is a different
+observable and target from the preceding pooled-activity test.
 
-Independent inference reproduces **all 29,560 saved Metal values exactly**:
-the baseline, both corrections and their mixture on every validation input.
-This establishes numerical reproducibility; agreement with measured biology is
-reported separately in the table. [Results and definitions](examples/neural-predictor/README.md#validation-results)
-include the complete baseline panel and the underlying aggregate receipts.
+## Experimental DNA-edit predictor
 
-The subsequent precision-sampling trial crosses the MSE limit but fails ranking.
-Independent replay matches all 109,300 saved prediction values. It remains a
-failed joint-acceptance result and is not the bundled predictor.
+The next sequence-model milestone is to select ten useful regulatory edits from
+distinct families for follow-up experiments. Success requires both better
+prediction error and better selection utility than fixed sequence baselines.
 
-Interlace also improved distant-interaction and local-effect recovery in matched
-synthetic tests, with 51.1% and 64.4% lower error than ordinary attention at equal
-parameter count in one paired training seed. The biological experiment addresses the question of
-whether that capacity transfers to measured neuronal reporter effects.
+The [bundled predictor](examples/neural-predictor/README.md) scores 270-base
+reference/edited pairs in WTC11-NGN2 induced neurons. It combines a local sequence
+baseline with two 11,368-parameter attention models using
+[Interlace's rational gate](https://misul.org/interlace). Frozen weights and
+CPU/Metal inference are included.
 
-A completed audit recovers model-based measurement uncertainty for all 21,781
-training edits. Uncalibrated neural corrections worsen error even in the most
-precisely measured group. The completed sampling trial uses that uncertainty
-without changing targets or acceptance limits. The research ledger records
-287 biological fits, including failed experiments.
-[Results and reproduction details](examples/neural-predictor/README.md)
-include model identities, independent replay receipts and the uncertainty audit;
-the [roadmap](docs/NEURAL_PREDICTOR_ROADMAP.md) preserves the full development history.
+On 7,390 validation edits in 3,029 families, the mixture has MSE 0.02862935
+versus the k5 baseline's 0.02862511. Its signed top-ten utility is 0.07158510
+versus k5's 0.03510890; the k3 baseline ranks better at 0.21515632. It has not
+passed the joint acceptance rule. MSE is in squared log2 reporter-effect units.
+
+All 29,560 saved Metal prediction values reproduce exactly. This checks the
+implementation; biological performance is measured by the comparisons above.
+The [complete baseline panel and receipts](examples/neural-predictor/README.md#validation-results)
+include the later failed trials and the corrected quadratic-readout tie.
+The current research ledger records 445 fits, with confirmation unopened and the
+bundled weights unchanged. The new temporal comparisons are complete and their
+measured outcomes are retained. A useful general DNA-edit predictor remains an
+open research problem.
 
 ## More experiments
 

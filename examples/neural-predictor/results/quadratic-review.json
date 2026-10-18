@@ -1,0 +1,315 @@
+{
+  "status": "verified_with_metric_discrepancy",
+  "discrepancy": {
+    "cause": "rank-order-dependent numpy mean of identical signed selected outcomes",
+    "raw_runner_gates": {
+      "mse": false,
+      "utility": true
+    },
+    "independent_gates": {
+      "mse": false,
+      "utility": false
+    },
+    "candidate": {
+      "metrics": {
+        "validation_mse": 0.02862839052233341,
+        "ranking_utility": 0.035108902126661234,
+        "selected_ids": [
+          "cardiac_neuro_cava_random:ALT_CITED2|ENSG00000164442.10|EH38E3736422_rev_tile1-1_CITED2|ENSG00000164442.10|EH38E3736422|6-139378938-T-C",
+          "cardiac_neuro_cava_random:ALT_DPYSL2|ENSG00000092964.18|EH38E3824498_fwd_tile1-1_DPYSL2|ENSG00000092964.18|EH38E3824498|8-26615053-C-T",
+          "cardiac_neuro_cava_random:ALT_CHI3L1|ENSG00000133048.13|EH38E2859260_rev_tile1-1_CHI3L1|ENSG00000133048.13|EH38E2859260|1-203229849-T-C",
+          "cardiac_neuro_cava_random:ALT_TRIO|ENSG00000038382.23|EH38E3627251_fwd_tile1-1_TRIO|ENSG00000038382.23|EH38E3627251|5-14535107-C-T",
+          "cardiac_neuro_cava_random:ALT_NF2|ENSG00000186575.19|EH38E2157125_fwd_tile1-1_NF2|ENSG00000186575.19|EH38E2157125|22-29618211-G-A",
+          "cardiac_neuro_cava_random:ALT_FANCI|ENSG00000140525.20|EH38E3153443_fwd_tile1-1_FANCI|ENSG00000140525.20|EH38E3153443|15-89196062-C-A",
+          "cardiac_neuro_cava_random:ALT_NCOA1|ENSG00000084676.16|EH38E3331048_fwd_tile1-1_NCOA1|ENSG00000084676.16|EH38E3331048|2-24744222-A-G",
+          "cardiac_neuro_cava_random:ALT_MYPN|ENSG00000138347.17|EH38E2904968_fwd_tile1-1_MYPN|ENSG00000138347.17|EH38E2904968|10-68071379-A-G",
+          "cardiac_neuro_cava_random:ALT_RELN|ENSG00000189056.15|EH38E2577845_rev_tile1-1_RELN|ENSG00000189056.15|EH38E2577845|7-103844004-C-A",
+          "cardiac_neuro_cava_random:ALT_RAD51B|ENSG00000182185.19|EH38E3101101_fwd_tile1-1_RAD51B|ENSG00000182185.19|EH38E3101101|14-67900017-C-T"
+        ]
+      },
+      "signed_ids": {
+        "cardiac_neuro_cava_random:ALT_CITED2|ENSG00000164442.10|EH38E3736422_rev_tile1-1_CITED2|ENSG00000164442.10|EH38E3736422|6-139378938-T-C": -1,
+        "cardiac_neuro_cava_random:ALT_DPYSL2|ENSG00000092964.18|EH38E3824498_fwd_tile1-1_DPYSL2|ENSG00000092964.18|EH38E3824498|8-26615053-C-T": 1,
+        "cardiac_neuro_cava_random:ALT_CHI3L1|ENSG00000133048.13|EH38E2859260_rev_tile1-1_CHI3L1|ENSG00000133048.13|EH38E2859260|1-203229849-T-C": 1,
+        "cardiac_neuro_cava_random:ALT_TRIO|ENSG00000038382.23|EH38E3627251_fwd_tile1-1_TRIO|ENSG00000038382.23|EH38E3627251|5-14535107-C-T": 1,
+        "cardiac_neuro_cava_random:ALT_NF2|ENSG00000186575.19|EH38E2157125_fwd_tile1-1_NF2|ENSG00000186575.19|EH38E2157125|22-29618211-G-A": 1,
+        "cardiac_neuro_cava_random:ALT_FANCI|ENSG00000140525.20|EH38E3153443_fwd_tile1-1_FANCI|ENSG00000140525.20|EH38E3153443|15-89196062-C-A": -1,
+        "cardiac_neuro_cava_random:ALT_NCOA1|ENSG00000084676.16|EH38E3331048_fwd_tile1-1_NCOA1|ENSG00000084676.16|EH38E3331048|2-24744222-A-G": 1,
+        "cardiac_neuro_cava_random:ALT_MYPN|ENSG00000138347.17|EH38E2904968_fwd_tile1-1_MYPN|ENSG00000138347.17|EH38E2904968|10-68071379-A-G": -1,
+        "cardiac_neuro_cava_random:ALT_RELN|ENSG00000189056.15|EH38E2577845_rev_tile1-1_RELN|ENSG00000189056.15|EH38E2577845|7-103844004-C-A": 1,
+        "cardiac_neuro_cava_random:ALT_RAD51B|ENSG00000182185.19|EH38E3101101_fwd_tile1-1_RAD51B|ENSG00000182185.19|EH38E3101101|14-67900017-C-T": 1
+      },
+      "ordered_signed_effects": [
+        -0.0200671461917877,
+        -0.085298900440464,
+        0.292168877325707,
+        0.170321089945936,
+        0.160018603223051,
+        -0.120560094269777,
+        0.0746560258726777,
+        -0.128108378744249,
+        -0.0255519871481335,
+        0.0335109316936518
+      ],
+      "numpy_mean": 0.03510890212666124,
+      "fsum_mean": 0.035108902126661234,
+      "exact_mean": {
+        "numerator": 25298630165602999,
+        "denominator": 720575940379279360,
+        "rounded": 0.035108902126661234
+      }
+    },
+    "baseline": {
+      "metrics": {
+        "validation_mse": 0.028625109823009157,
+        "ranking_utility": 0.035108902126661234,
+        "selected_ids": [
+          "cardiac_neuro_cava_random:ALT_CITED2|ENSG00000164442.10|EH38E3736422_rev_tile1-1_CITED2|ENSG00000164442.10|EH38E3736422|6-139378938-T-C",
+          "cardiac_neuro_cava_random:ALT_DPYSL2|ENSG00000092964.18|EH38E3824498_fwd_tile1-1_DPYSL2|ENSG00000092964.18|EH38E3824498|8-26615053-C-T",
+          "cardiac_neuro_cava_random:ALT_CHI3L1|ENSG00000133048.13|EH38E2859260_rev_tile1-1_CHI3L1|ENSG00000133048.13|EH38E2859260|1-203229849-T-C",
+          "cardiac_neuro_cava_random:ALT_NF2|ENSG00000186575.19|EH38E2157125_fwd_tile1-1_NF2|ENSG00000186575.19|EH38E2157125|22-29618211-G-A",
+          "cardiac_neuro_cava_random:ALT_TRIO|ENSG00000038382.23|EH38E3627251_fwd_tile1-1_TRIO|ENSG00000038382.23|EH38E3627251|5-14535107-C-T",
+          "cardiac_neuro_cava_random:ALT_FANCI|ENSG00000140525.20|EH38E3153443_fwd_tile1-1_FANCI|ENSG00000140525.20|EH38E3153443|15-89196062-C-A",
+          "cardiac_neuro_cava_random:ALT_NCOA1|ENSG00000084676.16|EH38E3331048_fwd_tile1-1_NCOA1|ENSG00000084676.16|EH38E3331048|2-24744222-A-G",
+          "cardiac_neuro_cava_random:ALT_RELN|ENSG00000189056.15|EH38E2577845_rev_tile1-1_RELN|ENSG00000189056.15|EH38E2577845|7-103844004-C-A",
+          "cardiac_neuro_cava_random:ALT_RAD51B|ENSG00000182185.19|EH38E3101101_fwd_tile1-1_RAD51B|ENSG00000182185.19|EH38E3101101|14-67900017-C-T",
+          "cardiac_neuro_cava_random:ALT_MYPN|ENSG00000138347.17|EH38E2904968_fwd_tile1-1_MYPN|ENSG00000138347.17|EH38E2904968|10-68071379-A-G"
+        ]
+      },
+      "signed_ids": {
+        "cardiac_neuro_cava_random:ALT_CITED2|ENSG00000164442.10|EH38E3736422_rev_tile1-1_CITED2|ENSG00000164442.10|EH38E3736422|6-139378938-T-C": -1,
+        "cardiac_neuro_cava_random:ALT_DPYSL2|ENSG00000092964.18|EH38E3824498_fwd_tile1-1_DPYSL2|ENSG00000092964.18|EH38E3824498|8-26615053-C-T": 1,
+        "cardiac_neuro_cava_random:ALT_CHI3L1|ENSG00000133048.13|EH38E2859260_rev_tile1-1_CHI3L1|ENSG00000133048.13|EH38E2859260|1-203229849-T-C": 1,
+        "cardiac_neuro_cava_random:ALT_NF2|ENSG00000186575.19|EH38E2157125_fwd_tile1-1_NF2|ENSG00000186575.19|EH38E2157125|22-29618211-G-A": 1,
+        "cardiac_neuro_cava_random:ALT_TRIO|ENSG00000038382.23|EH38E3627251_fwd_tile1-1_TRIO|ENSG00000038382.23|EH38E3627251|5-14535107-C-T": 1,
+        "cardiac_neuro_cava_random:ALT_FANCI|ENSG00000140525.20|EH38E3153443_fwd_tile1-1_FANCI|ENSG00000140525.20|EH38E3153443|15-89196062-C-A": -1,
+        "cardiac_neuro_cava_random:ALT_NCOA1|ENSG00000084676.16|EH38E3331048_fwd_tile1-1_NCOA1|ENSG00000084676.16|EH38E3331048|2-24744222-A-G": 1,
+        "cardiac_neuro_cava_random:ALT_RELN|ENSG00000189056.15|EH38E2577845_rev_tile1-1_RELN|ENSG00000189056.15|EH38E2577845|7-103844004-C-A": 1,
+        "cardiac_neuro_cava_random:ALT_RAD51B|ENSG00000182185.19|EH38E3101101_fwd_tile1-1_RAD51B|ENSG00000182185.19|EH38E3101101|14-67900017-C-T": 1,
+        "cardiac_neuro_cava_random:ALT_MYPN|ENSG00000138347.17|EH38E2904968_fwd_tile1-1_MYPN|ENSG00000138347.17|EH38E2904968|10-68071379-A-G": -1
+      },
+      "ordered_signed_effects": [
+        -0.0200671461917877,
+        -0.085298900440464,
+        0.292168877325707,
+        0.160018603223051,
+        0.170321089945936,
+        -0.120560094269777,
+        0.0746560258726777,
+        -0.0255519871481335,
+        0.0335109316936518,
+        -0.128108378744249
+      ],
+      "numpy_mean": 0.035108902126661234,
+      "fsum_mean": 0.035108902126661234,
+      "exact_mean": {
+        "numerator": 25298630165602999,
+        "denominator": 720575940379279360,
+        "rounded": 0.035108902126661234
+      }
+    },
+    "exact_utility_gain": 0,
+    "raw_nomination": null,
+    "independent_nomination": null
+  },
+  "elapsed_seconds": 38.551093916001264,
+  "companion_checker_freeze_sha256": "60dd4f3fe2ed3dbd37857c552af7b4924defb48d2d44e7ab321fb9ec8336cb70",
+  "freeze_sha256": "227221b39f3af65364d2395675cdaf22d1c72e8507cb71400d0a93beda8455f3",
+  "experiment_state_sha256": "5a68895522ce2434fd094b0a1c0091064bc1a943318660488e969cde52f01677",
+  "checker_sha256": "059aee968b0ddd0e4b46606b9d0968e98d6eaef05086f41b14374c39785f5ba6",
+  "environment": {
+    "python": "3.12.13",
+    "torch": "2.12.1",
+    "numpy": "2.5.1",
+    "machine": "arm64",
+    "macos": "27.2"
+  },
+  "exact_prediction_values": 131081,
+  "compared_prediction_values": 65738,
+  "prediction_comparisons": {
+    "fold-0": {
+      "values": 4362,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "fold-1": {
+      "values": 4535,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "fold-2": {
+      "values": 4270,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "fold-3": {
+      "values": 4205,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "fold-4": {
+      "values": 4409,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "combined-excluded": {
+      "values": 21781,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "validation-baseline": {
+      "values": 7390,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "validation-correction": {
+      "values": 7390,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "validation-validation": {
+      "values": 7390,
+      "max_abs_error": 0.0,
+      "exact": true
+    },
+    "validation-properties": {
+      "values": 6,
+      "max_abs_error": 0.0,
+      "exact": true
+    }
+  },
+  "prediction_replay_atol": 1e-10,
+  "metric_replay_atol": 1e-12,
+  "training_rows": 21781,
+  "validation_rows_evaluated": 7390,
+  "fits": {
+    "full": {
+      "training_rows": 21781,
+      "scale": 0.02886249466709258,
+      "checkpoint_experiment_sha256": "3fe36ea485f628ec1954dd7fbc9485feaa410b042c96e2313bebbb1ea4050080",
+      "final_state_sha256": "31e0fb123d865c8351faa1f5f4f436f320f41504e80586f491ecab432df37d88",
+      "optimizer_updates": 1024,
+      "scheduler_updates": 1024
+    },
+    "fold-0": {
+      "training_rows": 17419,
+      "scale": 0.03229132880625169,
+      "checkpoint_experiment_sha256": "3d9c602bb6b419b6f877d96e3af2de16b5a4b165a3c989888c8bd091026bc491",
+      "final_state_sha256": "f74be5effff14158d7a5272c4996d192ba03a3d38a9054f08e7294b62d9b2d73",
+      "optimizer_updates": 1024,
+      "scheduler_updates": 1024,
+      "excluded_rows": 4362,
+      "reused_ridge_sha256": "a3a0e717fc4f12af8e98a86a331028eac2291328bc9532c0ee396155e9e2c4ec",
+      "reused_fit_sha256": "3a6e171617852a3e2e90d5c3204ecca46f5beebd7b62c13d7fd8e15dd9e8600b"
+    },
+    "fold-1": {
+      "training_rows": 17246,
+      "scale": 0.02917857004401949,
+      "checkpoint_experiment_sha256": "5fe6e8e8b3e265ecbb5d8435b7b50c5d8c809d7561d9f7d9f083d7ddb4ab1005",
+      "final_state_sha256": "58f3f9a3cd25475363e4e6089a0cc94fe622217001c21ce8ddca608aed890218",
+      "optimizer_updates": 1024,
+      "scheduler_updates": 1024,
+      "excluded_rows": 4535,
+      "reused_ridge_sha256": "6eab35f255a211cba5b937f8ce357de529b8d4c56943045bb320f487b06d7a79",
+      "reused_fit_sha256": "de5cb7f8b265a896cf5d0391c70abb422ddd534bfa8a147bafc31099dff4c40d"
+    },
+    "fold-2": {
+      "training_rows": 17511,
+      "scale": 0.027663023376282667,
+      "checkpoint_experiment_sha256": "763a339c743979bacb51e4afe71a9945def81c97406f4451027e940246cafdb6",
+      "final_state_sha256": "96725814b0d8376922b83fe23bb95f0f55d991116ae67dc1fae5f125b992c403",
+      "optimizer_updates": 1024,
+      "scheduler_updates": 1024,
+      "excluded_rows": 4270,
+      "reused_ridge_sha256": "456af401b2209397d9a9f5354f897e0059a8135be61e564ca69556e7b9e99db3",
+      "reused_fit_sha256": "45c2d7341224906fa7d65a10dac9d14ac21350ce97bdab934001cfc343240fe5"
+    },
+    "fold-3": {
+      "training_rows": 17576,
+      "scale": 0.02988518185869366,
+      "checkpoint_experiment_sha256": "bbf756e78a3499508c68d604d574fc040a165cd250031083b45067e7b03fe65d",
+      "final_state_sha256": "55f305c1606aa396b4c388fcb6212970d39e113af41c32bee52b1732a78a21a6",
+      "optimizer_updates": 1024,
+      "scheduler_updates": 1024,
+      "excluded_rows": 4205,
+      "reused_ridge_sha256": "020cd2f4d2c2ceba714e29385a3698ff007d0a32e76cbbc6401338aa5a4f4e58",
+      "reused_fit_sha256": "172c944fb31a0ce957ac21c42eb741ecdcba185649e7bd05860f97a7723b23f7"
+    },
+    "fold-4": {
+      "training_rows": 17372,
+      "scale": 0.02355164616931294,
+      "checkpoint_experiment_sha256": "c87a0e195fe432d52c06b1ae6a2233e04996ece6457a64777136f5d0b025b49e",
+      "final_state_sha256": "7a14abe7d518d1f9ee2b5654601efb516db31823a9a208767faf17c3bc35c50c",
+      "optimizer_updates": 1024,
+      "scheduler_updates": 1024,
+      "excluded_rows": 4409,
+      "reused_ridge_sha256": "a47f58fc270a57dfd72a768808d555ab26e855ac9d6f812385deb34ddf46b0dd",
+      "reused_fit_sha256": "e12701f9a47113349fbc6668e64ff876a4646fbc34d6e74b4420857cbabed9d6"
+    }
+  },
+  "calibration": {
+    "alpha": 0.15097202949412603,
+    "numerator": 7.676273218204253e-06,
+    "denominator": 5.084566488193708e-05,
+    "oof_baseline_mse": 0.028175000599396614,
+    "oof_unit_mse": 0.028210493717842143,
+    "meta_training_mse": 0.02817384169684991,
+    "selection_data": "TRAIN excluded-family predictions only"
+  },
+  "independent_calibration": {
+    "alpha": 0.15097202949412622,
+    "numerator": 7.676273218204263e-06,
+    "denominator": 5.084566488193708e-05,
+    "oof_baseline_mse": 0.028175000599396614,
+    "oof_unit_mse": 0.028210493717842143,
+    "meta_training_mse": 0.02817384169684991
+  },
+  "results": {
+    "interlace": {
+      "validation_mse": 0.02862839052233341,
+      "ranking_utility": 0.035108902126661234,
+      "selected_ids": [
+        "cardiac_neuro_cava_random:ALT_CITED2|ENSG00000164442.10|EH38E3736422_rev_tile1-1_CITED2|ENSG00000164442.10|EH38E3736422|6-139378938-T-C",
+        "cardiac_neuro_cava_random:ALT_DPYSL2|ENSG00000092964.18|EH38E3824498_fwd_tile1-1_DPYSL2|ENSG00000092964.18|EH38E3824498|8-26615053-C-T",
+        "cardiac_neuro_cava_random:ALT_CHI3L1|ENSG00000133048.13|EH38E2859260_rev_tile1-1_CHI3L1|ENSG00000133048.13|EH38E2859260|1-203229849-T-C",
+        "cardiac_neuro_cava_random:ALT_TRIO|ENSG00000038382.23|EH38E3627251_fwd_tile1-1_TRIO|ENSG00000038382.23|EH38E3627251|5-14535107-C-T",
+        "cardiac_neuro_cava_random:ALT_NF2|ENSG00000186575.19|EH38E2157125_fwd_tile1-1_NF2|ENSG00000186575.19|EH38E2157125|22-29618211-G-A",
+        "cardiac_neuro_cava_random:ALT_FANCI|ENSG00000140525.20|EH38E3153443_fwd_tile1-1_FANCI|ENSG00000140525.20|EH38E3153443|15-89196062-C-A",
+        "cardiac_neuro_cava_random:ALT_NCOA1|ENSG00000084676.16|EH38E3331048_fwd_tile1-1_NCOA1|ENSG00000084676.16|EH38E3331048|2-24744222-A-G",
+        "cardiac_neuro_cava_random:ALT_MYPN|ENSG00000138347.17|EH38E2904968_fwd_tile1-1_MYPN|ENSG00000138347.17|EH38E2904968|10-68071379-A-G",
+        "cardiac_neuro_cava_random:ALT_RELN|ENSG00000189056.15|EH38E2577845_rev_tile1-1_RELN|ENSG00000189056.15|EH38E2577845|7-103844004-C-A",
+        "cardiac_neuro_cava_random:ALT_RAD51B|ENSG00000182185.19|EH38E3101101_fwd_tile1-1_RAD51B|ENSG00000182185.19|EH38E3101101|14-67900017-C-T"
+      ],
+      "checks": {
+        "mse": false,
+        "utility": false
+      }
+    }
+  },
+  "thresholds": {
+    "mse": 0.028625109823009157,
+    "utility": 0.035108902126661234
+  },
+  "nomination": null,
+  "duplicate_endpoint": null,
+  "accounting": {
+    "prior_biological_fits": 293,
+    "new_biological_fits": 7,
+    "total_biological_fits": 300,
+    "ridge_fits": 0,
+    "neural_fits": 6,
+    "scalar_fits": 1,
+    "start_events": 7,
+    "failed_events": 0
+  },
+  "deployment": "new full-TRAIN quadratic1024 checkpoint and unchanged k5 baseline",
+  "deployment_checkpoint_sha256": "18601adb2237cab4af331fcbe985ddf61844bc2365368ce1edbe8c4e725144a5",
+  "deployment_checkpoint_experiment_sha256": "3fe36ea485f628ec1954dd7fbc9485feaa410b042c96e2313bebbb1ea4050080",
+  "deployment_model_state_sha256": "31e0fb123d865c8351faa1f5f4f436f320f41504e80586f491ecab432df37d88",
+  "previous_review_sha256": "adacc9fff1c8d5100386d6e4d666eb3a316366f26820a81277e449fd3cb92363",
+  "rng_check_scope": "unchanged equal-family reference stream and final generator states",
+  "new_fits": 0,
+  "reference_ridge_solves": 0,
+  "gpu_replay_only": true,
+  "confirmation_read": false
+}

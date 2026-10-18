@@ -1,0 +1,27 @@
+{
+  "source": {
+    "source_row": 1260,
+    "family": "86e600777b768c4c982a7bdc0c241dc410eb42516afc9caed83a196538828aa0",
+    "component": "d146d7ddd29b2610b81c3cba5def96de7dc9f20bb14a55f0f6c8033ea219f8c1"
+  },
+  "omission": 0,
+  "dna": [
+    899,
+    692
+  ],
+  "training_rna": [
+    [
+      524,
+      474
+    ],
+    [
+      609,
+      570
+    ]
+  ],
+  "omitted_rna": [
+    708,
+    466
+  ],
+  "total": 1174
+}

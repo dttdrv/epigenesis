@@ -69,3 +69,25 @@ sequence-record catalog, exact source and native identities, and finite limits.
 The result is a reproducible compiler boundary between biological source
 records and typed Development Module IR, published as a stable inspectable
 bundle with a source-to-target evidence chain.
+
+## Neural experiments and measurement inference
+
+The experimental platform builds on established biological models and simulation
+methods. Its contribution is the executable connection to exact source records,
+the reconstruction of experimental inputs, and the accompanying intervention
+and verification procedures.
+
+| Work | Established result | Epigenesis implementation |
+|---|---|---|
+| [Zubler et al., 2011](https://doi.org/10.3389/fncom.2011.00057) | Gene-like instructions copied from a single progenitor guide replication, differentiation and neural self-construction in CX3D. | A separate artificial recipe with source provenance, geometry traces and transmission/lesion controls using the CX3D substrate. |
+| [Cohen et al., 2014](https://doi.org/10.1242/dev.112573) | Competitive Gli activation and repression produce a neutral point: changing binding affinity has opposite effects on its two sides. | A specified Nkx2.2 substitution, measured binding profiles and published four-gene dynamics connected through an explicit affinity-transfer assumption. |
+| [Traets et al., 2021](https://doi.org/10.7554/eLife.66955) | A larger CHE-1 promoter fragment transfers expression resilience that the binding core alone does not. | Reconstruction of 109 observations and intended donor products, with cell-level source links and explicit orientation, extent and spacing differences. |
+| [Majoros et al., 2020; online 2019](https://doi.org/10.1093/bioinformatics/btz545) | BIRD models regulatory effects and variation between assay repeats. | A separately implemented and numerically checked forecast comparison on four fixed neuronal-assay TRAIN components. |
+| [Bergmann et al., 2014](https://doi.org/10.1186/s12859-014-0369-z) | COMBINE archives package biological models, experiments, data and metadata for reproduction. | A narrower compiler contract that checks exact source identity, explicit interpretation, typed lowering and independent replay. |
+
+Neural self-construction, the Gli affinity sign reversal and replicate-aware
+assay inference therefore have direct precedents. The current release offers
+inspectable reconstructions and a small new measurement evaluation. Establishing
+a new biological mechanism requires a distinguishing intervention and independent
+experimental measurements. The [presentation guide](NEUROSCIENCE_PRESENTATION.md)
+sets out a concrete experimental-design use case and the current evidence.

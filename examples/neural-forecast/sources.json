@@ -1,0 +1,36 @@
+{
+  "files": [
+    {
+      "name": "GSE188264_dnaCounts.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE188nnn/GSE188264/suppl/GSE188264_dnaCounts.tsv.gz",
+      "bytes": 21425132,
+      "sha256": "8f7ff5c705bd422ac1b673c053a017cb00f553685c0f3dc879c74f1c8da6842d"
+    },
+    {
+      "name": "GSE188264_rnaCounts.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE188nnn/GSE188264/suppl/GSE188264_rnaCounts.tsv.gz",
+      "bytes": 24774908,
+      "sha256": "0d9611951847222276a7db805a1a2a4ded9dfeac19e49aea4e80fc8747c36e70"
+    },
+    {
+      "name": "GSE188264_dnaAnnot.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE188nnn/GSE188264/suppl/GSE188264_dnaAnnot.tsv.gz",
+      "bytes": 72360,
+      "sha256": "dffe2f8b37fcd132c689520594a8a5c041d1198578ec01c5981936e33b8a69e9"
+    },
+    {
+      "name": "GSE188264_rnaAnnot.tsv.gz",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE188nnn/GSE188264/suppl/GSE188264_rnaAnnot.tsv.gz",
+      "bytes": 72360,
+      "sha256": "959faf662a43547a1a8be00403eeb2cb9014080cdf581186b8ac4611ad41a5ba"
+    }
+  ],
+  "citation": "Kreimer et al. (2022), Massively parallel reporter perturbation assays uncover temporal regulatory architecture during neural differentiation",
+  "doi": "10.1038/s41467-022-28659-0",
+  "cohort": "Original Epigenesis TRAIN targeted designs: 4143 rows in 351 sequence families. Published pooled alpha processing influenced original cohort availability; this is retrospective.",
+  "observable": "New sample-local pooled positive DNA/RNA log2 variant-versus-parent contrast; not the authors' original estimator.",
+  "original_runtime": {
+    "numpy": "2.5.1",
+    "python": "3.12.13"
+  }
+}

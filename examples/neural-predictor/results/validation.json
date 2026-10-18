@@ -62,6 +62,51 @@
       "nomination": null,
       "confirmation_evaluated": false,
       "bundled": false
+    },
+    "kmer-resolution-mixture": {
+      "alpha_k3": 0.36996031380184086,
+      "validation_mse": 0.02863000065818665,
+      "ranking_utility": -0.03630627295063067,
+      "checks": {
+        "mse": false,
+        "utility": false
+      },
+      "total_biological_fits": 293,
+      "new_biological_fits": 6,
+      "source_state_sha256": "e7ddb64342b1ac4d440a5c3134c0b51a29319fa91b633806f61020a23d9e142b",
+      "freeze_sha256": "65ab8ffb6d8df33dbb1c3b720b0194874191434c30818a301a2c660b21bf0c03",
+      "independent_review_sha256": "adacc9fff1c8d5100386d6e4d666eb3a316366f26820a81277e449fd3cb92363",
+      "exact_validation_prediction_values": 22170,
+      "maximum_oof_prediction_replay_difference": 4.996003610813204e-16,
+      "nomination": null,
+      "confirmation_evaluated": false,
+      "bundled": false
+    },
+    "quadratic-readout": {
+      "alpha": 0.15097202949412603,
+      "validation_mse": 0.028628390522333413,
+      "ranking_utility": 0.035108902126661234,
+      "checks": {
+        "mse": false,
+        "utility": false
+      },
+      "raw_runner_ranking_utility": 0.03510890212666124,
+      "raw_runner_checks": {
+        "mse": false,
+        "utility": true
+      },
+      "ranking_comparison": "exact tie: identical selected ids and directions as k5",
+      "exact_ranking_utility_gain": 0,
+      "review_status": "verified_with_metric_discrepancy",
+      "total_biological_fits": 300,
+      "new_biological_fits": 7,
+      "source_state_sha256": "5a68895522ce2434fd094b0a1c0091064bc1a943318660488e969cde52f01677",
+      "freeze_sha256": "227221b39f3af65364d2395675cdaf22d1c72e8507cb71400d0a93beda8455f3",
+      "independent_review_sha256": "bcfcf81a74e6650b174be4297023100f58788834cb537f18435b9c4b6c9d6ef3",
+      "maximum_prediction_replay_difference": 0.0,
+      "nomination": null,
+      "confirmation_evaluated": false,
+      "bundled": false
     }
   },
   "cohort": "Salomon 2026 WTC11-NGN2; 7390 validation edits in 3029 families",

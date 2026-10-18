@@ -66,6 +66,17 @@ jobs:
         run: |
           python -m unittest discover -s examples/neural-predictor -p 'test_*.py' -v
           python examples/neural-predictor/predictor.py --input examples/neural-predictor/edits.json --output "$RUNNER_TEMP/predictions.json"
+      - name: Archived measurement calculation
+        run: |
+          python -m unittest discover -s examples/neural-measurement -p 'test_*.py' -v
+          python examples/neural-measurement/replay.py
+      - name: Archived cross-culture forecast
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: |
+          python -m unittest discover -s examples/neural-forecast -p 'test_*.py' -v
+          python examples/neural-forecast/replay.py
 
   release-gates:
     name: Epigenesis 1.6 release gates

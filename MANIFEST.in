@@ -7,6 +7,11 @@ recursive-include examples *.fasta *.fastq *.json *.md *.py
 recursive-include examples/neural-predictor/data *.npz
 include examples/neural-predictor/requirements.txt
 include examples/neural-predictor/LICENSE.Salomon
+recursive-include examples/neural-measurement/result *.npz
+include examples/neural-measurement/requirements.txt
+recursive-include examples/neural-forecast/result *.npz *.gz
+include examples/neural-forecast/COHORT.json.gz
+include examples/neural-forecast/requirements.txt
 include examples/neural-construction/Construction.java
 include examples/neural-construction/viewer.html
 include examples/neural-patterning/viewer.html

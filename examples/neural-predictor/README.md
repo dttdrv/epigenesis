@@ -95,6 +95,8 @@ excluded-family predictions within TRAIN, then applied unchanged to validation.
 | Short correction, calibrated | 0.028631012565 | 0.076092485687 |
 | **Bundled two-cycle mixture** | **0.028629346486** | **0.071585099786** |
 | Subsequent precision-sampling trial | 0.028620934594 | 0.003420568634 |
+| Subsequent k3/k5 blend | 0.028630000658 | -0.036306272951 |
+| Subsequent quadratic readout | 0.028628390522 | 0.035108902127 |
 
 Ranking selects one edit per family, orders candidates by absolute predicted
 effect, resolves ties by identifier, and takes ten families. Utility is the mean
@@ -116,8 +118,9 @@ percentage or closeness to perfect prediction. The short calibration improves
 utility by 116.73% over k5 but has higher MSE. Both criteria must pass together.
 These are point estimates from adaptive model development, not independent
 confirmation or confidence bounds.
-The research ledger contains 287 biological fits, including failed experiments;
-the subsequent precision trial adds seven, while packaging adds none. The
+The research ledger contains 300 biological fits, including failed experiments.
+Precision sampling adds seven, the k3/k5 blend adds six, and the quadratic
+readout adds seven; packaging adds none. The
 original failed confirmation on an earlier cohort remains recorded in the
 [roadmap](../../docs/NEURAL_PREDICTOR_ROADMAP.md).
 
@@ -165,6 +168,40 @@ but utility falls to 0.00342057, below the random comparator. Both original
 criteria remain required, so this trial closes without nomination or a
 replacement of the bundled weights. Independent replay matches all 109,300
 saved values and verifies the seven-fit accounting. Confirmation stays unopened.
+
+A later fixed trial combines k3 λ=0.01 with k5 λ=0.1. Five fresh k3 complement
+fits and one scalar fit use the original excluded-family TRAIN folds; the
+existing full-TRAIN coefficients are reused. The learned k3 weight is
+0.3699603138. Validation MSE is 0.0286300007 and signed utility is −0.0363062730,
+so both original gates fail. This six-fit trial closes without nomination or a
+change to the bundled predictor. Choosing k3 after observing its earlier
+validation utility makes the trial adaptive development. Confirmation remains
+unopened.
+
+The quadratic readout adds 32 parameters to the Interlace scorer and uses the
+original 1024-update recipe in six fits, followed by one TRAIN-only scalar
+calibration. Alpha is 0.1509720295. MSE is 0.0286283905, above the required
+limit. Its ten selected edits and predicted directions are exactly the same as
+k5, so signed selection utility is tied. The frozen runner's NumPy reduction
+records 0.03510890212666124, one floating-point step above the baseline
+0.035108902126661234; independent compensated and exact rational sums return
+the baseline value for both selections. That flag is an arithmetic artifact,
+not a ranking improvement. The frozen output is retained and the candidate
+is rejected; it replaces no bundled weights.
+
+The [companion audit](results/quadratic-review.json) verifies the saved predictions
+and records this discrepancy explicitly; the original gate check remains failed.
+The public summary includes both the corrected selection verdict and the raw
+runner values so neither result is hidden.
+
+A direct barcode-measurement audit covers every original TRAIN edit. On fixed
+common barcode support, signed allele effects correlate at 0.16–0.20 across
+the three assay columns. Existing family-excluded neural corrections have
+weak and uneven incremental alignment with those measurements; the long and
+short uncalibrated corrections worsen pooled MSE in all three columns. These
+count contrasts differ from the original pooled BCalm targets, so the audit
+does not replace the validation results above. The
+[roadmap](../../docs/NEURAL_PREDICTOR_ROADMAP.md) records coverage and comparisons.
 
 ## Verification and scope
 

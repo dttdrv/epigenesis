@@ -1,0 +1,49 @@
+{
+  "source": {
+    "source_row": 1446,
+    "family": "6de0fc94a2680b2d193a22ac6c39f4f84bbe3b3debbd4716ec9a15a534fd6e47",
+    "component": "f8c5497c97ef5a5d34ac6f557235cb245d78bbdd8347b995b8aa67ef2f837a7b"
+  },
+  "omission": 2,
+  "dna": [
+    3010,
+    3144
+  ],
+  "training_rna": [
+    [
+      3576,
+      3772
+    ],
+    [
+      3165,
+      3298
+    ]
+  ],
+  "omitted_rna": [
+    2669,
+    3921
+  ],
+  "total": 6590,
+  "envelope": 1.0,
+  "bird": {
+    "raw_particles": 2000000,
+    "mean_weight": 0.04269932308803688,
+    "effective_particles": 422505.804003135,
+    "loss": 0.07428439922648801,
+    "loss_interval": [
+      0.07171831423077828,
+      0.07593817506981074
+    ],
+    "denominator_interval": [
+      0.04233630058750224,
+      0.04306234558857152
+    ]
+  },
+  "pooled_loss": 0.07886137527538872,
+  "gain": 0.004576976048900713,
+  "gain_interval": [
+    0.002923200205577986,
+    0.0071430610446104464
+  ],
+  "seconds": 2.077601875003893
+}
