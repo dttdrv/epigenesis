@@ -9,4 +9,4 @@
 
 Outside this folder: [`../SPEC.md`](../SPEC.md) defines the compiler contracts; [`../research/`](../research/) holds the frozen plans, hashes and scripts of the thirteen predictive tests; each folder under [`../examples/`](../examples/) has its own README.
 
-The interactive application for the delivered predictor is [`../studio/`](../studio/README.md).
+The interactive simulation and predictor application is [`../studio/`](../studio/README.md).

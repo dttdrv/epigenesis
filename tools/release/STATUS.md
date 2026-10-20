@@ -1,27 +1,47 @@
-# Status
+# Current delivery — 20 October 2026
 
-Plain-language summary of what the bundled experiments do and do not show.
-Details and numbers are in the [roadmap](research/NEURAL_PREDICTOR_ROADMAP.md).
+The interactive entry point is [Epigenesis Studio](../../studio/README.md),
+with English and Bulgarian interfaces. The compiler package remains version 1.6.0.
 
-## Works and is replayable
-- Compiler: DNA source → explicit interpretation → sealed Development Module, with a separate validator.
-- Evidence report: 109 published measurements traced to workbook cells and intended DNA edits.
-- Patterning, construction, fate, coding-consequence examples: executable mechanisms with checks.
-- Measurement forecast: omitted-repeat forecasts improve on a fixed four-component pilot.
+## DNA-site simulation
 
-## Not established
-- Predicting the downstream neural effect of an unseen natural DNA alteration, beating simpler models on independent data.
-- The bundled edit predictor (activity-transfer and attention models) improves point estimates on held-out edits, but every confirmation interval includes zero.
+Simulate accepts a supported single substitution in the nine-base Nkx2.2 GLI
+binding site, compiles its nucleotides into a validated Development Module,
+then derives the binding-profile ratio from the measured table. A published
+four-gene model produces reference, variant, reporter and reversion trajectories
+under the selected signal history. Transferring the measured ratio to
+intracellular affinity is an explicit biological assumption.
 
-## Cross-study tests (2026-10-19)
-Models trained on one set of neural reporter studies were scored on held-out variants from others, always against simple baselines:
+This is a working conditional mechanism experiment. The broader
+genome → development → neural structure → activity → learning path remains
+the research objective; its separate examples are not one validated biological model.
 
-| Test | Result |
-|---|---|
-| k-mer/motif model trained on three studies, tested on the others | no signal |
-| six studies, Siraj-trained head and combinations | r ≈ 0.05 (under 1% of variance); combining models adds nothing |
-| Sei chromatin-profile features | no signal (r ≈ 0); blend no better |
-| motif-context (squared) model | same as the simpler head |
+## Delivered predictor
 
-Measurement noise caps are 0.6–0.98, so the models, not the data, are the limit.
-Next: a model of a different kind, then application to a developmental question.
+Studio and `epigenesis.py predict` use the frozen Huber-linear checkpoint for
+the Siraj SK-N-SH 24-hour reporter effect. It combines 5-mer counts with 532
+compressed motif potentials, scores paired sequences and can select one edit
+per family. It runs with NumPy on CPU and does not train during use.
+
+On reused internal tuning data (16,986 edits, 1,759 families), equal-family
+MSE is 0.28766713 versus k5's 0.29661090: a 3.02% reduction. Six of seven
+original requirements pass; the ten-edit gain lower bound is −0.150.
+On five external neural reporter studies, mean correlation is 0.0490 and
+aggregate MSE is 9.52% above zero-effect prediction. Those results support an
+experimental assay-specific tool; transferable prediction remains unestablished.
+
+The earlier activity-transfer and attention models remain available explicitly
+for reproducing the separate Salomon assay results. Their confirmation is spent;
+Siraj RESERVE remains sealed.
+
+## Evidence and reproduction
+
+- [Predictor guide](../../examples/neural-predictor/README.md): current commands, input contract and archived models.
+- [Technical paper](../../docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](../../docs/paper/epigenesis-technical-paper.bg.pdf)): mechanisms, results and scientific qualifications.
+- [Frozen research](../../research/README.md): thirteen cross-study and variant-prioritization tests, with plans and hash verification.
+- [Roadmap](../../docs/research/NEURAL_PREDICTOR_ROADMAP.md): current delivery followed by the dated experiment history.
+
+The evidence reconstruction, developmental mechanisms and measurement forecasts
+retain their own endpoints and controls. Reported standard errors and repeat
+agreement are uncertainty diagnostics; they do not establish a common
+irreducible-noise floor for these assays.

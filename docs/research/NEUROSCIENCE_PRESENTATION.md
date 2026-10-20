@@ -1,10 +1,10 @@
 # Epigenesis: from DNA edits to testable neural mechanisms
 
-Presentation draft, 20 October 2026. Evidence snapshot: 19 October 2026.
-For the talk, use the [ten-page lecture PDF](../../output/pdf/epigenesis-lecture-2026-10-20.pdf),
-[offline demonstration entry point](../../output/presentation-2026-10-20/index.html)
-and [speaker notes](../../output/presentation-2026-10-20/SPEAKER_NOTES.md).
-The detailed research record below is supporting material, not the speaking script.
+Public demonstration guide, updated 20 October 2026. Use
+[Epigenesis Studio](../../studio/README.md) for the live demonstration and the
+technical paper in [English](../paper/epigenesis-technical-paper.pdf) or
+[Bulgarian](../paper/epigenesis-technical-paper.bg.pdf) for the scientific account.
+The order is **Simulate → Prediction → Receipts**.
 
 The fixed measurement and temporal studies are complete. This document separates
 their measured results from the remaining genome-driven development objective.
@@ -31,7 +31,13 @@ constructs as a clean test of one factor can lead to an ambiguous next experimen
 Epigenesis exposes these differences alongside the original measurements and
 provides executable mechanisms for testing the consequences of assumptions.
 
-The main demonstration reconstructs 109 published gcy-22 mRNA observations from
+The primary demonstration changes a supported GLI binding site and computes
+how a declared four-gene mechanism responds under different starting conditions
+and signal histories. It includes the reference, variant, passive reporter and
+reversion controls in the same run. This makes the effect of the assumed
+binding change visible and reproducible.
+
+A separate evidence demonstration reconstructs 109 published gcy-22 mRNA observations from
 ASER neurons after CHE-1 depletion. The observed auxin/control ratios of group
 means are 8.70% for transfer of the binding core and 66.33% for the larger
 regulatory fragment. Traets et al. published this contrast. Epigenesis adds
@@ -40,33 +46,37 @@ competing explanations. [Traets et al., 2021](https://doi.org/10.7554/eLife.6695
 
 ## Demonstration, approximately eight minutes
 
-Generate the reports before presenting. Both use Python 3.11+, the standard
-library and bundled sources. Choose new output directories.
+Install Studio from the repository root before presenting (Python 3.11+ and
+[uv](https://docs.astral.sh/uv/)):
 
 ```sh
-python3.11 examples/neural-evidence/evidence.py demo --output /tmp/epigenesis-evidence
-python3.11 examples/neural-evidence/evidence.py verify --output /tmp/epigenesis-evidence
-python3.11 examples/neural-patterning/patterning.py demo --output /tmp/epigenesis-patterning
+uv tool install --editable studio --with-editable .
+epigenesis-studio studio/epigenesis_studio/example-edits.json
 ```
 
-1. Open `/tmp/epigenesis-evidence/index.html`. Show all three promoter groups.
-   Select one dot and trace it to its original workbook cell. The endpoint is
-   mRNA count; the relative display divides by the group's control mean.
-2. Inspect the donor reconstruction. The short construct replaces 12 bases
-   with 12, with its core opposite the target gene. The larger donor replaces
-   160 bases with a 130-base fragment, with its core in the same direction.
-   This reconstructs intended donor products; final clones were not sequenced
-   by this project.
-3. State the experimental decision: use matched constructs to vary core
-   orientation, surrounding sequence and spacing separately. Keep the insertion
-   site and the other factors fixed within each comparison. Measure independent
-   biological preparations. This proposed follow-up has not been performed.
-4. Open `/tmp/epigenesis-patterning/index.html`. Compare a passive reporter and
-   an endogenous edit, then examine signal history, allele reversion, mediator
-   rescue and phenocopy. The same binding change can propagate differently when
-   the altered gene participates in feedback.
-5. Show the quantitative measurement result below, then the development map.
-   End with the specific experimental comparison a laboratory could falsify.
+1. Switch the interface to Bulgarian if desired and open **Simulate**. Compare
+   reference `GACCACCCA` with variant `GAACACCCA`, using GLI2. Explain that the
+   module stores the selected bases; the simulator reads them and derives the
+   binding ratio from the measured table.
+2. Run the signal protocol and inspect Pax6, Olig2, Nkx2.2 and Irx3 over time.
+   Compare the network edit with the passive reporter. Change the signal
+   history or starting state and rerun. Explain the affinity-transfer
+   assumption and the meaning of model units.
+3. Show the reversion control, download the simulation receipt and verify it
+   in **Receipts**.
+4. Open **Prediction → Edits**, use the supplied 64-edit table and set panel
+   size to three. Inspect the signed scores and family-diverse shortlist,
+   download that receipt and replay it. This is the separate Huber-linear
+   reporter predictor; its scores do not drive the simulation.
+5. Show the internal and external results below, then the development map.
+   The next biological test measures interventions that distinguish mechanisms.
+
+For the separate source-reconstruction demonstration, generate its offline
+report with `python3.11 examples/neural-evidence/evidence.py demo --output /tmp/epigenesis-evidence`
+(choose a new output directory). Follow the [evidence guide](../../examples/neural-evidence/README.md)
+to trace individual observations to source cells and compare intended donor edits.
+Matched constructs that vary orientation, surrounding sequence and spacing
+separately are a proposed laboratory follow-up, not an experiment performed here.
 
 ## What the mechanism demonstration computes
 
@@ -92,16 +102,20 @@ potentials with a fixed robust loss. On the reused internal population of
 pass; the ten-edit lower-bound requirement remains open. External mean
 correlation is 0.049 and MSE is 9.52% worse than predicting zero.
 
-Use the [real-DNA predictor demonstration](../../output/presentation-2026-10-20/PREDICTOR_DEMO.html)
-and [current result record](../../output/presentation-2026-10-20/LATEST_RESULT.md)
-for the talk. The operational example scores 64 edits from 11 families without
+Use the [Studio workflow](../../studio/README.md#predictor-modes),
+[standalone predictor](../../examples/neural-predictor/README.md#current-model-huber-linear)
+and [frozen transfer result](../../research/frozen-tests/huber-transfer-20261020/RESULTS.md).
+The operational example scores 64 edits from 11 families without
 training; its three-edit panel illustrates the workflow, not new validation.
 Siraj RESERVE remains sealed; the earlier Salomon confirmation is already spent.
 
 ### Earlier predictor experiments (historical sequence)
 
 The lead-model descriptions below record the decisions at those earlier stages.
-Huber-linear supersedes them in the delivered presentation.
+“Current” and “lead” in this historical section refer to those stages;
+Huber-linear supersedes them in the delivered presentation. Local `build/`
+paths name unpublished working records. Public results are indexed in
+[`research/`](../../research/README.md).
 
 The current research problem is to predict which DNA edits change a neural-cell
 reporter's expression and prioritize a small experimental panel. The current
@@ -125,40 +139,40 @@ but the incremental gain over the earlier motif model or a duplicate-feature
 control is not established. All eighteen fits and all 45 score comparisons
 passed independent verification. This is a concrete internal development
 milestone for prioritizing larger experimental panels.
-[Context protocol, result and verification](../../build/neural-predictor-reviewed-20261005/siraj-context-pwm-20261019/RESULTS.md)
+Context protocol, result and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-context-pwm-20261019/RESULTS.md`)
 
 A fixed smooth-context follow-up reduces the extreme-feature error found in
 FIT, but does not replace this result. Its TUNING MSE is 0.29204308 and its
 10/50/200 selection utility is 1.601227/1.025679/0.586091. Both combined gates
 fail. The twelve-fit comparison took 29.3 seconds on one CPU thread; all 51
 score contrasts and saved predictions passed independent replay.
-[Follow-up and numerical checks](../../build/neural-predictor-reviewed-20261005/siraj-smooth-context-20261019/RESULTS.md)
+Follow-up and numerical checks (local record: `build/neural-predictor-reviewed-20261005/siraj-smooth-context-20261019/RESULTS.md`)
 
 A fixed combination of the linear, context and smooth models has also been
 tested and independently replayed. Its MSE is 0.29183895, behind context's
 0.29130587; both combined gates fail. It used saved predictions and one CPU
 thread, with no base retraining. Context remains the presentation's lead result.
-[Combination result](../../build/neural-predictor-reviewed-20261005/siraj-potential-stack-20261019/RESULTS.md)
+Combination result (local record: `build/neural-predictor-reviewed-20261005/siraj-potential-stack-20261019/RESULTS.md`)
 
 A fixed cross-motif feature test also leaves context as the lead. Its MSE is
 0.29165827 versus context's 0.29130587; both combined gates fail, and added
 predictive value over its redundant-feature control is unsupported. All twelve
 saved-head predictions and 57 score contrasts passed independent replay. This records a tested
 interaction hypothesis, rather than evidence that interactions are irrelevant.
-[Cross-profile result](../../build/neural-predictor-reviewed-20261005/siraj-crossprofile-pwm-20261019/RESULTS.md)
+Cross-profile result (local record: `build/neural-predictor-reviewed-20261005/siraj-crossprofile-pwm-20261019/RESULTS.md`)
 
 Using measured activity to choose one motif interaction gives MSE 0.29129777,
 almost unchanged from context's 0.29130587. It retains the additional 50/200-edit
 result but misses the original ten-edit requirement; the incremental benefit
 over context and the paired-label control is unsupported. All 24 fitting stages
 and 33 score contrasts passed independent replay. Context remains the lead.
-[Activity-supervised interaction](../../build/neural-predictor-reviewed-20261005/siraj-supervised-crossprofile-20261019/RESULTS.md)
+Activity-supervised interaction (local record: `build/neural-predictor-reviewed-20261005/siraj-supervised-crossprofile-20261019/RESULTS.md`)
 
 A further fixed test adds motif-spacing information and a matched shuffled-position
 control. Its MSE is 0.29269607, worse than the context lead; both acceptance
 gates fail. All twelve fits and 57 score contrasts passed independent replay.
 This particular spacing feature does not improve the completed result above.
-[Spacing test and controls](../../build/neural-predictor-reviewed-20261005/siraj-spatial-pwm-20261019/RESULTS.md)
+Spacing test and controls (local record: `build/neural-predictor-reviewed-20261005/siraj-spatial-pwm-20261019/RESULTS.md`)
 
 A same-cell activity-supervision follow-up uses 133,208 FIT-only endpoint
 measurements to learn sequence filters. It reaches MSE 0.291247, 1.81% below
@@ -177,7 +191,7 @@ target; the network's excluded-family scalar differences correlate only 0.074.
 Predicting activity levels and predicting the effect of a DNA edit therefore
 need separate evaluation. The measured-difference comparison uses outcome
 labels and is not a sequence-only prediction result.
-[Activity supervision and control](../../build/neural-predictor-reviewed-20261005/siraj-activity-filters-20261019/RESULTS.md)
+Activity supervision and control (local record: `build/neural-predictor-reviewed-20261005/siraj-activity-filters-20261019/RESULTS.md`)
 
 A fixed continuation then trains those filters directly on edit-effect errors
 left by the context model. Real-label and shuffled-label MSE are essentially
@@ -185,13 +199,13 @@ tied: 0.2912454682 and 0.2912454885. The incremental gain over frozen filters
 is unsupported, and the same top-ten edits remain selected. This controlled
 test closes without replacing the context lead. All 24 stages complete in
 9.23 minutes on one CPU thread; all 39 score contrasts pass independent replay.
-[Direct edit-effect training and verification](../../build/neural-predictor-reviewed-20261005/siraj-contrast-filters-20261019/RESULTS.md)
+Direct edit-effect training and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-contrast-filters-20261019/RESULTS.md`)
 
 A subsequent saved-checkpoint check finds that replacing the trained scalar
 with ridge did not hide an aggregate FIT gain: scalar MSE is 0.34244662 versus
 0.34243887 for ridge, with identical top-10/50/200 selections. Independent
 replay confirms the comparison; no new fitting or TUNING access was needed.
-[Readout comparison](../../build/neural-predictor-reviewed-20261005/siraj-readout-diagnostic-20261019/RESULTS.md)
+Readout comparison (local record: `build/neural-predictor-reviewed-20261005/siraj-readout-diagnostic-20261019/RESULTS.md`)
 
 The completed other-cell comparison adds 132,829 FIT-only HepG2/K562 effects
 through separate training heads. Its MSE is 0.291321 versus AP-only training's
@@ -199,7 +213,7 @@ through separate training heads. Its MSE is 0.291321 versus AP-only training's
 It establishes no incremental benefit, so context remains the lead. The fixed
 run took 7.80 minutes on one CPU thread, and independent replay verifies all
 45 comparisons and 36 ridge equations. No GPU or new spending was used.
-[Auxiliary-cell comparison](../../build/neural-predictor-reviewed-20261005/siraj-multicell-effects-20261019/RESULTS.md)
+Auxiliary-cell comparison (local record: `build/neural-predictor-reviewed-20261005/siraj-multicell-effects-20261019/RESULTS.md`)
 
 The three earlier motif models have a positive nominal family-bootstrap utility-gain
 lower bound at 50 selections. Precision weighting and the logarithmic sequence
@@ -228,14 +242,14 @@ is -0.000594 and its ten-selection bound is -0.147759. This is a useful lead for
 prioritizing neural-cell reporter experiments, with independent confirmation
 still required. Independent checks verified all twelve fit records, the two
 final head equations and every score comparison.
-[Exact protocol, search history and replay](../../build/neural-predictor-reviewed-20261005/siraj-signedlog-replay-20261019/RESULTS.md)
-[Bounded comparison](../../build/neural-predictor-reviewed-20261005/siraj-bounded-pwm-20261019/RESULTS.md)
-[Logarithmic sequence-potential comparison](../../build/neural-predictor-reviewed-20261005/siraj-logpotential-pwm-20261019/RESULTS.md)
+Exact protocol, search history and replay (local record: `build/neural-predictor-reviewed-20261005/siraj-signedlog-replay-20261019/RESULTS.md`)
+Bounded comparison (local record: `build/neural-predictor-reviewed-20261005/siraj-bounded-pwm-20261019/RESULTS.md`)
+Logarithmic sequence-potential comparison (local record: `build/neural-predictor-reviewed-20261005/siraj-logpotential-pwm-20261019/RESULTS.md`)
 
 A fixed uncertainty-weighted follow-up retains the positive 50/200-selection
 bounds but raises MSE to 0.29302485. It does not replace the unweighted potential's
 stronger error result. All twelve fits and independent replay are complete.
-[Follow-up comparison](../../build/neural-predictor-reviewed-20261005/siraj-logpotential-precision-20261019/RESULTS.md)
+Follow-up comparison (local record: `build/neural-predictor-reviewed-20261005/siraj-logpotential-precision-20261019/RESULTS.md`)
 
 An analysis restricted to the saved FIT predictions finds that all four
 compressed recipes improve MSE in every fixed fold and every reported-SE
@@ -244,7 +258,7 @@ reduces the largest adverse family's share of adverse error from 33.85% to
 roughly 1.4–1.9%. Remaining losses are distributed across families, and the
 precision model has little headroom from a global rescaling. These are adaptive
 training diagnostics, not a measured noise ceiling or independent validation.
-[FIT-only diagnosis](../../build/neural-predictor-reviewed-20261005/siraj-fit-residual-diagnosis-20261019/REPORT.md)
+FIT-only diagnosis (local record: `build/neural-predictor-reviewed-20261005/siraj-fit-residual-diagnosis-20261019/REPORT.md`)
 
 For the presentation: "We found and reproduced a concrete failure mode in
 motif-based neural reporter prediction. A compact CPU model now meets our
@@ -320,8 +334,8 @@ explain the larger model's forecasting error.
 All 21 forecast quantiles were saved; the comparison above scores their median.
 The completed temporal experiment has no DNA feature. Adding one requires a
 separate assay-matched, nested experiment; Siraj SK-N-SH and Kreimer H1 have
-different endpoints. [Fixed temporal comparison](../../build/neural-predictor-reviewed-20261005/neural-temporal-forecast-20261018/RESULT.md)
-[Normalization checks](../../build/neural-predictor-reviewed-20261005/neural-temporal-forecast-20261018/reviews/scaler-boundary-20261019/REPORT.md)
+different endpoints. Fixed temporal comparison (local record: `build/neural-predictor-reviewed-20261005/neural-temporal-forecast-20261018/RESULT.md`)
+Normalization checks (local record: `build/neural-predictor-reviewed-20261005/neural-temporal-forecast-20261018/reviews/scaler-boundary-20261019/REPORT.md`)
 
 The subsequent raw-count test excludes both sequence families and infection
 cultures. The candidate's MSE is 0.32132339 versus 0.32214740 for zero change,

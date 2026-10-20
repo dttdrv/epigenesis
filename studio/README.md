@@ -6,7 +6,7 @@ A local desktop application for working with DNA changes. Its main workflow chan
 
 The Simulate mode runs the repository's own backend, [`examples/neural-patterning`](../examples/neural-patterning/README.md), live. A run does the following:
 
-1. Takes a nine-base GLI binding site from the Nkx2.2 enhancer, the reference or a variant with one substitution. Each substitution in the table has a measured binding ratio from Hallikas et al. (2006), GLI2 as the primary protein and GLI3 as a sensitivity check.
+1. Takes a nine-base GLI binding site with one substitution from the Nkx2.2 reference. Supported substitutions have a positive measured binding ratio from Hallikas et al. (2006), GLI2 as the primary protein and GLI3 as a sensitivity check. The reference is included automatically in the comparison.
 2. Compiles the site into a validated Development Module that stores the selected nucleotide bases. The simulator reads those bases back and derives the binding ratio from the measured table.
 3. Applies the ratio, as an explicit and unvalidated assumption, to the Gli affinity of the Nkx2.2 promoter in the four-gene model of Herrera-Delgado et al. (2020): Pax6, Olig2, Nkx2.2 and Irx3.
 4. Integrates the model under the signal history and starting state you set, for the reference, for the variant as an edit inside the network, and for the variant as a passive reporter. It also reverts the base and confirms that the reference trajectory returns exactly.
@@ -52,7 +52,7 @@ The server listens on 127.0.0.1 only and rejects requests whose Host header is n
 | Edits | Up to 5,000 reference and edited pairs (CSV or JSON, columns `id`, `reference`, `sequence`, optional `family`; each sequence 5 to 2,000 bases, insertions and deletions allowed) | Scores, a panel of the requested size with one edit per family, CSV, receipt |
 | Verify | A receipt file | Three checks: digest, identity of model and endpoint, replay of every stored result |
 
-A score depends only on the 18 bases either side of a change, so a scan scores each variant in a window of that size, with results identical to scoring whole sequences (tested to 1e-12).
+A single-substitution score depends only on the 18 bases either side of the change, so a scan scores each variant in a window of that size, with results identical to scoring whole sequences (tested to 1e-12). Edits mode scores the supplied pair, including insertions, deletions and multiple substitutions.
 
 ## Receipts
 

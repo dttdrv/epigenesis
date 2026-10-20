@@ -18,10 +18,11 @@ with tempfile.TemporaryDirectory() as tmp:
     for junk in src.glob('*.egg-info'):
         shutil.rmtree(junk)
     # quick start first; the full project README follows unchanged (a release test pins its contents)
-    quick = (ROOT / 'tools/release/README.md').read_text()
+    quick = (ROOT / 'tools/release/README.md').read_text().replace('](../../', '](').replace('](STATUS.md)', '](docs/STATUS.md)')
     full = (ROOT / 'README.md').read_text().replace('[CI workflow](.github/workflows/ci.yml)', 'CI workflow (in the source repository)')
     (src / 'README.md').write_text(quick.rstrip() + '\n\n---\n\n' + full)
     shutil.copy(ROOT / 'tools/release/epigenesis.py', src / 'epigenesis.py')
-    shutil.copy(ROOT / 'tools/release/STATUS.md', src / 'docs/STATUS.md')
+    status = (ROOT / 'tools/release/STATUS.md').read_text()
+    (src / 'docs/STATUS.md').write_text(status.replace('](../../docs/', '](').replace('](../../', '](../'))
     shutil.copytree(src, dest)
 print(dest)

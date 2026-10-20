@@ -1,17 +1,69 @@
-# Experimental neuronal DNA-edit predictor
+# DNA-edit predictors
 
-Score a single-base regulatory edit in a 270-base DNA sequence. The model
-predicts the ALT minus REF log2 reporter-activity coefficient for the
-WTC11-NGN2 neuronal assay studied by [Salomon et al.](https://doi.org/10.64898/2026.07.16.738760).
-Its intended use is prioritizing edits for measurement and estimating their
-direction and effect size.
+## Current model: Huber-linear
 
-Two fitted predictors are available. The original attention mixture below
-improves validation ranking utility but misses the prediction-error limit.
-The new [activity-transfer model](#activity-transfer-predictor) passes both
-development requirements and improves all seven held-out point comparisons.
-Its uncertainty intervals still cross zero, leaving confirmation acceptance
-unmet. The cohort's one-use confirmation is complete.
+The delivered predictor is `epigenesis-siraj-huber-linear-v1`, used by
+[Epigenesis Studio](../../studio/README.md) and the exported release's
+`epigenesis.py predict` command. It estimates the signed ALT-minus-REF
+24-hour log2-skew reporter effect in the SK-N-SH assay of
+[Siraj et al. (2026)](https://doi.org/10.1038/s41586-026-10121-6).
+Positive scores predict increased reporter activity. Scores are effect estimates,
+not probabilities or developmental-model parameters.
+
+From the repository root, with NumPy installed:
+
+```sh
+python -m pip install numpy
+python studio/epigenesis_studio/model/predict.py \
+  --input studio/epigenesis_studio/example-edits.json \
+  --output predictions.json --budget 3
+```
+
+This scores the 64 supplied edits and selects three families. It uses frozen
+weights, no training, GPU or network. Choose a new output filename.
+For the interactive workflow, run `epigenesis-studio` and open **Prediction → Edits**.
+
+Input is a nonempty JSON array. Each row contains `id`, `reference`, `sequence`,
+and optionally `family`. IDs must be unique; both sequences must contain at
+least five uppercase ACGT bases. Substitutions, insertions, deletions and
+identical pairs are accepted. The standalone command has no maximum sequence
+length; Studio bounds Edits to 5,000 pairs of 5–2,000 bases and Scan to one
+sequence of 5–1,000 bases. These are software input limits, not validated
+biological ranges; the evaluated Siraj inserts were 132–200 bases.
+
+`--budget` requires an explicit family on every row and enough distinct
+families. Group related constructs together. Selection ranks by absolute
+predicted effect, takes one edit per family and resolves ties by ID.
+Omit `--budget` to score without selection.
+
+The model combines 512 reverse-complement-canonical 5-mer coefficients and
+532 JASPAR motif sequence potentials fitted with a Huber loss. The prediction
+is the difference of the sequence scores, `F(ALT) − F(REF)`. Output separates
+`word_effect`, `motif_effect` and their sum, `effect`, and records model and
+manifest identity. The [manifest and weights](../../studio/epigenesis_studio/model/)
+are shared by the standalone command and Studio; motif attribution is in
+the [model license](../../studio/epigenesis_studio/model/LICENSE).
+
+| Evaluation | Result |
+|---|---|
+| Reused internal tuning: 16,986 edits, 1,759 families | Equal-family MSE 0.28766713 versus k5 0.29661090: 3.02% lower error |
+| Ten-edit signed utility on that population | 1.483 versus k5 0.857; gain lower bound −0.150 |
+| Five external neural reporter studies | Mean correlation 0.0490; aggregate MSE 9.52% above zero-effect prediction |
+
+Six of seven original internal requirements pass. Adaptive reuse of the tuning
+population and the failed ten-edit bound leave independent acceptance open.
+The model is available for assay-specific exploration and experimental
+prioritization. The [frozen transfer result](../../research/frozen-tests/huber-transfer-20261020/RESULTS.md)
+and [technical paper](../../docs/paper/epigenesis-technical-paper.pdf) give the
+comparisons and uncertainty.
+
+## Archived Salomon models
+
+The remaining sections describe the earlier WTC11-NGN2 predictors, their
+270-base single-substitution contract and their separate results. They remain
+available for reproduction; their weights and acceptance records are unchanged.
+Their one-use confirmation is complete. These are different models and a
+different assay from the delivered Huber-linear predictor.
 
 ## Activity-transfer predictor
 
@@ -66,7 +118,7 @@ and both selection lists exactly. These implementation checks are separate from
 the statistical evidence above. The quadratic activity-map arm was evaluated
 prospectively and did not improve both development endpoints over linear transfer.
 
-## Run
+## Run the archived attention mixture
 
 Use Python 3.12 in a separate environment; the compiler itself needs neither
 PyTorch nor NumPy.
@@ -98,7 +150,7 @@ higher ALT reporter activity. Component values are statistical contributions,
 not biochemical rates. The output also records the model-manifest hash, device
 and dependency versions.
 
-## Model
+## Archived attention model
 
 The predictor combines a reverse-complement canonical 5-mer ridge baseline
 with two compact sequence scorers:
@@ -176,7 +228,7 @@ These are point estimates from adaptive model development, not independent
 confirmation or confidence bounds.
 At that earlier attention-mixture stage, the research ledger contained 300
 biological fits, including failed experiments. The trials below are historical;
-the current activity-transfer result and confirmation are recorded above.
+the activity-transfer result and confirmation for that assay are recorded above.
 Precision sampling adds seven, the k3/k5 blend adds six, and the quadratic
 readout adds seven; packaging adds none. The
 original failed confirmation on an earlier cohort remains recorded in the

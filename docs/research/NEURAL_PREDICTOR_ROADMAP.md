@@ -1,5 +1,30 @@
 # Neural DNA-edit predictor roadmap
 
+## Current delivery — 20 October 2026
+
+The delivered predictor is **Huber-linear**, shared by
+[Studio](../../studio/README.md) and the
+[standalone command](../../examples/neural-predictor/README.md#current-model-huber-linear).
+On reused internal tuning data, equal-family MSE is 0.28766713 versus k5
+0.29661090 (3.02% lower). Six of seven original requirements pass; the ten-edit
+gain lower bound remains −0.150. On five external studies, mean correlation
+is 0.0490 and MSE is 9.52% above zero-effect prediction.
+The [frozen transfer record](../../research/frozen-tests/huber-transfer-20261020/RESULTS.md)
+and [paper](../paper/epigenesis-technical-paper.pdf) give the evidence.
+
+Studio's primary mode runs the separate DNA-site → measured GLI profile →
+four-gene simulation. Predictor scores are not used as its binding parameters.
+The [presentation guide](NEUROSCIENCE_PRESENTATION.md) follows this order.
+Siraj RESERVE remains sealed; the earlier Salomon confirmation is spent.
+
+The dated entries below preserve the decisions at each research stage.
+References to a “current” model inside those entries mean current at that stage.
+Paths under `build/` identify local experiment records that are not published
+with the repository; the public frozen subset is indexed in
+[`research/`](../../research/README.md).
+
+## Earlier development snapshot — 19 October 2026
+
 Updated 2026-10-19. The fixed motif-context follow-up now passes the predeclared
 additional development milestone: at least 1% lower MSE than k5 and positive
 nominal family-bootstrap improvement bounds for MSE and 50/200-edit selection.
@@ -17,8 +42,8 @@ These are adaptively exposed internal-TUNING results, not fresh confirmation.
 One changed top-ten family explains the entire utility decline relative to the
 linear motif model; that post-hoc diagnosis does not justify filtering the edit.
 Original DEVELOPMENT, RESERVE and test boundaries remain unchanged.
-[Fixed context result and verification](../../build/neural-predictor-reviewed-20261005/siraj-context-pwm-20261019/RESULTS.md)
-[FIT-only diagnosis that motivated the test](../../build/neural-predictor-reviewed-20261005/siraj-fit-residual-diagnosis-20261019/REPORT.md)
+Fixed context result and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-context-pwm-20261019/RESULTS.md`)
+FIT-only diagnosis that motivated the test (local record: `build/neural-predictor-reviewed-20261005/siraj-fit-residual-diagnosis-20261019/REPORT.md`)
 
 A fixed smooth-context follow-up is complete. FIT diagnostics located excess
 quadratic-model error in the highest complement-defined feature-energy bin.
@@ -31,7 +56,7 @@ against k5 remain negative, so both gates fail. The squared-context result above
 remains the stronger completed milestone. All twelve fixed fits and 51 score
 contrasts passed independent replay; fitting and scoring took 29.3 seconds on
 one CPU thread. No new data, GPU or spending was needed.
-[Smooth-context result and qualification](../../build/neural-predictor-reviewed-20261005/siraj-smooth-context-20261019/RESULTS.md)
+Smooth-context result and qualification (local record: `build/neural-predictor-reviewed-20261005/siraj-smooth-context-20261019/RESULTS.md`)
 
 A subsequent fixed spacing test adds 532 same-profile separation features to
 the unchanged 1064 context columns. It tests physical positions against an
@@ -44,7 +69,7 @@ All twelve fits, saved predictions and 57 contrasts passed independent replay.
 Extraction took 632.87 seconds and the fitting/scoring command 10.70 seconds,
 on one CPU thread with no new data, GPU or spending. This fixed spatial basis
 does not replace the lead or establish that spatial information is irrelevant.
-[Spacing comparison and verification](../../build/neural-predictor-reviewed-20261005/siraj-spatial-pwm-20261019/RESULTS.md)
+Spacing comparison and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-spatial-pwm-20261019/RESULTS.md`)
 
 A fixed same-cell activity follow-up adds 133,208 FIT-only reference/alternate
 activity measurements to train sequence filters. Its 24 stages complete in
@@ -67,7 +92,7 @@ contrasts. Earlier compact and Interlace experiments already trained paired
 effects. The narrower follow-up tests whether the current activity-trained
 filters improve when fine-tuned on matching-fold AP-minus-context residuals.
 The diagnostic does not establish a cause or show that all 64 features lack signal.
-[Activity-supervision test and verification](../../build/neural-predictor-reviewed-20261005/siraj-activity-filters-20261019/RESULTS.md)
+Activity-supervision test and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-activity-filters-20261019/RESULTS.md`)
 
 That fixed AP-minus-context continuation is now complete. Matching-fold activity
 filters start from their raw AP ridge heads and receive real or shuffled residuals.
@@ -85,7 +110,7 @@ Checkpoint inspection confirms that final real motif weights moved 21.17% of
 their initial norm and differ from shuffled weights by 33.11% of that norm.
 The tied error is not an unchanged-filter result; these distances do not
 establish convergence or justify extending the fixed training schedule.
-[Directed continuation and controls](../../build/neural-predictor-reviewed-20261005/siraj-contrast-filters-20261019/RESULTS.md)
+Directed continuation and controls (local record: `build/neural-predictor-reviewed-20261005/siraj-contrast-filters-20261019/RESULTS.md`)
 
 A FIT-only saved-readout check also closes the hypothesis that the final ridge
 discarded a useful trained scalar. Across the same five excluded-family folds,
@@ -94,7 +119,7 @@ ordered selections at 10/50/200. Independent replay reconstructs all six
 compared vectors exactly and verifies eighteen selections and sixty fold MSEs.
 There was no new fitting, inference or TUNING access. This rejects that specific
 explanation without establishing an optimization or information ceiling.
-[Saved-readout diagnosis](../../build/neural-predictor-reviewed-20261005/siraj-readout-diagnostic-20261019/RESULTS.md)
+Saved-readout diagnosis (local record: `build/neural-predictor-reviewed-20261005/siraj-readout-diagnostic-20261019/RESULTS.md`)
 
 A fixed information-source test then adds 132,829 measured HepG2/K562 allele
 effects at the original FIT rows, with separate heads and complete family
@@ -105,7 +130,7 @@ unchanged. The additional milestone passes, but the original gate and auxiliary
 attribution fail; this method does not replace context. All 45 contrasts,
 36 ridge equations and complete saved predictions pass independent replay.
 This tests new measured supervision, not a new architecture or fresh cohort.
-[Other-cell effect supervision](../../build/neural-predictor-reviewed-20261005/siraj-multicell-effects-20261019/RESULTS.md)
+Other-cell effect supervision (local record: `build/neural-predictor-reviewed-20261005/siraj-multicell-effects-20261019/RESULTS.md`)
 
 A subsequent outcome-free diagnosis measures the learned feature geometry on
 61,217 central single substitutions in 6,569 FIT families. GC change explains
@@ -117,7 +142,7 @@ the smaller context directions are useless. Independent replay verifies all
 fifteen fold-specific matrices and heads; no new outcomes or predictions are
 scored. The resulting fixed readout comparison tests regularization geometry
 using the same saved features and original acceptance rules.
-[Feature-geometry diagnosis](../../build/neural-predictor-reviewed-20261005/siraj-feature-shape-20261019/RESULTS.md)
+Feature-geometry diagnosis (local record: `build/neural-predictor-reviewed-20261005/siraj-feature-shape-20261019/RESULTS.md`)
 
 That twelve-head comparison completes in 8.09 seconds on one CPU thread.
 Separating native GC composition before normalizing the saved AP features
@@ -129,7 +154,7 @@ Both the original requirement and the additional milestone fail. The measured
 feature concentration is real, but this fixed correction does not improve
 accuracy or nominate a replacement. Independent replay verifies all 39 score
 contrasts, twelve head equations, six projections and complete predictions.
-[Composition-separated readout](../../build/neural-predictor-reviewed-20261005/siraj-orthogonal-readout-20261019/RESULTS.md)
+Composition-separated readout (local record: `build/neural-predictor-reviewed-20261005/siraj-orthogonal-readout-20261019/RESULTS.md`)
 
 A single convex combination of the existing linear, context and smooth motif
 models also closes without replacing context. Weights learned from original
@@ -142,7 +167,7 @@ constrained optimum, exact final vector, seven ranking orders and all 39
 contrasts. The fitted FIT objective is meta-training error, not nested validation;
 TUNING remains adaptive. The original requirement and confirmation boundary stay
 unchanged.
-[Fixed potential combination](../../build/neural-predictor-reviewed-20261005/siraj-potential-stack-20261019/RESULTS.md)
+Fixed potential combination (local record: `build/neural-predictor-reviewed-20261005/siraj-potential-stack-20261019/RESULTS.md`)
 
 A fixed cross-profile comparison adds 1024 compressed motif-pair features to
 the unchanged context design, against a redundant-span diagonal control.
@@ -154,7 +179,7 @@ fail. All twelve fit records, saved-head predictions, endpoint bindings and 57 s
 contrasts pass independent replay. Extraction took 468.12 seconds on one CPU
 thread, with no new data, GPU or spending. This fixed representation does not
 replace context; no sketch or selection-policy tuning was performed.
-[Cross-profile comparison and verification](../../build/neural-predictor-reviewed-20261005/siraj-crossprofile-pwm-20261019/RESULTS.md)
+Cross-profile comparison and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-crossprofile-pwm-20261019/RESULTS.md`)
 
 A fixed activity-supervised interaction also leaves context as the lead. Its
 TUNING MSE is 0.291297767538 versus context's 0.291305870449; the small
@@ -164,7 +189,7 @@ passes. All 24 fitting stages took 11.65 seconds after cached-input loading,
 using one CPU thread. Independent replay checks all 12 activity maps, 12 scalar
 heads, complete saved predictions and 33 score contrasts. No new labels, GPU
 or spending were needed, and no acceptance rule changed.
-[Supervised interaction and replay](../../build/neural-predictor-reviewed-20261005/siraj-supervised-crossprofile-20261019/RESULTS.md)
+Supervised interaction and replay (local record: `build/neural-predictor-reviewed-20261005/siraj-supervised-crossprofile-20261019/RESULTS.md`)
 
 The preceding Siraj motif follow-up has been independently
 reproduced on the already-used internal-TUNING population: 16,986 edits in
@@ -203,9 +228,9 @@ final-head equations and saved-output replay pass. This preserves a common
 sequence potential while recovering the useful compression result; its
 adaptively exposed tuning comparison is not independent confirmation.
 The original DEVELOPMENT and RESERVE boundaries remain unchanged.
-[Signed-log replay and complete search history](../../build/neural-predictor-reviewed-20261005/siraj-signedlog-replay-20261019/RESULTS.md)
-[Bounded-window result](../../build/neural-predictor-reviewed-20261005/siraj-bounded-pwm-20261019/RESULTS.md)
-[Logarithmic potential result and verification](../../build/neural-predictor-reviewed-20261005/siraj-logpotential-pwm-20261019/RESULTS.md)
+Signed-log replay and complete search history (local record: `build/neural-predictor-reviewed-20261005/siraj-signedlog-replay-20261019/RESULTS.md`)
+Bounded-window result (local record: `build/neural-predictor-reviewed-20261005/siraj-bounded-pwm-20261019/RESULTS.md`)
+Logarithmic potential result and verification (local record: `build/neural-predictor-reviewed-20261005/siraj-logpotential-pwm-20261019/RESULTS.md`)
 
 The final immediate combination reuses those sealed features with the earlier
 precision recipe (variance offset 0.05, penalty 1). Twelve fits give TUNING MSE
@@ -213,7 +238,7 @@ precision recipe (variance offset 0.05, penalty 1). Twelve fits give TUNING MSE
 remain positive, but MSE and top-ten bounds versus k5 remain negative. Both
 overall gates fail. Independent metric and final-head replay pass. No further
 parameter variants were added to this batch.
-[Fixed precision follow-up](../../build/neural-predictor-reviewed-20261005/siraj-logpotential-precision-20261019/RESULTS.md)
+Fixed precision follow-up (local record: `build/neural-predictor-reviewed-20261005/siraj-logpotential-precision-20261019/RESULTS.md`)
 
 The earlier larger Siraj development trial is complete and
 independently replayed: 83,590 usable TRAIN edits and 25,163 DEVELOPMENT edits
@@ -4553,9 +4578,9 @@ This is operational delivery, not a fresh biological acceptance result.
 
 The fixed FIT-only spectral comparison completed twenty learned stages in 94.84 seconds on one CPU. Direct AP-residual supervision improves equal-family MSE from 0.341133115 to 0.340799422 (0.0978%), with all five held-fold point comparisons improving. It misses the predeclared 1% progression threshold and lowers signed utility at 10 and 200. No TUNING or confirmation was opened and no final candidate was fitted. Huber-linear remains the delivered model.
 
-Independent replay verifies all ten saved head pipelines, selections and eighteen bootstrap contrasts to 2.22e-16. [Protocol, result and checks](../../build/neural-predictor-reviewed-20261005/siraj-supervised-spectral-20261019/RESULTS.md). This is an exploratory FIT screen, not original acceptance or independent confirmation.
+Independent replay verifies all ten saved head pipelines, selections and eighteen bootstrap contrasts to 2.22e-16. Protocol, result and checks (local record: `build/neural-predictor-reviewed-20261005/siraj-supervised-spectral-20261019/RESULTS.md`). This is an exploratory FIT screen, not original acceptance or independent confirmation.
 
-The lecture package now includes the 64-real-edit CPU quickstart, an offline input/output demonstration, a ten-page PDF, and a slide-aligned seven-minute script with professor Q&A. The current model remains at six of seven original requirements; useful cross-study prediction is unresolved. [Presentation entry point](../../output/presentation-2026-10-20/index.html).
+The lecture package at this stage included the 64-real-edit CPU quickstart, an offline input/output demonstration, a ten-page PDF, and a slide-aligned seven-minute script with professor Q&A. These local presentation artifacts are not part of the public repository. The model remains at six of seven original requirements; useful cross-study prediction is unresolved. The [current public demonstration guide](NEUROSCIENCE_PRESENTATION.md) uses Studio.
 
 ### Order of work
 

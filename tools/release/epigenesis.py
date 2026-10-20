@@ -25,16 +25,23 @@ def report(script, name, check=False):
 
 
 def predict(args):
-    try:
-        import numpy, torch  # noqa: F401
-    except ImportError:
-        sys.exit('predict needs numpy and torch: python3 -m pip install -r examples/neural-predictor/requirements.txt')
-    script = EX / 'neural-predictor' / ('predictor.py' if args.attention else 'activity.py')
+    legacy = args.activity or args.attention
+    if args.budget is not None and legacy:
+        p.error('--budget belongs to the default Huber-linear model')
+    if args.families and not legacy:
+        p.error('the default model uses family fields in the input and --budget; --families requires --activity or --attention')
+    if args.device is not None and not args.attention:
+        p.error('--device requires --attention')
+    script = ROOT / 'studio/epigenesis_studio/model/predict.py'
+    if legacy:
+        script = EX / 'neural-predictor' / ('predictor.py' if args.attention else 'activity.py')
     cmd = [script, '--input', args.input, '--output', args.output]
+    if args.budget is not None:
+        cmd += ['--budget', args.budget]
     if args.families:
         cmd += ['--families', args.families]
     if args.attention:
-        cmd += ['--device', args.device]
+        cmd += ['--device', args.device or 'cpu']
     return run(*cmd)
 
 
@@ -46,12 +53,15 @@ p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDes
 sub = p.add_subparsers(dest='cmd')
 sub.add_parser('evidence', help='open a report of 109 published CHE-1 measurements traced to DNA edits')
 sub.add_parser('patterning', help='explore an Nkx2.2 enhancer edit in a developmental model')
-q = sub.add_parser('predict', help='score reporter DNA edits with the bundled predictor (needs numpy and torch)')
-q.add_argument('--input', required=True, help='JSON list of {id, reference, sequence}, 270 bases each (see examples/neural-predictor/edits.json)')
+q = sub.add_parser('predict', help='score reporter DNA edits with the delivered Huber-linear model (needs numpy)')
+q.add_argument('--input', required=True, help='JSON list of {id, reference, sequence, optional family}; uppercase ACGT, at least 5 bases per sequence (see studio/epigenesis_studio/example-edits.json)')
 q.add_argument('--output', required=True, help='new JSON file to write')
-q.add_argument('--families', help='JSON {edit id: family id}; selects ten experiments')
-q.add_argument('--attention', action='store_true', help='use the attention mixture instead ')
-q.add_argument('--device', choices=('cpu', 'mps'), default='cpu')
+q.add_argument('--budget', type=int, help='panel size for Huber-linear; requires a family field on every edit')
+legacy = q.add_mutually_exclusive_group()
+legacy.add_argument('--activity', action='store_true', help='use the archived Salomon activity-transfer model (270-base inputs; needs torch)')
+legacy.add_argument('--attention', action='store_true', help='use the archived Salomon attention mixture (270-base inputs; needs torch)')
+q.add_argument('--families', help='legacy models only: JSON {edit id: family id}; selects ten experiments')
+q.add_argument('--device', choices=('cpu', 'mps'), help='attention mixture only; defaults to cpu')
 sub.add_parser('verify', help='run the release self-checks')
 args = p.parse_args()
 if sys.version_info < (3, 11):

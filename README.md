@@ -16,11 +16,20 @@ Experiments built on the compiler connect original measurements, reconstructed D
 | [`examples/`](examples/) | One folder per experiment, each with its own README |
 | [`studio/`](studio/README.md) | Epigenesis Studio: a desktop application (English and Bulgarian) to change a DNA site and simulate neural-development dynamics, scan and rank edits with the delivered predictor, and verify sealed results |
 | `brainc/`, [`SPEC.md`](SPEC.md) | The DNA → Development Module compiler and its contract |
-| `tests/` | 505 unit tests and the release gates in `tests/verify.py` |
+| `tests/`, `studio/tests/` | Compiler, experiment and Studio tests; release gates in `tests/verify.py` |
 
 ## Quick start
 
-Python 3.11 or later. The two offline demonstrations use only the standard library and bundled data; they need no installation, GPU or network. Choose an output directory that does not yet exist.
+Python 3.11 or later. From the checkout, install the desktop application with [uv](https://docs.astral.sh/uv/):
+
+```sh
+uv tool install --editable studio --with-editable .
+epigenesis-studio
+```
+
+Start with **Simulate** to change the GLI binding site and compare neural-development trajectories. **Prediction** scans a sequence or scores an edit table; **Receipts** replays a saved result. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
+
+The two offline reports below use only the standard library and bundled data; they need no installation, GPU or network. Choose an output directory that does not yet exist.
 
 ```sh
 python3.11 examples/neural-evidence/evidence.py demo --output /tmp/neural-evidence
@@ -98,7 +107,7 @@ These identities are recorded in [expected.json](examples/minimal-development/ex
 | [Neural measurement](examples/neural-measurement/README.md), [forecast](examples/neural-forecast/README.md) | Replay of repeat-forecast comparisons on neuronal reporter assays (measurement: BIRD model) | Majoros et al. (2020) |
 | [Neural regulation](examples/neural-regulation/README.md) | H1 neural-induction reporter data and a failed predictive test | |
 | [Neural binding](examples/neural-binding/README.md) | Genomic *Nkx2-2* sequence, a designed substitution and a failed binding benchmark | Liu et al. (2025) |
-| [DNA-edit predictor](examples/neural-predictor/README.md) | Scores 270-base reference and edited pairs; see below | Siraj et al. (2026); Salomon et al. (2026) |
+| [DNA-edit predictor](examples/neural-predictor/README.md) | Huber-linear scores for reference and edited DNA, with optional family-diverse panel selection; archived Salomon models are documented separately | Siraj et al. (2026); Salomon et al. (2026) |
 
 Each example documents its inputs, runtime, scientific scope and reproduction commands. Neural construction needs a JDK and `patch` (tested with Java 21).
 

@@ -1,5 +1,23 @@
 # Epigenesis 1.6
 
+## Delivery update — 20 October 2026
+
+The current 1.6 source tree includes [Epigenesis Studio](../../studio/README.md):
+an English/Bulgarian application for DNA-site simulation, paired-edit prediction,
+sequence scans and receipt replay. The default predictor is now Huber-linear,
+with 3.02% lower MSE than k5 on reused internal tuning data; its cross-study
+accuracy remains unestablished. The
+[predictor guide](../../examples/neural-predictor/README.md) documents its input
+contract and the archived models. The release launcher defaults to this same
+checkpoint; `--activity` and `--attention` select the older Salomon models.
+
+The [technical papers](../paper/) and [frozen research records](../../research/)
+are included. Compiler version and serialized contracts remain unchanged.
+The sections below record earlier release stages; their model choices,
+fit counts and confirmation status describe those dates.
+
+## Original 1.6 release
+
 Version 1.6.0 adds two reproducible neuroscience workflows and rewrites the
 README around running and inspecting them.
 

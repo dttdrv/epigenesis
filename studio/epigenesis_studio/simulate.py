@@ -1,7 +1,7 @@
 """Live DNA-site to neural-dynamics runs through the repository's own backend, examples/neural-patterning.
 
-Each run compiles the chosen site into a validated Development Module, reads the binding-profile
-ratio back out of that module, and drives the backend's four-gene model with it. Nothing here
+Each run compiles the chosen site into a validated Development Module, reads the nucleotides
+back, derives their binding-profile ratio, and drives the backend's four-gene model. Nothing here
 models development: the equations, data and numerics are the backend's.
 """
 
