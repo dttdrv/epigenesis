@@ -1,0 +1,175 @@
+{
+  "method": "linear activity transfer",
+  "validation": {
+    "edits": 7390,
+    "families": 3029,
+    "selected_arm": "linear",
+    "checks": {
+      "mse": true,
+      "utility": true
+    },
+    "arms": {
+      "linear": {
+        "mse": 0.02852516013323099,
+        "utility": 0.08842011751791104
+      },
+      "quadratic": {
+        "mse": 0.0285163785358708,
+        "utility": 0.08739844992235483
+      }
+    },
+    "k5": {
+      "mse": 0.028625109823009157,
+      "utility": 0.035108902126661234
+    },
+    "quadratic_improves_both": false
+  },
+  "confirmation": {
+    "components": 2938,
+    "ranking_budget": 10,
+    "bootstrap_samples": 2000,
+    "percentile_method": "linear",
+    "percentiles": [
+      2.5,
+      97.5
+    ],
+    "ranking_status": "evaluated",
+    "selected_ids": {
+      "candidate": [
+        "cardiac_neuro_cava_random:ALT_LINC01033|ENSG00000249069.8|EH38E3636462_fwd_tile1-1_LINC01033|ENSG00000249069.8|EH38E3636462|5-54362243-A-G",
+        "cardiac_neuro_cava_random:ALT_MYOZ2|ENSG00000172399.6|EH38E2323054_fwd_tile1-1_MYOZ2|ENSG00000172399.6|EH38E2323054|4-119106334-G-A",
+        "cardiac_neuro_cava_random:ALT_CTNNB1|ENSG00000168036.18|EH38E2194667_fwd_tile1-1_CTNNB1|ENSG00000168036.18|EH38E2194667|3-41182831-A-C",
+        "cardiac_neuro_cava_random:ALT_LINC01583|ENSG00000259518.2|EH38E1782813_fwd_tile1-1_LINC01583|ENSG00000259518.2|EH38E1782813|15-82123128-C-T",
+        "cardiac_neuro_cava_random:ALT_RBM20|ENSG00000203867.8|EH38E2924805_fwd_tile1-1_RBM20|ENSG00000203867.8|EH38E2924805|10-110842072-C-T",
+        "cardiac_neuro_cava_random:ALT_VEGFA|ENSG00000112715.26|EH38E2468740_fwd_tile1-1_VEGFA|ENSG00000112715.26|EH38E2468740|6-43734509-G-T",
+        "cardiac_neuro_cava_random:ALT_ATP6V1A|ENSG00000114573.11|EH38E2228148_fwd_tile1-1_ATP6V1A|ENSG00000114573.11|EH38E2228148|3-113828381-A-G",
+        "cardiac_neuro_cava_random:ALT_NR2F2|ENSG00000185551.15|EH38E1791040_fwd_tile1-1_NR2F2|ENSG00000185551.15|EH38E1791040|15-96358675-C-T",
+        "cardiac_neuro_cava_random:ALT_FARS2|ENSG00000145982.13|EH38E3687962_fwd_tile1-1_FARS2|ENSG00000145982.13|EH38E3687962|6-5250653-G-C",
+        "cardiac_neuro_cava_random:ALT_BRCA2|ENSG00000139618.18|EH38E3059493_fwd_tile1-1_BRCA2|ENSG00000139618.18|EH38E3059493|13-32273093-G-T"
+      ],
+      "dinucleotide": [
+        "cardiac_neuro_cava_random:ALT_ABCC9|ENSG00000069431.14|EH38E1598027_rev_tile1-1_ABCC9|ENSG00000069431.14|EH38E1598027|12-21788904-C-T",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731817_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731817|9-130837368-T-C",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731828_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731828|9-130846343-G-A",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E3913476_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E3913476|9-130814660-G-A",
+        "cardiac_neuro_cava_random:ALT_ACTN2|ENSG00000077522.15|EH38E2876103_fwd_tile1-1_ACTN2|ENSG00000077522.15|EH38E2876103|1-236623553-A-G",
+        "cardiac_neuro_cava_random:ALT_ACVR2B|ENSG00000114739.14|EH38E2193247_fwd_tile1-1_ACVR2B|ENSG00000114739.14|EH38E2193247|3-38420947-G-A",
+        "cardiac_neuro_cava_random:ALT_AHDC1|ENSG00000126705.15|EH38E2797821_rev_tile1-1_AHDC1|ENSG00000126705.15|EH38E2797821|1-27520878-T-C",
+        "cardiac_neuro_cava_random:ALT_AHDC1|ENSG00000126705.15|EH38E2797913_rev_tile1-1_AHDC1|ENSG00000126705.15|EH38E2797913|1-27569947-C-T",
+        "cardiac_neuro_cava_random:ALT_ANK2|ENSG00000145362.21|EH38E2320960_fwd_tile1-1_ANK2|ENSG00000145362.21|EH38E2320960|4-112953431-C-T",
+        "cardiac_neuro_cava_random:ALT_ANKRD11|ENSG00000167522.17|EH38E3200520_rev_tile1-1_ANKRD11|ENSG00000167522.17|EH38E3200520|16-89271756-A-G"
+      ],
+      "kmer": [
+        "cardiac_neuro_cava_random:ALT_LINC01033|ENSG00000249069.8|EH38E3636462_fwd_tile1-1_LINC01033|ENSG00000249069.8|EH38E3636462|5-54362243-A-G",
+        "cardiac_neuro_cava_random:ALT_MALT1|ENSG00000172175.16|EH38E1920510_fwd_tile1-1_MALT1|ENSG00000172175.16|EH38E1920510|18-58670057-T-C",
+        "cardiac_neuro_cava_random:ALT_CSRP3|ENSG00000129170.10|EH38E1525611_rev_tile1-1_CSRP3|ENSG00000129170.10|EH38E1525611|11-19243349-C-T",
+        "cardiac_neuro_cava_random:ALT_WWOX|ENSG00000186153.18|EH38E3192338_fwd_tile1-1_WWOX|ENSG00000186153.18|EH38E3192338|16-78756450-A-G",
+        "cardiac_neuro_cava_random:ALT_BRCA2|ENSG00000139618.18|EH38E3059493_fwd_tile1-1_BRCA2|ENSG00000139618.18|EH38E3059493|13-32273093-G-T",
+        "cardiac_neuro_cava_random:ALT_MYOZ2|ENSG00000172399.6|EH38E2323054_fwd_tile1-1_MYOZ2|ENSG00000172399.6|EH38E2323054|4-119106334-G-A",
+        "cardiac_neuro_cava_random:ALT_LINC01583|ENSG00000259518.2|EH38E1782813_fwd_tile1-1_LINC01583|ENSG00000259518.2|EH38E1782813|15-82123128-C-T",
+        "cardiac_neuro_cava_random:ALT_EVC2|ENSG00000173040.13|EH38E3569922_rev_tile1-1_EVC2|ENSG00000173040.13|EH38E3569922|4-5703406-C-T",
+        "cardiac_neuro_cava_random:ALT_FARS2|ENSG00000145982.13|EH38E3687962_fwd_tile1-1_FARS2|ENSG00000145982.13|EH38E3687962|6-5250653-G-C",
+        "cardiac_neuro_cava_random:ALT_CTNNB1|ENSG00000168036.18|EH38E2194667_fwd_tile1-1_CTNNB1|ENSG00000168036.18|EH38E2194667|3-41182808-T-C"
+      ],
+      "zero": [
+        "cardiac_neuro_cava_random:ALT_ABCC9|ENSG00000069431.14|EH38E1598027_rev_tile1-1_ABCC9|ENSG00000069431.14|EH38E1598027|12-21788904-C-T",
+        "cardiac_neuro_cava_random:ALT_ABCC9|ENSG00000069431.14|EH38E1598111_rev_tile1-1_ABCC9|ENSG00000069431.14|EH38E1598111|12-21971448-G-A",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731736_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731736|9-130742226-T-A",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731759_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731759|9-130769258-A-T",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731792_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731792|9-130806344-T-C",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731817_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731817|9-130837320-C-T",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731828_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731828|9-130846278-T-C",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E2731853_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E2731853|9-130871404-C-T",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E3913367_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E3913367|9-130672564-C-T",
+        "cardiac_neuro_cava_random:ALT_ABL1|ENSG00000097007.20|EH38E3913432_fwd_tile1-1_ABL1|ENSG00000097007.20|EH38E3913432|9-130746680-G-T"
+      ]
+    },
+    "mse": {
+      "candidate": 0.028956755756514813,
+      "dinucleotide": 0.029048750788926825,
+      "kmer": 0.028998050000354818,
+      "zero": 0.02905928100778451
+    },
+    "ranking": {
+      "candidate": 0.16957314677267793,
+      "dinucleotide": -0.046582226363007205,
+      "kmer": 0.15278638415964874,
+      "zero": 0.0
+    },
+    "random_utility": 0.013123852812198751,
+    "endpoint": "published_logFC",
+    "comparisons": {
+      "mse_dinucleotide": {
+        "improvement": 9.199503241201154e-05,
+        "interval": [
+          -4.034794298599098e-05,
+          0.00022929739999618298
+        ],
+        "lower_positive": false
+      },
+      "mse_kmer": {
+        "improvement": 4.129424384000449e-05,
+        "interval": [
+          -3.660993456800861e-05,
+          0.0001238756243821506
+        ],
+        "lower_positive": false
+      },
+      "mse_zero": {
+        "improvement": 0.00010252525126969517,
+        "interval": [
+          -3.3702800561297935e-05,
+          0.00024461433165334166
+        ],
+        "lower_positive": false
+      },
+      "ranking_dinucleotide": {
+        "improvement": 0.21615537313568514,
+        "interval": [
+          -0.055198862923474826,
+          0.37830596052764565
+        ],
+        "lower_positive": false
+      },
+      "ranking_kmer": {
+        "improvement": 0.016786762613029194,
+        "interval": [
+          -0.23514126402587163,
+          0.10351243611846937
+        ],
+        "lower_positive": false
+      },
+      "ranking_zero": {
+        "improvement": 0.16957314677267793,
+        "interval": [
+          -0.014831616028263474,
+          0.3093459413905685
+        ],
+        "lower_positive": false
+      },
+      "ranking_random": {
+        "improvement": 0.15644929396047919,
+        "interval": [
+          -0.027600261331141986,
+          0.2976988295617351
+        ],
+        "lower_positive": false
+      }
+    },
+    "accepted": false,
+    "context": "salomon2026-ngn2-author-a686f1d",
+    "input_identity": "dfb8c09cfe29bef76432527dfe439d87091e7d7e682a16ad85dc144491cab386",
+    "uncertainty": "paired component bootstrap conditional on fixed models and published pooled coefficients"
+  },
+  "total_sequence_fits": 514,
+  "identities": {
+    "development_result_sha256": "4e3699743a813494bc38136eeecf680afc684f64f004e9091cc28c47dabe73e0",
+    "confirmation_result_sha256": "7fecfb83b01cf2578fba2c9950c0027e052d2b755c87dd0278119fde4348b0e8",
+    "candidate_sha256": "836f05aff2fc439f08bef2f3d39e74d78160f5d5d42e84dde1d8726415cbb7cb"
+  },
+  "verification": {
+    "fit_review_sha256": "9a3e5ea067693be4189863c5205b205f4aa36f5c9449246ab374bd73babe10b9",
+    "validation_replay_sha256": "e5081ed4cc580190701ef3bc9d807cb4494605bb329e101dd93e62da988d3fdc",
+    "prepared_replay_sha256": "1fe3fdbbc5b09cfe7325eff3367bee9f911c92b8e2c1421067c21cd6020d224b"
+  }
+}

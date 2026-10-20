@@ -1,0 +1,14 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "cb277734937a2bfc931b8419f872f9f8cc1ee74440abe6d3ca6afb32cd9762ce",
+  "scripts/features.py": "f4f73e32bc0fb10db865f6bb7b830cd621e002dc0d48680585dfc3a20e3fc84c",
+  "scripts/score11.py": "e7c6d46f4b674b005972c0f181f544d29180f3892d0f7207a0432b8ad0a80904",
+  "derived/PREDICTIONS.npz": "c94d30622fc118cb441b3fbf2efac36771a94fb54152d72015d3d77c9a9ba73b",
+  "derived/weights.json": "2a0535cedbe12aa019de7620afd3a809690edc2e8b9fa882586ae5d9ddc24426"
+ },
+ "notes": [
+  "features.py never opens outcomes; no parameter is fitted",
+  "Jaspar 2024 CORE vertebrates non-redundant and BrainSpan 2013 genes_matrix downloaded to source/"
+ ]
+}

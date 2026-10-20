@@ -1,0 +1,13 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN_CONFIRM.md": "839896a7faacb7f5054c15d8f4289cc38f0f53ff5406514cb8106638c552e868",
+  "scripts/run_confirm.py": "b28057462c49a60cf14ead33a64689309c9435247525edd0bc681b25cc48067e",
+  "scripts/score_confirm.py": "040e13b70665cfb38b42889a8b1273d510abf9812b41c09cc9ad28e6941dc44b",
+  "derived/CONFIRM_PREDICTIONS.npz": "294c4c4bc6eda48c9f9a8dfaa5a87f00249f16d04c25e7dcd9be1a19e9b19595",
+  "derived/CONFIRM_TRAINING.json": "dcb06bd679442aeb877694b8a2b733174c077577d8ca2d9b568e42ee7caac075"
+ },
+ "notes": [
+  "run_confirm.py strips beta and pip from test rows before modelling"
+ ]
+}

@@ -1,0 +1,481 @@
+\documentclass[10.5pt,a4paper]{article}
+\input{preamble}
+\setmainlanguage{english}
+\hypersetup{pdftitle={Epigenesis: changing DNA and simulating the consequences for neural development},pdfauthor={Deyan Todorov}}
+
+\begin{document}
+
+\titleblock{Epigenesis: changing DNA and simulating\\the consequences for neural development}{Deyan Todorov}{Technical paper, draft 2 · 20 October 2026 · Bulgarian version: \href{epigenesis-technical-paper.bg.pdf}{epigenesis-technical-paper.bg.pdf}\\Code: \url{https://github.com/dttdrv/epigenesis} (Apache-2.0)}
+
+\begin{abstractbox}{Abstract}
+Epigenesis is software for changing a piece of DNA and observing what follows in a simulated developmental system. It reads a DNA source under an explicit interpretation of what the DNA means, compiles it into a content-addressed Development Module, and replays every compilation with a separate validator. This paper describes the executable components and works through one example. The published substitution GACCACCCA to GAACACCCA weakens a GLI binding site in an \emph{Nkx2.2} enhancer. Its measured binding ratio, 0.042, enters a four-gene model of neural-tube patterning. Under a constant signal of 0.2 for 20 model units, the reference ends with Nkx2.2 at 0.94 and the variant at 0.008, and reverting the base restores the reference trajectory exactly. A second component is a Huber-linear predictor of the effect of an edit on reporter activity: given a sequence or a table of edits, it returns signed scores, ranks the edits and selects a panel with one edit per family. On 16,986 internal edits it lowers the family-weighted squared error by 3.02\% against a 5-mer baseline. This evidence is preliminary. Development reused these data, and on five external studies the correlation is 0.049 and the error is 9.52\% above that of predicting no effect. Epigenesis Studio is a local desktop application, in English and Bulgarian, that runs the simulation and the predictor and exports receipts that anyone with the same installation can replay.
+
+\smallskip\noindent\textbf{Keywords:} DNA compiler, regulatory variants, simulation, neural development, reproducibility, variant-effect prediction.
+\end{abstractbox}
+
+\section{Introduction}
+
+A researcher who changes a regulatory DNA site wants to know what the change does to a developing system, ideally before choosing a laboratory experiment. Answering takes a chain of steps: which bases change, how the change alters binding, how that alteration enters a dynamical model, and how the model responds over time. In practice the chain lives in scripts that do not record their assumptions. A result then cannot be traced to the source bytes it came from, and another person cannot reproduce it.
+
+Epigenesis treats a DNA record as the source of a program. A source profile fixes the grammar and identity of the record. The caller supplies an interpretation that states what the DNA is taken to mean. The compiler lowers both to a typed Development Module, an independent validator replays the derivation, and executable models read the sealed module. A compilation is accepted only if that second implementation reproduces it.
+
+The paper follows the order in which a researcher meets the software. Section~\ref{sec:software} describes the compiler, the validator and the executable experiments. Section~\ref{sec:example} is the main workflow: change a DNA site, simulate a neural regulatory network under supplied conditions, and compare the variant with the reference and with a reversion. Section~\ref{sec:predictor} describes the edit predictor, a second component that scores and ranks edits, with its data, method, results, a Studio demonstration and the limits of its transfer. Section~\ref{sec:studio} describes Epigenesis Studio, which runs both, and Section~\ref{sec:limits} states the limits.
+
+Among the works reviewed in Section~\ref{sec:related}, none compiles existing DNA under an explicit interpretation with independent replay. This is a scoped comparison; we ran no head-to-head benchmark against other tools. The compiler does not derive biology from sequence, because the interpretation is an input. The simulations hold under their stated assumptions and do not predict embryo outcomes.
+
+\section{Related work}\label{sec:related}
+
+\textbf{Compilers for DNA.} Several systems compile a design description into DNA or genetic circuits: attribute grammars \citep{cai2009}, a spatial language compiled to regulatory networks \citep{beal2011}, the Eugene and Genotype Specification languages \citep{bilitchenko2011,wilson2016} and Cello \citep{nielsen2016}. Epigenesis runs the other way. It takes existing DNA and an explicit interpretation and lowers them to a model input.
+
+\textbf{Simulated development.} CX3D grows neurons and networks from local rules \citep{zubler2009}. An instruction language drives it \citep{zubler2011} and was applied to cortical development \citep{zubler2013}. One experiment here uses CX3D.
+
+\textbf{Reproducible models.} COMBINE archives package a model with its data and metadata \citep{bergmann2014}. Epigenesis is narrower. It fixes what a derivation from DNA must record.
+
+\textbf{Biological models in the experiments.} The Sonic Hedgehog readout in the neural tube is a well-quantified model of cell-fate decisions \citep{balaskas2012,cohen2014,herreradelgado2020}. Enhancer evidence comes from \citet{peterson2012} and binding affinities from \citet{hallikas2006}.
+
+\textbf{Variant-effect prediction.} Section~\ref{sec:predictor} and Appendix~\ref{app:record} use reporter-assay data \citep{melnikov2012,tewhey2016,kircher2019} and compare against sequence models \citep{zhou2015,kelley2016,kelley2018,avsec2021,chen2022}. The delivered predictor combines Huber regression \citep{huber1964} with JASPAR motif scores \citep{rauluseviciute2024}. Both methods are established. What we contribute is the implemented and evaluated workflow around them.
+
+\section{The software}\label{sec:software}
+
+\subsection{Compiler and contracts}
+
+The compiler turns a DNA source into a Development Module in four stages:
+\begin{center}DNA source $\rightarrow$ typed source bundle $\rightarrow$ explicit interpretation $\rightarrow$ Development Module\end{center}
+Built-in profiles read raw IUPAC sequence, FASTA, streaming reference FASTA, GenBank and GFF3. Other grammars enter through a version-2 external frontend. This frontend is an executable pinned by digest and paired with a separate executable validator. The caller supplies the interpretation (manifest, request, response), a lowering policy and a target contract. The compiler checks types, coordinates, references and budgets.
+
+Every artifact is a closed JSON object. At every level, the compiler rejects unknown or missing members, duplicate keys, non-finite numbers, integers beyond ±(2\textsuperscript{53}−1) and wrong types. Identities are SHA-256 digests of the RFC~8785 canonical encoding \citep{rundgren2020,nist2015}. Sequence identities follow the GA4GH refget scheme. \code{SPEC.md} states the contracts. \code{docs/reference/STANDARDS.md} maps each contract to its specification.
+
+\subsection{Independent validation}
+
+A producer-isolated validator reparses the original source, reruns external validators on fresh snapshots and replays lowering and linking. It does not import the producer. The release gate runs 505 unit tests (three skip on this machine) and end-to-end checks of a minimal example, universal translation, boundary conditions, and wheel and source-archive installation. The minimal example reproduces four fixed digests: source descriptor, Development Module, development bundle and validation report.
+
+\subsection{Executable experiments}\label{sec:experiments}
+
+Each experiment states its inputs, assumptions, controls and the claim it supports (Table~\ref{tab:experiments}). Neural patterning is the worked example of Section~\ref{sec:example}.
+
+\begin{table}[tb]
+\small
+\caption{Executable experiments.}\label{tab:experiments}
+\begin{tabular}{@{}L{22mm}L{58mm}L{68mm}@{}}
+\toprule
+Experiment & What it does & Result and assumption \\
+\midrule
+Neural patterning & Reads an \emph{Nkx2.2} enhancer substitution \citep{peterson2012}, measured GLI binding ratios \citep{hallikas2006} and a four-gene model \citep{herreradelgado2020,cohen2014} & Reversion restores the original state. Signal-history, rescue and phenocopy controls and numerical refinement pass. The in-vitro binding ratio is transferred to intracellular affinity by assumption. \\
+Coding consequences & Reconstructs \emph{Sox2} edits from genomic FASTA and translates them with the NCBI standard code & A four-base deletion gives a 97-residue product (69 unchanged residues) and a stop at codon 98, matching the mutant of \citet{gong2020}. No protein abundance is claimed. \\
+Neural evidence & Reconstructs 109 observations of \emph{gcy-22} expression after CHE-1 depletion in \emph{C. elegans} \citep{traets2021}, each traced to a workbook cell and an intended DNA edit & Mean auxin/control ratios are 8.70\% for a transferred 12-base binding core and 66.33\% for a larger fragment. Sampling limits and conflicting source labels stay attached. \\
+Neural fate & Computes Pax6, Olig2 and Nkx2.2 dynamics from a 512-base artificial parameter recipe & Reproduces specified behavior of published ODE models. The equations set the interactions. The recipe does not discover them. \\
+Neural construction & Grows cells, neurites and contacts from one founder and an artificial 480-base recipe (15 parameters) on CX3D; stimulates cells and lesions contacts & Morphology and connections emerge during execution and are not encoded. The recipe is artificial. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two earlier experiments ended in negative results and stay in the repository (Appendix~\ref{app:record}). The experiments show that the chain from DNA through an explicit interpretation to a mechanistic model can be executed and audited. They do not show that the interpretations are right.
+
+\section{Worked example: changing a GLI site}\label{sec:example}
+
+\subsection{The question and the chain}
+
+The question is how a specified DNA change alters the dynamics of a neural-development model. The example is the experiment \code{examples/neural-patterning}. Each step below is a separate piece of data or code in the repository, and each assumption is declared.
+
+\begin{enumerate}
+\item \textbf{Site.} \citet{peterson2012} tested a substitution in a GLI binding site of the \emph{Nkx2.2} $-2$~kb enhancer. In the strand orientation of the binding table the nine-base core changes from GACCACCCA to GAACACCCA, a C to A change at position~3. The repository holds only these cores; the full enhancer is not included.
+\item \textbf{Binding.} \citet{hallikas2006} measured GLI2 and GLI3 binding to every single-base substitution of the consensus. The mutant-to-reference ratio $q$ of this substitution is 0.0424 for GLI2, the primary choice, and 0.0353 for GLI3, a sensitivity check. The compiler turns the selected site into a Development Module that stores only the selected nucleotides (the tensors \code{count} and \code{nucleotides}). The simulation reads those bases back from the validated module and derives $q$ from the binding table.
+\item \textbf{Transfer.} By declared assumption, $q$ multiplies the GLI affinity of the \emph{Nkx2.2} promoter in the four-gene model of \citet{herreradelgado2020}, whose competitive-binding mechanism follows \citet{cohen2014}. Let $S$ be the fraction of GLI in its activator form, $w$ the basal weight, $K$ the GLI coefficient, $c$ the activation coefficient and $D$ the cross-repression factor. The promoter is active with probability $P$, its occupancy:
+\[
+P=\frac{w(1+K)(1+qcKS)}{w(1+K)(1+qcKS)+(1+qK)D},\qquad \frac{dX}{dt}=2P-2X,
+\]
+where $X$ is the concentration of the gene product in model units. For the reference, $q=1$ and the factor $1+K$ cancels, which recovers the published equations. At a fixed endogenous state, a weaker site lowers occupancy for signals above \mbox{$S=1/c=0.1$} and raises it below.
+\item \textbf{Dynamics.} The four genes Pax6, Olig2, Nkx2.2 and Irx3 are integrated by adaptive fourth-order Runge–Kutta steps under the signal history and starting state that the user supplies. Concentrations and time are in model units.
+\end{enumerate}
+
+\subsection{Reference, variant and reversion}
+
+We ran the reference and the variant under one protocol: a GLI activator fraction of 0.2 for 20 model units, with all four genes starting at zero. The variant runs in two ways. As an edit inside the network (endogenous mode), the changed affinity feeds back into all four genes. As a passive reporter (reporter mode), the promoter reads out occupancy on the unchanged reference network. A third run reverts the base and repeats the reference.
+
+\begin{table}[tb]
+\small
+\caption{Worked example at 20 model units: GLI activator fraction 0.2, GLI2 profile, all genes starting at zero. Values are concentrations in model units; occupancy is the probability that the \emph{Nkx2.2} promoter is active.}\label{tab:example}
+\begin{tabular}{@{}L{54mm}rrrrr@{}}
+\toprule
+Run & Pax6 & Olig2 & Nkx2.2 & Irx3 & Occupancy \\
+\midrule
+Reference & 0.00519 & 0.0208 & 0.940 & 0.000716 & 0.940 \\
+Variant, edit inside the network & 0.241 & 0.967 & 0.00846 & 0.00206 & 0.00846 \\
+Variant, passive reporter & 0.00519 & 0.0208 & 0.940 & 0.000716 & 0.928 \\
+Reversion of the base & \multicolumn{5}{l}{identical to the reference; maximum absolute difference 0} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[tb]
+\centering
+\patterningplot{model time}{reference}{variant, edit inside the network}{variant as passive reporter}{Nkx2.2 promoter occupancy}
+\caption{Trajectories behind Table~\ref{tab:example}. In the four gene panels, the dashed line is the variant as an edit inside the network. In the occupancy panel, the dotted line is the variant as a passive reporter, which stays close to the reference (0.928 against 0.940 at the end). Reporter mode leaves all four genes on the reference trajectory.}\label{fig:trajectories}
+\end{figure}
+
+With the weaker site, Nkx2.2 inside the network ends at 0.0085 where the reference ends at 0.940. The other genes follow. Nkx2.2 represses Pax6, Olig2 and Irx3 in this model, so less Nkx2.2 releases them: Olig2 rises from 0.021 to 0.967 and Pax6 from 0.0052 to 0.241. Read through a passive reporter, the same substitution moves promoter occupancy only from 0.940 to 0.928 and leaves all four genes on the reference trajectory. A reporter assay would therefore show a small change for an edit whose effect inside the feedback network is large. With GLI3 in place of GLI2, the variant ends with Nkx2.2 at 0.0081.
+
+Reverting the base gives a trajectory identical to the reference at all 201 output times and four genes (maximum absolute difference 0), and the reverted site compiles to the same Development Module as the reference. The backend adds twelve mechanism checks, and all pass in the demonstration run. A mediator rescue keeps the variant DNA and imposes the reference multiplier. A phenocopy keeps the reference DNA and imposes the variant multiplier. A signal-history control shows that identical final signals can leave different Nkx2.2 states. Further checks cover the sign reversal of the binding effect across signals and convergence when the output interval is halved (differences below $10^{-4}$).
+
+\subsection{Assumptions and scope}\label{sec:assumptions}
+
+The result depends on six declared assumptions, listed in \code{examples/neural-patterning/data.json} and shown with every Studio run.
+\begin{enumerate}
+\item The published normalized binding ratio is transferred as a relative affinity multiplier. The original normalization pipeline is not fully recovered.
+\item The same GLI profile scales activator and repressor affinity. GLI2 is primary and GLI3 is a sensitivity analysis.
+\item The nine-base site is assigned to a published \emph{Nkx2.2} regulatory context. The rest of the enhancer, chromatin and cofactors are fixed and unmodeled.
+\item Reporter mode reads promoter occupancy on an unchanged endogenous trajectory. Endogenous mode is a hypothetical genomic edit with feedback.
+\item The signal is the GLI activator fraction in $[0,1]$. It is not a calibrated Shh concentration.
+\item Time and concentration are in model units. No fluorescence scale, detection threshold, biological clock or embryo probability is inferred.
+\end{enumerate}
+\citet{peterson2012} report \emph{Nkx2.2} reporter expression in 4 of 6 embryos with the reference site and in 0 of 13 with the variant (E10.5). The model has no detection threshold or embryo-level noise model, so these counts are shown beside the simulation and are not scored as a reproduced prediction. The four-gene model omits Foxa2.
+
+The supported input is one substitution with a measured, positive binding weight in this site, a signal protocol of up to 10 phases and 100 model units, and an optional starting state. A different genome or site is outside the supported path. The result is a conditional mechanistic simulation. It supports comparing hypotheses about a binding change before an experiment is chosen, and it does not establish natural-genome-to-brain development, connectivity or learning.
+
+\section{The edit predictor}\label{sec:predictor}
+
+The simulation of Section~\ref{sec:example} follows one chosen change through a mechanistic model. The predictor looks at many candidate edits at once. For each, it estimates from sequence alone how much the edit changes reporter activity and in which direction. A researcher can use the scores to rank edits and to choose a panel to measure. Studio runs the predictor in its Scan and Edits tabs (Section~\ref{sec:demo}).
+
+\subsection{Task and data}\label{sec:data}
+
+\textbf{Task.} Given a reference sequence and an edited sequence, estimate the alternate-minus-reference effect on reporter activity, a $\log_2$ ratio, in the SK-N-SH 24-hour assay of \citet{siraj2026}. Substitutions, insertions and deletions are allowed. The score ranks edits within this assay. It is not a probability and it does not simulate development.
+
+\textbf{Screen and partitions.} The Siraj screen has 365,762 paired designs, 336,475 of them with two 200-base alleles, measured with at least five replicate transfections per library. Edits are grouped into families, the connected components of overlapping or identical constructs (reverse complements included), so related edits never straddle a split. The delivered model is fitted on the FIT partition, 66,604 edits in 6,794 families, and compared on the internal TUNING partition, 16,986 edits in 1,759 families. A further RESERVE partition has not been scored and stays sealed. Development reused TUNING repeatedly, so results on it are tuning results (Appendix~\ref{app:protocol} lists the four classes of data).
+
+\textbf{External studies.} Five neural reporter studies test transfer (Table~\ref{tab:transfer}). Each held-out set contains only variants with no variant of another study and no Siraj design within 2,000 bases, and it is the same for every model. Earlier models of this project had already seen these studies, so they are exposed data. A sixth study, Rummel et al., is a sensitivity analysis, because 83\% of its variants have one allele with fewer than ten RNA reads (Appendix~\ref{app:record}).
+
+\subsection{Method}\label{sec:method}
+
+\textbf{Features.} For an edit, the model forms the difference between the edited and the reference sequence in two feature blocks (Figure~\ref{fig:pipeline}). The first block counts the 512 canonical 5-mers, a 5-mer and its reverse complement counted together. The second has 532 motif features. For each JASPAR 2024 vertebrate motif \citep{rauluseviciute2024}, the potential of a sequence is the sum over its windows of $\log(1+s\,r)$, where $r$ is the odds of the motif at the window, averaged over both strands, and $s=0.003$ compresses strong sites. The potential is measured against a window with $r=1$. The feature is the potential of the edited sequence minus that of the reference. Only windows that overlap the edit differ, so the score depends on the 18 bases on either side of the change and on nothing farther away.
+
+\begin{figure}[htb]
+\centering
+\pipelinefig{reference and edited sequence}{18 bases either side of the change}{512 differences in 5-mer counts}{532 differences in motif potentials}{signed effect from a linear model with Huber-fitted weights}{rank by absolute effect, one edit per family: the panel}
+\caption{The predictor. An edit changes two feature blocks. A linear model turns them into a signed effect, and a panel takes the strongest edits, one per family. Studio runs this checkpoint.}\label{fig:pipeline}
+\end{figure}
+
+\textbf{Fit.} Both blocks are fitted jointly, without an intercept, by minimizing a Huber loss \citep{huber1964} with a penalty of 0.01 on the 5-mer block and 3 on the motif block, and with equal weight for every family. The Huber threshold is set once, from the median absolute deviation of the residuals of the squared-loss fit, and is not updated during optimization. Each fit converged in 10 to 13 updates. The checkpoint is \code{epigenesis-siraj-huber-linear-v1}.
+
+\textbf{Baselines.} \emph{k5} is ridge regression on the 5-mer block alone. \emph{Joint-linear} fits both blocks with the same penalties and squared loss, so comparing it with Huber-linear isolates the loss. \emph{No effect} predicts that every edit changes nothing. \emph{S2}, used in Section~\ref{sec:transfer}, is the earlier Siraj-trained model that adds motif potentials to k5 (Appendix~\ref{app:record}).
+
+\textbf{Panels and utility.} A panel of $n$ edits is built by sorting the edits by absolute predicted effect (ties by identifier) and taking the first edit of each family not yet represented until $n$ are chosen. The signed utility of a panel is the mean observed effect of its edits, each multiplied by the sign of its predicted effect. Random selection scores near zero. Intervals come from 2,000 resamples of whole families, and a lower bound is the 5th percentile of the gain over a comparator.
+
+\subsection{Results within the assay}\label{sec:internal}
+
+Table~\ref{tab:internal} compares the model with its baselines on the internal tuning partition. Huber-linear has the lowest error, 3.02\% below k5 and 5.40\% below predicting no effect. Joint-linear differs from it only in the loss, and Huber-linear improves on it by 0.0030 with a positive lower bound (+0.0002). At panel sizes 50 and 200 Huber-linear has the highest utility (Figure~\ref{fig:utility}). At ten edits joint-linear scores higher (1.601 against 1.483), because the two panels differ in two edits, and the data do not rank the models there.
+
+\begin{table}[htb]
+\small
+\caption{Internal tuning partition, 16,986 edits in 1,759 families. Error is the equal-family mean squared error (lower is better). Utility is the signed utility of a panel of 10, 50 or 200 edits (higher is better). The last row is the lower end of the 5th to 95th percentile interval of the gain of Huber-linear over k5 in 2,000 whole-family resamples.}\label{tab:internal}
+\begin{tabular}{@{}L{50mm}rrrr@{}}
+\toprule
+Model & Error & Utility, 10 & Utility, 50 & Utility, 200 \\
+\midrule
+No effect & 0.304075 & 0 & 0 & 0 \\
+k5 & 0.296611 & 0.857 & 0.607 & 0.509 \\
+Joint-linear (squared loss) & 0.290683 & 1.601 & 0.954 & 0.626 \\
+Huber-linear (delivered) & 0.287667 & 1.483 & 0.986 & 0.634 \\
+\midrule
+Gain over k5, lower bound & +0.0051 & −0.150 & +0.140 & +0.063 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htb]
+\centering
+\utilityplot{k5}{Joint-linear}{Huber-linear}{Panel size (edits)}{Signed utility}
+\caption{Signed utility of panels by size on the internal tuning partition (values in Table~\ref{tab:internal}).}\label{fig:utility}
+\end{figure}
+
+Six of the seven original requirements pass. The open one is the ten-edit gain over k5. Its point estimate is positive (+0.626), and its lower bound is negative (−0.150), so the data do not settle it. Development used this partition throughout, so we call the improvement preliminary.
+
+\subsection{Demonstration in Studio}\label{sec:demo}
+
+Studio runs the delivered checkpoint. This demonstration uses two inputs that ship with it: a 200-base sequence, and a table of 64 edits in 11 families that carries no measured values, so every number below is a prediction. The script \code{docs/paper/figure-data.py} reproduces each value.
+
+\begin{figure}[htb]
+\centering
+\scanplot{Position in the 200-base sequence}{Predicted effect}{G to A at 100: $-0.214$}
+\caption{Studio Scan of the example sequence. Each column is a position and each row the base it changes to; the blank cell in a column is the reference base. Orange cells are predicted increases and blue cells decreases of reporter activity, saturating at $\pm0.6$. The arrow marks the first edit of the example table.}\label{fig:scan}
+\end{figure}
+
+\textbf{Scan.} Pasting the 200-base sequence into the Scan tab scores all 600 single-base changes (Figure~\ref{fig:scan}). Of the 600 edits, 343 are predicted to raise reporter activity and 257 to lower it, and the median absolute effect is 0.049. The largest increase is A to G at position 52 (+0.581) and the largest decrease is G to T at position 165 (−0.313). The first edit of the example table, G to A at position 100, scores −0.214 in Scan. The Edits tab returns the identical value when given the same edit as a pair, because a score depends only on the bases around the change.
+
+\textbf{Edits.} The Edits tab takes pairs of a reference and an edited sequence, each with an optional family, and a panel size. For a panel of five on the 64-edit table, the five largest absolute scores include two edits of one family (the locus at chr10:102622941, +0.169 and +0.167). The selection rule keeps the first and passes to the next unrepresented family, so the panel has five edits from five families (Table~\ref{tab:panel}). Each score is the sum of a 5-mer part and a motif part, which the receipt records separately.
+
+\begin{table}[htb]
+\small
+\caption{Panel of five from the 64-edit example table. Family is the label that the table gives each edit. Effect is the predicted alternate-minus-reference effect, the sum of the 5-mer part and the motif part.}\label{tab:panel}
+\begin{tabular}{@{}r L{36mm} L{22mm} r r r L{14mm}@{}}
+\toprule
+Rank & Edit & Family & Effect & 5-mer part & Motif part & Direction \\
+\midrule
+1 & chr10:101119242 G>A & 101119242 & −0.2140 & −0.1261 & −0.0878 & lower \\
+2 & chr10:119062236 C>T & 118615567 & −0.2033 & −0.1434 & −0.0599 & lower \\
+3 & chr10:102798346 T>C & 102622941 & +0.1687 & +0.1407 & +0.0280 & raise \\
+4 & chr10:105307889 T>C & 105307889 & −0.1572 & −0.1439 & −0.0133 & lower \\
+5 & chr10:119050998 C>T & 119021407 & +0.1326 & +0.0162 & +0.1164 & raise \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Receipt.} Exporting the Edits result writes a receipt. Loading it in the Verify tab, or running \code{epigenesis-studio verify}, replays the request and passes all three checks, with a maximum difference of 0 between stored and replayed numbers. Table~\ref{tab:verify} shows altered copies: a changed result fails the replay even when the digest is recomputed, and a renamed model fails the identity check. A receipt tells a reader that a result came from this checkpoint and this request. It says nothing about whether the prediction is right.
+
+\begin{table}[htb]
+\small
+\caption{Verify on the receipt of the panel above and on three altered copies. The last column gives the largest difference between stored and replayed numbers.}\label{tab:verify}
+\begin{tabular}{@{}L{62mm}L{18mm}L{26mm}L{26mm}@{}}
+\toprule
+Receipt & Digest & Model identity & Replay \\
+\midrule
+Exported & pass & pass & pass (0) \\
+First stored effect raised by 0.001 & fail & pass & fail (0.001) \\
+The same, digest recomputed & pass & pass & fail (0.001) \\
+Model renamed, digest recomputed & pass & fail & pass (0) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Transfer to other studies}\label{sec:transfer}
+
+The same checkpoint was scored once, without refitting, on the five neural reporter studies (Table~\ref{tab:transfer}). Per-study correlations are small and differ in sign. The mean is 0.0490, against 0.0465 for S2 and 0.0460 for k5. The paired gain over S2 is +0.0024 with an interval of −0.0060 to +0.0109, so the correlations do not separate the models.
+
+The error is the stricter test. Huber-linear has a lower mean squared error than every fitted comparator. Its mean of 0.1044 is nevertheless 9.52\% above the 0.0953 of a predictor that says no edit has any effect, and each of the five per-study points and intervals favors no effect (Figure~\ref{fig:transfer}). Inside the assay the same model is 5.40\% below that predictor. Study outcomes differ in definition and scale, and the no-effect comparison was declared after scoring, so this is a diagnostic and not a replication.
+
+The scores rank edits slightly better than chance in these studies, and their scale does not carry from one assay to another. We make no claim of transfer to other assays, cell types or endogenous expression. Thirteen frozen tests (Appendix~\ref{app:tests}) found no model that reliably beat simple baselines across contexts.
+
+\begin{table}[htb]
+\footnotesize
+\caption{Huber-linear on the held-out edits of the five neural reporter studies, scored once without refitting. $r$ is the family-weighted Pearson correlation. Error is the mean squared error of Huber-linear and of predicting no effect, and Excess is the first as a percentage above the second. Mean rows weight studies equally; the excess of the mean row compares the two mean errors. Matoba has 97 families. $^\dagger$Sensitivity study, outside the mean.}\label{tab:transfer}
+\begin{tabular}{@{}L{20mm}rrrrrrrrr@{}}
+\toprule
+ & & & \multicolumn{3}{c}{Correlation $r$} & \multicolumn{3}{c}{Error} & \\
+\cmidrule(lr){4-6}\cmidrule(lr){7-9}
+Study & Edits & Families & Huber & S2 & k5 & No effect & Huber & Excess \\
+\midrule
+Lee & 5,916 & 2,340 & 0.0152 & 0.0185 & 0.0254 & 0.0626 & 0.0739 & +18.10\% \\
+McAfee & 1,682 & 676 & 0.0935 & 0.0910 & 0.0990 & 0.0277 & 0.0333 & +20.38\% \\
+Matoba & 4,013 & 97 & 0.0286 & 0.0225 & 0.0384 & 0.0164 & 0.0256 & +56.53\% \\
+Guo & 748 & 571 & −0.0157 & −0.0143 & −0.0241 & 0.3479 & 0.3612 & +3.83\% \\
+Weiss & 9,247 & 6,930 & 0.1233 & 0.1149 & 0.0912 & 0.0220 & 0.0278 & +26.46\% \\
+\midrule
+Mean of five & & & 0.0490 & 0.0465 & 0.0460 & 0.0953 & 0.1044 & +9.52\% \\
+Rummel$^\dagger$ & 611 & 349 & 0.0375 & 0.0488 & 0.0505 & 0.5420 & 0.5503 & +1.53\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htb]
+\centering
+\correlationplot{Correlation $r$}{Huber-linear}{S2}{k5}\hfill\excessplot{Error above no effect (\%)}{Internal}{Mean of five}
+\caption{Left: correlation per study (Table~\ref{tab:transfer}). Right: error of Huber-linear relative to predicting no effect. The first bar is the internal tuning partition (below no effect), the next five bars are the studies, and the last bar compares the two mean errors.}\label{fig:transfer}
+\end{figure}
+
+\subsection{Intended use}
+
+The predictor is meant for prioritizing edits within the studied assay, for example when choosing which of many candidates to measure first. Whether this saves laboratory work has not been measured. Outside the assay, a score is a hypothesis to test.
+
+\section{Epigenesis Studio}\label{sec:studio}
+
+Studio (\code{studio/}, command \code{epigenesis-studio}) is a local desktop application. Its server listens on 127.0.0.1 only and rejects requests whose Host header is not local. The interface is in English and Bulgarian, with a switch in the sidebar. It has four tabs (Table~\ref{tab:studio}).
+
+\begin{table}[tb]
+\small
+\caption{Studio tabs.}\label{tab:studio}
+\begin{tabular}{@{}L{17mm}L{62mm}L{68mm}@{}}
+\toprule
+Tab & Input & Output \\
+\midrule
+Simulate & One substitution of the nine-base site, GLI2 or GLI3, a signal protocol of up to 10 phases and 100 model units, and an optional starting state & Trajectories for reference, variant and reversion; the reporter-versus-network comparison; controls; the six assumptions; CSV; receipt \\
+Scan & One FASTA record or plain sequence of 5 to 1,000 bases (A, C, G, T only; several records are refused) & Heatmap of all three substitutions at every position; ranked table; CSV; receipt \\
+Edits & Up to 5,000 reference and edited pairs (CSV or JSON), with an optional family per pair & Scores; a panel of the requested size with one edit per family; CSV; receipt \\
+Verify & A receipt file & Three checks: digest, identity of model and endpoint, replay of every stored result \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Simulate runs the repository backend of Section~\ref{sec:example} live; there is no second simulator. It needs the repository checkout, and without it the tab is disabled while the others still work.
+
+Scan and Edits run the predictor of Section~\ref{sec:predictor}, which Section~\ref{sec:demo} demonstrates. Scan scores every single-base change in a window around the position, which is enough because a score depends only on the 18 bases on either side. The result equals scoring whole sequences (tested to $10^{-12}$). Edits scores a table of pairs and selects the panel with the rule of Section~\ref{sec:method}.
+
+A receipt (\code{epigenesis-studio-receipt-v1}) holds the model name, its identity hash, the endpoint, the normalized request, the result and a SHA-256 digest over the RFC~8785 canonical JSON of all of it. Verify checks the digest, that the model name, identity and endpoint match the installation, and that rerunning the stored request reproduces every stored result within $10^{-9}$ (Table~\ref{tab:verify}).
+
+Only Simulate compiles its input. Scan and Edits use the compiler's canonical JSON for receipts and do not pass through the Development Module pipeline. The Studio tests (21, passing) cover scan against whole-sequence scoring, the panel against the frozen model, each receipt check, input limits and refusals, the HTTP guards, and the simulation against the backend's command line and published binding ratio.
+
+\section{Limits and open questions}\label{sec:limits}
+
+\textbf{Simulation.} The result is conditional on the six assumptions of Section~\ref{sec:assumptions}. The binding ratio comes from an in-vitro measurement, and its use as an intracellular affinity multiplier is untested. The embryo counts of \citet{peterson2012} are displayed and not scored. One site, one enhancer context and four genes are supported. The workflow does not model multicellular mechanics, connectivity or learning.
+
+\textbf{Predictor.} The internal gains are preliminary because development reused the data, and the ten-edit requirement is open. Section~\ref{sec:transfer} gives the external boundary. In thirteen frozen transfer tests (Appendix~\ref{app:record}) no candidate earned its label. Direction accuracy for fine-mapped eQTLs (0.52 to 0.65) matched a k-mer baseline, and the nearest-gene rule (0.460) picked the causal variant of a credible set better than every model. Prediction across biological contexts therefore remains an open problem. Possible reasons, all untested: reporter effects may depend on vector, promoter and cell state; effect scales differ between studies; the sequence-predictable part of single-base effects may be small; and short-range features may capture mainly composition such as GC content. Predicting between assays that share vector and cell type, on a common effect scale, with well-measured variants only, and with endogenous-locus data would test these.
+
+\textbf{Evaluation.} The hashes of the frozen procedure are local. They guard against accidents and unrecorded changes. They do not guard against an author who rewrites a plan and its hash together. The thirteen tests are not corrected for multiplicity, and the same team did the replays. Several evaluation sets were exposed to earlier models. Some studies share a laboratory lineage or cell source. The Salomon neuron data were excluded from cross-study tests because the variant tables are restricted on the IGVF portal. The predictor endpoint is reporter activity or expression; development is not measured.
+
+\textbf{Next steps.} (a) Compare the simulated consequences of the example, for instance the shift from Nkx2.2 to Olig2, with measured endogenous edits, and replace assumed model parameters with measured ones. (b) Use the sealed Siraj RESERVE partition once, for one model chosen in advance. (c) Obtain the restricted IGVF variant tables and test under a new plan. (d) Assemble endogenous-edit datasets with an expression readout. A model that beats the nearest-gene rule or a k-mer baseline under a sealed gate, in two independent datasets it had not seen, would change the transfer conclusion.
+
+\section{Conclusion}
+
+Epigenesis lets a researcher change a supported DNA site, run a developmental model under stated conditions and inspect the consequences, with each step recorded so that another installation can replay it. In the worked example a single-base change in a GLI site moves Nkx2.2 from 0.94 to 0.008 in the model, and reversion restores the reference exactly. The predictor and Studio add a way to explore and rank edits within one assay. Their evidence is preliminary, and prediction across biological contexts remains open.
+
+\section{Availability and statements}
+
+\textbf{Code and data.} \url{https://github.com/dttdrv/epigenesis}. Code is Apache-2.0. Bundled data and third-party components keep their licenses and attributions. For example, JASPAR 2024 is CC BY 4.0, the 80K-Analysis notice is in \code{examples/neural-predictor/LICENSE.Salomon}, and the bundled attention predictor uses Interlace (see \code{NOTICE.md} in the same folder).
+
+\textbf{Running it.} The README lists commands. Python 3.11 or later and the standard library run the compiler and the evidence and patterning demonstrations. Studio needs NumPy and the compiler: \code{uv tool install --editable studio --with-editable .} puts \code{epigenesis-studio} on the path. The pretrained feature extractors and the construction experiment need additional tools, which their documentation names.
+
+\textbf{Figure data.} \code{docs/paper/figure-patterning.csv} was written from the Studio simulation of GAACACCCA with GLI2 (one phase of 20 model units at signal 0.2, all genes starting at zero); \code{patterning.py run} gives the same trajectories. \code{docs/paper/figure-data.py} rebuilds \code{figure-scan.csv} and \code{figure-studies.csv} and prints the demonstration numbers of Section~\ref{sec:predictor}. The utilities of Table~\ref{tab:internal} come from \code{RESULTS.md} of the fixed Huber joint comparison in the unversioned build tree (\code{build/neural-predictor-reviewed-20261005/siraj-huber-joint-20261019/}).
+
+\textbf{Frozen tests.} Plans, hashes, scripts and results are in \code{research/frozen-tests/} (Appendix~\ref{app:tests}). \code{python3 research/check\_freeze.py} recomputes the hashes. The Siraj RESERVE partition remains sealed. The Salomon and Kosicki confirmations are spent.
+
+\textbf{Data without a journal article.} Gene Expression Omnibus series GSE244011, GSE211045, GSE225815, GSE221384, GSE152404 and GSE188264 (\citealt{kreimer2022}); the 80K-Analysis repository (\url{https://github.com/kircherlab/80K-Analysis}); Interlace (\url{https://github.com/MisulOrg/Interlace}); CX3D 0.03 (\url{https://tilde.ini.uzh.ch/~amw/seco/cx3d/cx3d-0.03.zip}); GENCODE v39 \citep{frankish2021}; UCSC hg38 and phyloP100way tracks.
+
+\textbf{Responsibility.} The author is responsible for the content. Every number comes from the result files listed in Appendix~\ref{app:tests}, the example folders and the repository README. Competing interests and funding: to be completed by the author before submission.
+
+\input{references}
+
+\appendix
+
+\section{Frozen evaluation procedure}\label{app:protocol}
+
+Every test in Appendix~\ref{app:record} follows one procedure.
+\begin{enumerate}
+\item \textbf{Plan.} A plan file fixes the question, populations, models, baselines, metrics, bootstrap, decision gates and the label that a pass would earn.
+\item \textbf{Hash.} \code{FREEZE.json} records SHA-256 digests of the plan, scripts and inputs before any outcome is read. A script that never sees held-out outcomes makes the predictions, and their digest is added.
+\item \textbf{Qualify.} The scorer runs on a synthetic positive, where the label must come out true, and on a synthetic null, where it must not. A scorer that fails either run is repaired first.
+\item \textbf{Score once.} The scorer verifies the digests, scores the sealed predictions and writes one result. A changed model needs a new plan and, if the data are spent, new data.
+\item \textbf{Judge.} The label is earned only if every gate passes. For example, the lower bound of the candidate exceeds the null, the candidate beats the best fixed baseline and it beats a model trained on other data.
+\end{enumerate}
+
+The resampling unit is the sequence family, gene or credible set. Units are resampled as whole copies in 2,000 bootstrap draws. Intervals are 5th to 95th percentiles, so the lower end is a one-sided 95\% bound. Correlations are family-weighted Pearson $r$, with studies weighted equally. Selection quality is signed utility. It is the observed effect, signed by the predicted direction, of the edits that a model selects (one per family) for a panel of 10, 50 or 200. Random selection scores near zero. Direction is accuracy, with ties counted as one half.
+
+Data fall into four classes. \emph{Sealed} data are unopened (the Siraj RESERVE partition). \emph{Spent} data were scored once and cannot confirm later models (the Salomon and Kosicki confirmations). \emph{Exposed} data guided development (the Siraj TUNING partition, earlier reporter studies, and each eQTL test set after its first scoring). Results on exposed data carry an adaptivity caveat. \emph{Fresh} data are new to every model in the test.
+
+\section{Research record: sequence-based transfer tests}\label{app:record}
+
+The tests ask whether sequence alone predicts what an unseen DNA change does in neural cells. They are the evidence behind the transfer boundary of Section~\ref{sec:transfer}.
+
+\subsection{Task, data and models}
+
+\textbf{Task.} Given a reference and an edited sequence, predict the alternate-minus-reference reporter effect (a $\log_2$ ratio). For natural variants, predict the direction of the effect on expression.
+
+\textbf{Training data.} The main set is the SK-N-SH reporter screen of \citet{siraj2026} (Section~\ref{sec:data}). WTC11-NGN2 neuron data \citep{salomon2026} supply activity and effects for one model class. Within each study, outcomes are centered and scaled to unit family-weighted standard deviation before pooling.
+
+\textbf{Evaluation data.} Six neural reporter studies with allelic effects: Lee et al.\ (GSE244011; 5,916 variants; \citealt{lee2025}), McAfee et al.\ (GSE211045; 1,682; \citealt{mcafee2023}), Matoba et al.\ (4,013; \citealt{matoba2026}), Rummel et al.\ (GSE225815; 611; \citealt{rummel2023}), Guo et al.\ (GSE221384; 748; \citealt{guo2023}) and Weiss et al.\ (GSE152404; 9,247; \citealt{weiss2021}). The Matoba set is the project's TRAIN partition. Section~\ref{sec:data} describes the held-out sets, and Table~\ref{tab:transfer} gives their sizes. A family is a connected component of variants within 2,000 bases (a locus for Matoba).
+
+\textbf{Models.} \emph{k5} is ridge regression on the difference in canonical 5-mer counts (512 coefficients). \emph{S1} is k5 trained on the Siraj screen. \emph{S2} adds the difference in JASPAR 2024 motif potential \citep{rauluseviciute2024}. It is the standing reference. \emph{Huber-linear} fits the same 512 word and 532 motif coefficients with a Huber loss and is the delivered model. \emph{S3} and \emph{H3} add a quadratic motif-context term. They are trained on Siraj and on the other studies, respectively. \emph{H2} is k5 plus motifs, trained on the other studies. \emph{Cfit} is a fitted blend of study-trained and Siraj-trained models. Further models are ridge regression on 611 Sei scores \citep{chen2022} and a convolutional network trained on pooled effects. There is also an activity-transfer model learned from WTC11-NGN2 measurements \citep[motivated by][]{seitz2024,tareen2022}. The last is a zero-shot model that multiplies the change in motif occupancy by transcription-factor expression in 8 to 13 post-conception-week neocortex \citep{kang2011,miller2014}.
+
+\subsection{Earlier negative experiments}
+
+Two experiments outside the Siraj series ended in negative results. One is a predictor for H1 neural induction. Its frozen model lowered mean squared error by 20.97\% against zero effect but failed the required comparison with a dinucleotide model. The other is a benchmark of the FamilyCode homeodomain model \citep{liu2025} on \emph{Nkx2-2}, which failed.
+
+\subsection{Measurement checks}
+
+\textbf{Forecasting omitted repeats.} In a neuronal-assay pilot we omitted one RNA repeat at a time and forecast its allelic fraction from the others, with the BIRD model \citep{majoros2020} or by pooling with an analytic Beta-binomial, and scored the forecasts with the continuous ranked probability score (CRPS; \citealt{gneiting2007}). Over twelve omissions in four TRAIN components, the mean CRPS was 0.0549 for BIRD and 0.0622 for pooling, 11.7\% lower. The conditional 99\% simulation interval for the gain is 0.0044 to 0.0098 and covers Monte Carlo error only, for this selected cohort. All four component means improve, and the one omission that favors pooling is kept. BIRD and pooling also differ in priors, so the comparison does not isolate repeat variation as the cause. A DNA-normalized follow-up lowered mean CRPS by 15.8\% against pooling, but a post hoc zero-effect forecast scored better.
+
+\textbf{Forecasting later responses.} In the neural-induction assay of \citet{kreimer2022}, ridge regression on four early measurements lowered error by 24\% against carrying the 12-hour value forward, in 351 held-out families, and matched a simpler averaging control. Two zero-shot pretrained forecasting models did no better. A raw-count test that holds out families and infection cultures gave a mean squared error of 0.3213 against 0.3221 for zero change (0.26\% better). All four gain intervals include zero.
+
+\textbf{Counting noise.} In GSE225815, 83\% of variants have one allele with fewer than ten RNA reads, so the log ratio is set mainly by the pseudocount and the DNA-count imbalance. The high agreement between replicate halves (0.98) comes from the shared DNA count and says nothing about reproducible biology: on the 124 well-measured variants, the Siraj-trained head scores $r=-0.09$. The other three count-based studies have negligible counting noise (median Poisson variance below 0.002 $\log_2^2$). We therefore dropped GSE225815 from the primary group in later tests and kept it as a sensitivity analysis.
+
+\subsection{Reporter effects}
+
+\textbf{Within one assay.} Section~\ref{sec:internal} gives the internal comparison of Huber-linear with k5. Two earlier confirmations on spent data, for earlier fitted predictors of this series, failed. The Kosicki confirmation (3,840 edits in 50 families) gave an error of 0.016958 for the fixed predictor against 0.016919 for zero effect. Its ten-edit utility was −0.038, against +0.023 for random selection. The Salomon confirmation (7,372 edits in 2,938 families) gave an error of 0.028957 against 0.028998 for k5, and a ten-edit utility of 0.170 against 0.153. All seven point comparisons favored the model, and every interval included zero.
+
+\textbf{Across studies.} Table~\ref{tab:cross} lists the tests that apply a fixed model to other studies. The reference S2 is trained on Siraj alone. It has $r\approx0.047$ (S1 has 0.047 over all six studies, interval 0.026 to 0.069), that is $r^2\approx0.002$. It is positive in four of the five studies other than GSE225815. After the count check, these five studies are the primary group. The six-study group is a sensitivity analysis.
+
+\begin{table}[tb]
+\small
+\caption{Cross-study tests. $r$ is family-weighted Pearson correlation with studies weighted equally (5th to 95th percentiles). Each test was scored once, 19 to 20 October 2026. No test earned its label.}\label{tab:cross}
+\begin{tabular}{@{}r L{62mm} L{34mm} L{28mm}@{}}
+\toprule
+\# & Candidate and population & Candidate $r$ & Reference $r$ \\
+\midrule
+1 & H2, trained on the two other studies; McAfee and Matoba folds & 0.015 (−0.024, 0.054) & S1 0.060 \\
+2 & Cfit blend; three newly scored studies & 0.046 (0.009, 0.082) & S2 0.050 \\
+3 & Sei ridge; six studies (blend with S2: 0.041) & −0.003 (−0.024, 0.019) & S2 0.047 \\
+4 & Quadratic context head S3; six studies & 0.046 & S2 0.047 \\
+5 & WTC11-NGN2 activity transfer; six studies & −0.010 (−0.029, 0.011) & S2 0.047 \\
+6 & Pooled convolutional network; five studies & 0.014 (−0.008, 0.035) & S2 0.047 \\
+7 & Zero-shot expressed-TF binding; five studies & 0.0015 & S2 0.0465 \\
+8 & Huber-linear, fixed; five studies & 0.0490 & S2 0.0465 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Test 8 is the delivered model (Section~\ref{sec:transfer}, which also states the comparison with predicting zero effect). Per-study correlations of S2 range from −0.014 (Guo et al.) to 0.115 (Weiss et al.). In an exploratory, outcome-selected analysis, the sign of S2 is right for 53\% to 57\% of the top 10\% largest effects in the Lee, Matoba and Weiss studies, against 50\% overall. This is a lead only. Evolutionary conservation (phyloP100way; \citealt{pollard2010}) does not help. Its correlation with absolute effect averages 0.017, and multiplying S2 by conservation lowers the mean $r$ from 0.047 to 0.034.
+
+\subsection{Natural variants}
+
+\textbf{Direction of expression effects.} The training data were adult-brain fine-mapped QTLs: GTEx brain regions, BrainSeq, CommonMind, ROSMAP and Braineac2 in the eQTL Catalogue \citep{gtex2020,jaffe2018,fromer2016,ng2017,ramasamy2014,kerimov2021}. They comprise 14,617 variant-gene pairs with a posterior inclusion probability (PIP) of at least 0.5, fine-mapped with SuSiE \citep{wang2020}. Folds hold out whole chromosomes. Tests used fetal and neural-derived datasets. M4 uses Sei chromatin scores by distance bin to the transcription start site (TSS). M5 adds GC change, the local k5 and the reporter head. Baselines are B1 (the alternate allele gains GC), B2 (k5 logistic regression) and B3 (the Siraj-trained reporter head, unfitted).
+
+\begin{table}[tb]
+\small
+\caption{Direction accuracy on held-out fine-mapped eQTLs; resampling by gene, 5th to 95th percentiles.}\label{tab:direction}
+\begin{tabular}{@{}L{54mm}r r r L{42mm}@{}}
+\toprule
+Test set & $n$ & M4 & M5 & M5 against best baseline \\
+\midrule
+Fetal neocortex \citep{walker2019} & 792 & 0.547 & 0.566 & B3: +0.028 (−0.009, +0.065) \\
+Progenitors \citep{aygun2021} & 229 & 0.528 & 0.646 & B2: +0.066 (0.013, 0.117) \\
+Neurons \citep{aygun2021} & 80 & 0.575 & 0.600 & intervals wide \\
+Differentiating neurons \citep{jerber2021} & 320 & 0.534 & 0.603 & B2: +0.003 (−0.037, +0.045) \\
+Sensory neurons \citep{schwartzentruber2018} & 519 & 0.538 & 0.518 & B2 0.499 (PIP ≥ 0.1) \\
+Microglia \citep{young2021} & 272 & n/a & 0.570 & reporter head 0.574 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Pooled over the four neural-derived sets at PIP ≥ 0.5 (626 pairs), M5 reaches 0.599 (0.566, 0.630) against 0.567 for B2. The largest single-set gain, in the progenitors, did not repeat in the Jerber or sensory-neuron sets. No model is consistently above the k-mer baseline. The three labels (fetal-brain direction, confirmation in differentiating neurons, replication in neural-derived cells) were not earned.
+
+\textbf{Which variant in a credible set is causal?} A conditional-logit ranking of credible-set members was trained on 5,836 adult-brain sets (27,875 members) with leave-chromosome-out folds. We scored top-1 accuracy on 439 fetal-neocortex sets \citep{walker2019} and 420 neural-derived sets (Table~\ref{tab:ranking}).
+
+\begin{table}[tb]
+\small
+\caption{Top-1 accuracy of credible-set ranking (5th to 95th percentiles).}\label{tab:ranking}
+\begin{tabular}{@{}L{62mm}L{40mm}L{40mm}@{}}
+\toprule
+Method & Fetal neocortex & Neural-derived pool \\
+\midrule
+Random member & 0.355 & 0.328 \\
+Nearest TSS (B1) & \textbf{0.460} (0.420, 0.499) & 0.402 (0.362, 0.442) \\
+Distance bins (B2) & 0.433 (0.403, 0.463) & 0.381 (0.351, 0.411) \\
+Highest phyloP (B3) & 0.355 (0.320, 0.392) & 0.333 (0.294, 0.373) \\
+Distance + Sei (M4) & 0.435 (0.396, 0.474) & \textbf{0.426} (0.386, 0.464) \\
+Distance + Sei + phyloP (M5) & 0.419 (0.381, 0.458) & 0.421 (0.381, 0.461) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No model beats the nearest-TSS rule in fetal neocortex. In the neural-derived pool, M4 exceeds distance bins by +0.045 (+0.005, +0.085). It does not clearly exceed B1 (M5 − B1 = +0.019, interval −0.029 to +0.067). Conservation carries no signal: phyloP picks the member with the highest fine-mapping probability no better than chance (pairwise AUC 0.495 in training sets, 0.503 in the Walker sets). Roadmap DNase accessibility \citep{roadmap2015} does not help in fetal neocortex. The two accessibility models reach 0.417 and 0.420, below M4 (0.435) and nearest-TSS (0.460). Neither label was earned.
+
+\subsection{Summary}
+
+Across the thirteen tests, the Siraj-trained head carries a small, stable cross-study signal ($r$ near 0.05) that nothing tried adds to. Signals that look better in one set do not repeat in the next. Simple baselines (nearest TSS, k-mer counts, the reporter head) are hard to beat on natural variants.
+
+\section{Frozen tests and where they live}\label{app:tests}
+
+Each directory under \code{research/frozen-tests/} holds the plan (\code{PLAN.md}), digests (\code{FREEZE.json}), \code{scripts/}, small result files and \code{RESULTS.md}. The original tree is \code{build/neural-predictor-reviewed-20261005/}, which is not versioned.
+
+\begin{center}\small
+\begin{tabular}{@{}r L{70mm} L{62mm}@{}}
+\toprule
+\# & Test & Directory \\
+\midrule
+1 & Leave-one-study-out, three studies & \code{hnp-loso-20261019} \\
+2 & Combined predictor, six studies & \code{hnp-loso6-20261019} \\
+3 & Sei ridge & \code{sei-features-20261019} \\
+4 & Quadratic context head & \code{context-loso6-20261019} \\
+5 & Activity-transfer model & \code{activity-transfer-loso6-20261019} \\
+6 & Pooled convolutional network & \code{cnn-loso6-20261019} \\
+7 & Zero-shot expressed-TF binding & \code{mechanism-zeroshot-20261019} \\
+8 & Huber-linear transfer & \code{huber-transfer-20261020} \\
+9 & eQTL direction, fetal neocortex & \code{eqtl-brain-20261019} \\
+10 & eQTL direction, Jerber & \code{eqtl-brain-20261019} (\code{PLAN\_CONFIRM.md}) \\
+11 & eQTL direction, sensory neurons and microglia & \code{eqtl-brain-20261019} (\code{PLAN\_REP.md}) \\
+12 & Credible-set ranking & \code{eqtl-causal-20261019} (\code{PLAN.md}) \\
+13 & Credible-set ranking with accessibility & \code{eqtl-causal-20261019} (\code{PLAN2.md}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+An exploratory, unfrozen analysis of conservation and direction is in \code{constraint-factor-20261019}.
+
+\end{document}

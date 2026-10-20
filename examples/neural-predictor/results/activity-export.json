@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "model_manifest_sha256": "832cf0d50fb6795208cc71fac2f5c66d9cd19c56af3fce7ca0dd0e6532aeac2c",
+  "populations": {
+    "validation": {
+      "rows": 7390,
+      "exact_prediction_values": 7390,
+      "max_absolute_difference": 0.0,
+      "selected_ids_exact": true
+    },
+    "confirmation": {
+      "rows": 7372,
+      "exact_prediction_values": 7372,
+      "max_absolute_difference": 0.0,
+      "selected_ids_exact": true
+    }
+  }
+}

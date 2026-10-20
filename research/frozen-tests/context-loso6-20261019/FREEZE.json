@@ -1,0 +1,16 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "84673da7865b836a969859fce5b8158adfb89b0797ed361a5774936212f2a284",
+  "scripts/ctx_features.py": "067ae840d65a7450d7fe2f0048e1ce14a28fd8beeef67ae5fd992126583a0fe9",
+  "scripts/train_ctx.py": "3e2df3c3eab445112bd546eb09ca3e3a93e8d85139fcae03f09046bd2705443b",
+  "scripts/score8.py": "8f9e268e6470b1a9a3853c2f8f752e0d9e6acefd7be7bbd8dadf008cd7c1414e",
+  "derived/PREDICTIONS.npz": "a123c7eed1b53b153bcc8d1934cb2f68bf9006457681f8ae7133409295696db6",
+  "derived/TRAINING.json": "66513d6745c1b89e4cffc1a24ecb3a25f545a6f1fe2efef2cba5cc2fd2468460",
+  "derived/ctx_features.npz": "9c885a73cdb6e7933391f804047bb480aeeeec78a17f003bf4862849381aab30"
+ },
+ "notes": [
+  "train_ctx.py never opens the held-out study outcome (asserted in target())",
+  "all six study outcomes were used in earlier tests; earlier three not blind"
+ ]
+}

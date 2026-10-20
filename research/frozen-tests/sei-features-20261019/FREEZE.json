@@ -1,0 +1,18 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "564e487003b20dc7f06fec19eae5943260311049441748249947869575d6baec",
+  "scripts/fetch4k.py": "2ecd2e538293efbb5a4b870e2fab134466caea4a195ece352b7a2d0a06fa5b21",
+  "scripts/run_sei.py": "106214902a565856862f341c1671c8b6d9eb942a644e133c6dfd39c0361d2a6a",
+  "scripts/train_sei.py": "7a2b91d1445bfb3f6b6d1f22e19f83bae0399d3ace4ed3d2a00189fa4bec098b",
+  "scripts/score7.py": "74114af487504a0781401d3c1fee71bf11e53e9f9e79a4aec6387ba08c654b8e",
+  "derived/PREDICTIONS.npz": "3da8215e638f4dd8507d3b2c679fb2fa183c8b77a386b977b2b1413dc1510802",
+  "derived/TRAINING.json": "00df41ea4c3d386d7648f1fef68f70fa8c0066dd5457971dc71387b622c0a503",
+  "derived/sei_features.npz": "9ffd5d3f15a236ba007cf3bf59740df7be7f24cbdd7bb07754940a1601d38250",
+  "derived/context4k_ids.json": "7b5a49719e097149fe20862749fc30102f3378c72a5f966d1887ac67d4f38c05"
+ },
+ "notes": [
+  "all six study outcomes were already used in earlier tests; held-out outcomes are not opened by train_sei.py (training targets only from other studies)",
+  "earlier-three folds are not blind"
+ ]
+}

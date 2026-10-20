@@ -8,6 +8,27 @@ ROOT = Path(__file__).resolve().parents[1]/'examples/neural-predictor'
 
 
 class PredictorBundleTests(unittest.TestCase):
+    def test_activity_assets_and_evidence(self):
+        raw = (ROOT/'data/activity-manifest.json').read_bytes()
+        manifest = json.loads(raw)
+        for name, digest in dict(manifest['source_sha256'], **{'data/activity.npz':manifest['weights_sha256']}).items():
+            with self.subTest(path=name):
+                self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(),digest)
+        evidence = json.loads((ROOT/'results/activity.json').read_bytes())
+        export = json.loads((ROOT/'results/activity-export.json').read_bytes())
+        self.assertEqual(export['model_manifest_sha256'],hashlib.sha256(raw).hexdigest())
+        self.assertEqual(evidence['identities']['candidate_sha256'],manifest['source_candidate_sha256'])
+        confirmation = evidence['confirmation']
+        original = (json.dumps(confirmation,indent=2,allow_nan=False)+'\n').encode()
+        self.assertEqual(hashlib.sha256(original).hexdigest(),evidence['identities']['confirmation_result_sha256'])
+        self.assertEqual(confirmation['input_identity'],manifest['confirmation_freeze_sha256'])
+        self.assertEqual(set(confirmation['comparisons']),
+                         {'mse_zero','mse_dinucleotide','mse_kmer','ranking_zero','ranking_dinucleotide','ranking_kmer','ranking_random'})
+        self.assertEqual(confirmation['accepted'],all(v['interval'][0] > 0 for v in confirmation['comparisons'].values()))
+        for record in export['populations'].values():
+            self.assertEqual(record['rows'],record['exact_prediction_values'])
+            self.assertTrue(record['selected_ids_exact'])
+
     def test_frozen_inference_assets(self):
         manifest = json.loads((ROOT/'data/manifest.json').read_bytes())
         paths = {'model.py': manifest['model_sha256'],

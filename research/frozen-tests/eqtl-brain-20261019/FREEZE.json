@@ -1,0 +1,18 @@
+{
+ "sealed_before_labels_scored": true,
+ "files": {
+  "PLAN.md": "752ac43cd7d15f3471ba93c69907100e480a5c4f399bd4388e5252bbb37c1b6c",
+  "scripts/build_table.py": "5b1122511594a5443054b1b9a68d9f54446afe95c3a04eb30328a54114da3b33",
+  "scripts/fetch_ctx.py": "d96afac5f6011d4f927232894ecf6bfa0de90a501a4670660eb30d16db30a924",
+  "scripts/run_sei_eqtl.py": "0ff849e83a9229e998ea3fe1baf2fe2ce7cfae5ff3bab98ef2f500e27633822b",
+  "scripts/run_eqtl.py": "5a9861e83b727b9d5deab0d22c4effbd1821f5b0077be9b13c72cbe277e0e756",
+  "scripts/score_eqtl.py": "3bc6ce5b0c6b1935d821fbc4da32763e9140f2797e39847f364967bebff8a6cc",
+  "derived/eqtl_table.json": "08d8befc9e578cdedd56e5b5369d843901666c2c3102e10bb71708c4b885e2c4",
+  "derived/sei_eqtl.npz": "2ae4224c33cfa3ab0dbe89b2a2f75bd384f8d444897f1a66f8f8ecc9f04ef958",
+  "derived/PREDICTIONS.npz": "4c94d65217a96bb24855c9a1f877dbd9447edc81f63da413bbbb0505770d9b20",
+  "derived/TRAINING.json": "dcb06bd679442aeb877694b8a2b733174c077577d8ca2d9b568e42ee7caac075"
+ },
+ "notes": [
+  "run_eqtl.py strips beta/pip from test rows before use"
+ ]
+}

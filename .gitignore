@@ -4,7 +4,9 @@ __pycache__/
 .pytest_cache/
 .venv/
 build/
+output/
 dist/
 tests/data/CP032762.1.gb
 tests/data/CP032762.1.brainc.json
 tests/data/CP032762.1.validation.json
+.DS_Store

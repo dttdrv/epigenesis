@@ -1,0 +1,159 @@
+% shared preamble for the English and Bulgarian papers (XeTeX; built with tectonic)
+\usepackage[a4paper,left=26mm,right=26mm,top=26mm,bottom=28mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Palatino}
+\setmonofont{Menlo}[Scale=MatchLowercase]
+\usepackage{polyglossia}
+\newfontfamily\cyrillicfont{Palatino}
+\newfontfamily\cyrillicfonttt{Menlo}[Scale=MatchLowercase]
+\usepackage{microtype}
+\usepackage{booktabs,array,tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\usepackage[font=small,labelfont=bf,labelsep=period,justification=raggedright,singlelinecheck=false,skip=4pt]{caption}
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.17}
+\definecolor{refcolor}{HTML}{0072B2}
+\definecolor{varcolor}{HTML}{D55E00}
+\definecolor{repcolor}{HTML}{009E73}
+
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{2em}
+\setlength{\parskip}{5pt plus 1pt}
+\linespread{1.07}
+\bibpunct{(}{)}{;}{a}{}{,}
+\setlength{\bibsep}{1.5pt}
+\renewcommand{\bibfont}{\small}
+\setlist{nosep,leftmargin=1.4em,itemsep=2pt}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{14pt}{5pt}
+\titlespacing*{\subsection}{0pt}{9pt}{3pt}
+\pagestyle{plain}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\newcommand{\titleblock}[3]{%
+  \begin{center}
+    {\Large\bfseries #1\par}\vspace{8pt}
+    {\large #2\par}\vspace{2pt}
+    {\small #3\par}
+  \end{center}\vspace{4pt}}
+\newenvironment{abstractbox}[1]{\begin{center}\bfseries\small #1\end{center}\vspace{-6pt}\begin{quote}\small}{\end{quote}}
+
+% worked-example figure. arguments: time label, reference, edit inside the network, passive reporter, occupancy title.
+% data: figure-patterning.csv, written from the Studio simulation of GAACACCCA (GLI2), signal 0.2 for 20 model units.
+\newcommand{\patterningplot}[5]{%
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 2,horizontal sep=15mm,vertical sep=17mm},
+  width=44mm,height=30mm,xmin=0,xmax=20,xtick={0,10,20},ymin=0,scaled y ticks=false,
+  yticklabel style={/pgf/number format/fixed,/pgf/number format/precision=3},
+  tick label style={font=\scriptsize},label style={font=\scriptsize},title style={font=\footnotesize\bfseries},
+  every axis plot/.append style={thick}]
+\nextgroupplot[title={Pax6}]
+\addplot[refcolor] table[x=t,y=refPax6,col sep=comma]{figure-patterning.csv};
+\addplot[varcolor,dashed] table[x=t,y=varPax6,col sep=comma]{figure-patterning.csv};
+\nextgroupplot[title={Olig2}]
+\addplot[refcolor] table[x=t,y=refOlig2,col sep=comma]{figure-patterning.csv};
+\addplot[varcolor,dashed] table[x=t,y=varOlig2,col sep=comma]{figure-patterning.csv};
+\nextgroupplot[title={Nkx2.2}]
+\addplot[refcolor] table[x=t,y=refNkxTwoTwo,col sep=comma]{figure-patterning.csv};
+\addplot[varcolor,dashed] table[x=t,y=varNkxTwoTwo,col sep=comma]{figure-patterning.csv};
+\nextgroupplot[title={Irx3},xlabel={#1}]
+\addplot[refcolor] table[x=t,y=refIrx3,col sep=comma]{figure-patterning.csv};
+\addplot[varcolor,dashed] table[x=t,y=varIrx3,col sep=comma]{figure-patterning.csv};
+\nextgroupplot[title={#5},xlabel={#1},ymax=1]
+\addplot[refcolor] table[x=t,y=occRef,col sep=comma]{figure-patterning.csv};
+\addplot[repcolor,densely dotted] table[x=t,y=occRep,col sep=comma]{figure-patterning.csv};
+\addplot[varcolor,dashed] table[x=t,y=occVar,col sep=comma]{figure-patterning.csv};
+\end{groupplot}
+\node[anchor=north west,align=left,font=\scriptsize,inner sep=0pt] at ([xshift=12mm,yshift=-1mm]group c2r2.north east) {%
+\tikz[baseline=-0.5ex]\draw[thick,refcolor](0,0)--(7mm,0);~#2\\[4pt]
+\tikz[baseline=-0.5ex]\draw[thick,varcolor,dashed](0,0)--(7mm,0);~#3\\[4pt]
+\tikz[baseline=-0.5ex]\draw[thick,repcolor,densely dotted](0,0)--(7mm,0);~#4};
+\end{tikzpicture}}
+
+\usetikzlibrary{arrows.meta}
+
+% predictor pipeline. arguments: edit pair, window, 5-mer block, motif block, linear score, panel.
+\newcommand{\pipelinefig}[6]{%
+\begin{tikzpicture}[box/.style={draw,rounded corners=1.5pt,align=center,font=\scriptsize,inner sep=3pt,text width=24mm,minimum height=13mm},
+  arr/.style={-{Stealth[length=1.8mm]},thick}]
+\node[box] (a) at (0,0) {#1};
+\node[box] (b) at (30mm,0) {#2};
+\node[box] (c) at (60mm,10mm) {#3};
+\node[box] (d) at (60mm,-10mm) {#4};
+\node[box] (e) at (90mm,0) {#5};
+\node[box] (f) at (120mm,0) {#6};
+\draw[arr] (a)--(b);
+\draw[arr] (b.east)--(c.west);
+\draw[arr] (b.east)--(d.west);
+\draw[arr] (c.east)--(e.west);
+\draw[arr] (d.east)--(e.west);
+\draw[arr] (e)--(f);
+\end{tikzpicture}}
+
+% internal signed utility by panel size (build/neural-predictor-reviewed-20261005/siraj-huber-joint-20261019/RESULTS.md).
+% arguments: k5, joint-linear, Huber-linear, x label, y label.
+\newcommand{\utilityplot}[5]{%
+\begin{tikzpicture}
+\begin{axis}[ybar,bar width=7pt,width=88mm,height=42mm,symbolic x coords={10,50,200},xtick=data,enlarge x limits=0.25,
+  ymin=0,ymax=2.5,ylabel={#5},xlabel={#4},tick label style={font=\scriptsize},label style={font=\scriptsize},
+  legend style={font=\scriptsize,at={(0.97,0.97)},anchor=north east,draw=none,fill=none},legend cell align=left,area legend]
+\addplot[fill=black!35,draw=none] coordinates {(10,0.857) (50,0.607) (200,0.509)};
+\addplot[fill=refcolor,draw=none] coordinates {(10,1.601) (50,0.954) (200,0.626)};
+\addplot[fill=varcolor,draw=none] coordinates {(10,1.483) (50,0.986) (200,0.634)};
+\legend{#1,#2,#3}
+\end{axis}
+\end{tikzpicture}}
+
+% Scan of the 200-base example, from figure-scan.csv (docs/paper/figure-data.py). arguments: x label, colour-bar label, example-edit label.
+\newcommand{\scanplot}[3]{%
+\begin{tikzpicture}
+\begin{axis}[width=124mm,height=24mm,scale only axis,axis on top,clip=false,y dir=reverse,xmin=0.5,xmax=200.5,ymin=-0.5,ymax=3.5,
+  xtick={1,50,100,150,200},ytick={0,1,2,3},yticklabels={A,C,G,T},xlabel={#1},ylabel={},
+  tick label style={font=\scriptsize},label style={font=\scriptsize},
+  colormap={eff}{color(0cm)=(refcolor); color(1cm)=(white); color(2cm)=(varcolor)},
+  point meta min=-0.6,point meta max=0.6,unbounded coords=jump,
+  colorbar,colorbar style={width=2.5mm,ytick={-0.6,0,0.6},yticklabel style={font=\scriptsize,/pgf/number format/fixed,/pgf/number format/precision=1},
+    ylabel={#2},ylabel style={font=\scriptsize}}]
+\addplot[matrix plot*,mesh/cols=200,point meta=explicit] table[x=pos,y=altidx,meta=effect,col sep=comma]{figure-scan.csv};
+\draw[-{Stealth[length=1.6mm]},thick] (axis cs:100,-1.9) -- (axis cs:100,-0.65);
+\node[font=\scriptsize,anchor=south] at (axis cs:100,-1.9) {#3};
+\end{axis}
+\end{tikzpicture}}
+
+% per-study correlation of the primary five studies, from figure-studies.csv. arguments: x label, Huber-linear, S2, k5.
+\newcommand{\correlationplot}[4]{%
+\begin{tikzpicture}
+\begin{axis}[width=58mm,height=44mm,scale only axis,y dir=reverse,ymin=-0.6,ymax=4.6,ytick={0,1,2,3,4},yticklabels={Lee,McAfee,Matoba,Guo,Weiss},
+  xmin=-0.05,xmax=0.15,xtick={-0.05,0,0.05,0.10,0.15},scaled x ticks=false,xticklabel style={/pgf/number format/fixed,/pgf/number format/precision=2},xlabel={#1},tick label style={font=\scriptsize},label style={font=\scriptsize},
+  xmajorgrids,major grid style={black!12},extra x ticks={0},extra x tick style={grid=major,major grid style={black!55}},extra x tick labels={},
+  legend style={font=\scriptsize,at={(0.5,1.04)},anchor=south,draw=none,legend columns=-1,/tikz/every even column/.append style={column sep=3mm}},legend cell align=left]
+\addplot[only marks,mark=*,mark size=2.2pt,varcolor,restrict expr to domain={\thisrow{primary}}{1:1}] table[x=huber,y expr=\coordindex,col sep=comma]{figure-studies.csv};
+\addplot[only marks,mark=square*,mark size=2pt,refcolor,restrict expr to domain={\thisrow{primary}}{1:1}] table[x=s2,y expr=\coordindex,col sep=comma]{figure-studies.csv};
+\addplot[only marks,mark=triangle*,mark size=2.4pt,black!45,restrict expr to domain={\thisrow{primary}}{1:1}] table[x=k5,y expr=\coordindex,col sep=comma]{figure-studies.csv};
+\legend{#2,#3,#4}
+\end{axis}
+\end{tikzpicture}}
+
+% Huber-linear error relative to predicting no effect: internal tuning partition (0.28766713 against 0.30407514) and the five studies
+% (figure-studies.csv; the mean bar is 0.10437080 against 0.09529676). arguments: x label, internal, five-study mean.
+\newcommand{\excessplot}[3]{%
+\begin{tikzpicture}
+\begin{axis}[xbar,bar width=6pt,width=52mm,height=44mm,scale only axis,y dir=reverse,ymin=-0.6,ymax=6.6,ytick={0,1,2,3,4,5,6},
+  yticklabels={#2,Lee,McAfee,Matoba,Guo,Weiss,#3},xmin=-10,xmax=60,xtick={0,20,40,60},xlabel={#1},
+  tick label style={font=\scriptsize},label style={font=\scriptsize},xmajorgrids,major grid style={black!12},
+  extra x ticks={0},extra x tick style={grid=major,major grid style={black!55}},extra x tick labels={}]
+\addplot[fill=refcolor,draw=none] coordinates {(-5.40,0)};
+\addplot[fill=varcolor,draw=none,restrict expr to domain={\thisrow{primary}}{1:1}] table[x=excess,y expr=\coordindex+1,col sep=comma]{figure-studies.csv};
+\addplot[fill=black!55,draw=none] coordinates {(9.52,6)};
+\end{axis}
+\end{tikzpicture}}

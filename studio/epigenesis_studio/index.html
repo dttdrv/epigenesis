@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epigenesis Studio</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f2f2ef; --panel: #ffffff; --field: #f8f8f6;
+  --text: #15171a; --text2: #5a6068; --text3: #868c95;
+  --tint: rgba(21,23,26,.055); --tint2: rgba(21,23,26,.095); --line: rgba(21,23,26,.10); --line2: rgba(21,23,26,.2); --axis: #d6d5d0;
+  --ink: #15171a; --ink-text: #ffffff;
+  --pos: #e8670f; --neg: #2f6fdb; --zero: #ebeae6; --pos-text: #b84c06; --neg-text: #1f58bd;
+  --pos-bg: rgba(232,103,15,.12); --neg-bg: rgba(47,111,219,.12);
+  --ok: #12804a; --ok-bg: rgba(18,128,74,.10); --bad: #c8321f; --bad-bg: rgba(200,50,31,.09); --focus: #2f6fdb;
+  --shadow: 0 1px 2px rgba(21,23,26,.04), 0 14px 34px -22px rgba(21,23,26,.22);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0c0e; --panel: #141518; --field: #0f1012;
+    --text: #ececea; --text2: #a2a8b0; --text3: #6c727b;
+    --tint: rgba(255,255,255,.06); --tint2: rgba(255,255,255,.10); --line: rgba(255,255,255,.09); --line2: rgba(255,255,255,.18); --axis: #34373c;
+    --ink: #f1f1ef; --ink-text: #0d0e10;
+    --pos: #ff8b3d; --neg: #6ba6ff; --zero: #25272b; --pos-text: #ff9d5c; --neg-text: #82b4ff;
+    --pos-bg: rgba(255,139,61,.16); --neg-bg: rgba(107,166,255,.16);
+    --ok: #4fd38b; --ok-bg: rgba(79,211,139,.12); --bad: #ff7d6b; --bad-bg: rgba(255,125,107,.12); --focus: #7db1ff;
+    --shadow: 0 18px 40px -24px rgba(0,0,0,.8);
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; min-width: 1120px; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button, select, input, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+h1, h2, p { margin: 0; }
+[hidden] { display: none !important; }
+.up { color: var(--pos-text); } .down { color: var(--neg-text); }
+.mono { font-family: var(--mono); }
+.grow { flex: 1; }
+
+.app { display: grid; grid-template-columns: 252px 1fr; height: 100vh; }
+.side { display: flex; flex-direction: column; padding: 22px 14px 18px; gap: 26px; }
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 8px; }
+.brand svg { flex: none; }
+.brand b { display: block; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.brand span { display: block; font-size: 12.5px; color: var(--text3); }
+nav { display: flex; flex-direction: column; gap: 3px; }
+nav button { display: flex; align-items: center; gap: 11px; height: 40px; padding: 0 12px; border: 0; border-radius: 11px; background: none; color: var(--text2); cursor: pointer; text-align: left; font-weight: 500; }
+nav button svg { flex: none; opacity: .8; }
+nav button:hover { background: var(--tint); color: var(--text); }
+nav button[aria-selected=true] { background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(21,23,26,.06); }
+nav button[aria-selected=true] svg { opacity: 1; }
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 14px; padding: 0 4px; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 11px; background: var(--tint); }
+.seg button { border: 0; background: none; border-radius: 8px; height: 28px; padding: 0 12px; color: var(--text2); cursor: pointer; font-weight: 550; font-size: 13px; }
+.seg button[aria-pressed=true] { background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(21,23,26,.06); }
+.side-foot .seg { align-self: flex-start; }
+.proto { font-size: 12.5px; line-height: 1.5; color: var(--text3); }
+.proto b { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: var(--text2); font-weight: 600; }
+.proto b::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pos); }
+
+main { overflow-y: auto; padding: 10px 14px 14px 0; }
+.view { min-height: 100%; background: var(--bg); padding: 22px 34px 80px; max-width: 1280px; }
+.page { margin-bottom: 22px; }
+.page h1 { font-size: 26px; line-height: 1.2; font-weight: 650; letter-spacing: -.022em; }
+.page p { margin-top: 6px; font-size: 15px; color: var(--text2); max-width: 70ch; }
+
+.panel { background: var(--panel); border-radius: 18px; padding: 22px 24px; margin-bottom: 16px; box-shadow: 0 0 0 1px var(--line), var(--shadow); }
+.panel-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.panel-head h2 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.panel-head .sub { margin-top: 3px; font-size: 13px; color: var(--text2); max-width: 74ch; }
+.panel-head .grow { min-width: 0; }
+.panel-head .tools { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.meta { font-size: 13px; color: var(--text3); }
+.field-label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text2); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 15px; border: 0; border-radius: 10px; background: var(--tint); color: var(--text); font-weight: 550; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--tint2); }
+.btn.primary { background: var(--ink); color: var(--ink-text); }
+.btn.primary:hover { opacity: .88; }
+.btn:disabled { opacity: .5; cursor: progress; }
+.chip { height: 24px; padding: 0 9px; border: 0; border-radius: 7px; background: var(--tint); color: var(--text2); font: 12.5px var(--mono); cursor: pointer; }
+.chip:hover { background: var(--tint2); color: var(--text); }
+:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus); }
+textarea, input[type=text], input[type=number], select { background: var(--field); border: 0; border-radius: 11px; box-shadow: inset 0 0 0 1px var(--line2); padding: 9px 12px; }
+textarea:focus, input:focus, select:focus { outline: none; box-shadow: inset 0 0 0 1px var(--focus), 0 0 0 3px color-mix(in srgb, var(--focus) 25%, transparent); }
+textarea { display: block; width: 100%; font: 13px/1.6 var(--mono); resize: vertical; padding: 14px 16px; }
+select { height: 36px; padding: 0 30px 0 12px; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text3) 50%), linear-gradient(135deg, var(--text3) 50%, transparent 50%); background-position: calc(100% - 17px) 15px, calc(100% - 12px) 15px; background-size: 5px 5px; background-repeat: no-repeat; cursor: pointer; }
+input[type=number] { width: 96px; height: 36px; }
+input[type=text] { height: 36px; width: 230px; }
+.actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.alert { margin-top: 14px; padding: 11px 14px; border-radius: 11px; background: var(--bad-bg); color: var(--bad); font-weight: 500; }
+
+.hint { display: flex; align-items: center; gap: 28px; padding: 6px 4px; color: var(--text2); }
+.hint p { max-width: 52ch; font-size: 14px; }
+.mini { display: grid; grid-template-columns: repeat(42, 9px); grid-auto-rows: 9px; gap: 2px; flex: none; }
+.mini i { border-radius: 2.5px; }
+.mini i.ref { display: grid; place-items: center; font: 600 8px var(--mono); font-style: normal; color: var(--text3); }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; padding: 10px 6px 26px; }
+.stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat .k { font-size: 13px; color: var(--text2); font-weight: 500; }
+.stat b { font-size: 34px; line-height: 1.1; font-weight: 650; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+.stat .sub { font-size: 13px; color: var(--text3); height: 24px; display: flex; align-items: center; }
+.stat .chip { align-self: flex-start; }
+
+.hm-wrap { position: relative; overflow-x: auto; padding-bottom: 2px; }
+canvas { display: block; }
+.legend { display: flex; align-items: center; gap: 10px; font-size: 12.5px; white-space: nowrap; margin-top: 3px; }
+.legend i { width: 132px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--neg), var(--zero), var(--pos)); }
+#tip, #stripTip { position: absolute; pointer-events: none; background: var(--ink); color: var(--ink-text); padding: 5px 9px; border-radius: 8px; font: 12.5px var(--mono); white-space: nowrap; transform: translate(12px, -36px); z-index: 2; }
+
+.detail { display: grid; grid-template-columns: 1.05fr 1.7fr 1.25fr; gap: 40px; align-items: start; }
+.d-label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.d-big { font: 600 30px/1.1 var(--mono); letter-spacing: -.02em; }
+.d-num { margin-top: 10px; display: flex; align-items: baseline; gap: 12px; font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.d-num span { font-size: 14px; font-weight: 550; }
+.seq-row { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+.seq-name { width: 78px; flex: none; font-size: 13px; color: var(--text3); }
+.seq { font: 15px/1.6 var(--mono); letter-spacing: .09em; white-space: nowrap; }
+.seq mark { padding: 2px 6px; border-radius: 7px; background: var(--tint2); color: var(--text); font-weight: 650; }
+.seq mark.up { background: var(--pos-bg); color: var(--pos-text); } .seq mark.down { background: var(--neg-bg); color: var(--neg-text); }
+.part { display: grid; grid-template-columns: 70px 1fr 62px; gap: 12px; align-items: center; height: 30px; font-size: 13.5px; }
+.part span:first-child { color: var(--text2); }
+.part b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.empty { color: var(--text3); font-size: 14px; padding: 6px 0; }
+
+.bar { position: relative; height: 8px; min-width: 120px; background: var(--tint); border-radius: 4px; }
+.bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--line2); }
+.bar b { position: absolute; top: 0; height: 100%; border-radius: 4px; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th { padding: 0 12px 10px; text-align: left; font-size: 12.5px; font-weight: 550; color: var(--text3); }
+td { height: 42px; padding: 0 12px; vertical-align: middle; font-size: 14px; }
+td:first-child, th:first-child { padding-left: 14px; }
+tbody td:first-child { border-radius: 10px 0 0 10px; } tbody td:last-child { border-radius: 0 10px 10px 0; }
+tr.pick { cursor: pointer; }
+tr.pick:hover td { background: var(--tint); }
+tr.on td { background: var(--tint2); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.rank { color: var(--text3); width: 56px; }
+td.dir { white-space: nowrap; font-weight: 550; }
+.badge { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--ink); color: var(--ink-text); font-size: 12.5px; font-weight: 650; }
+.seg-wrap { display: flex; align-items: center; gap: 8px; }
+.seg-wrap > span { font-size: 13px; color: var(--text2); }
+
+.options { display: flex; flex-direction: column; gap: 14px; }
+.cols { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text2); }
+.cols code { font: 12.5px var(--mono); padding: 3px 8px; border-radius: 7px; background: var(--tint); color: var(--text); }
+.cols code.opt { color: var(--text3); }
+.two { display: grid; grid-template-columns: 1fr 300px; gap: 28px; }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.pick-card { padding: 14px 16px; border-radius: 14px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pick-card .top { display: flex; align-items: center; gap: 8px; }
+.pick-card .pc-id { font: 13px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-card .pc-fam { font-size: 12.5px; color: var(--text3); }
+.pick-card .pc-eff { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.strip-wrap { position: relative; }
+
+.drop { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 24px; border-radius: 18px; background: var(--tint); color: var(--text2); text-align: center; transition: background .15s; }
+.drop.over { background: var(--tint2); }
+.drop b { font-size: 16px; color: var(--text); font-weight: 600; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 22px; }
+.step { display: flex; gap: 14px; padding: 4px 6px; }
+.step .n { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--panel); box-shadow: 0 0 0 1px var(--line); font-weight: 650; }
+.step b { display: block; font-weight: 650; }
+.step p { margin-top: 2px; color: var(--text2); font-size: 13.5px; }
+.verdict { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 16px; background: var(--ok-bg); }
+.verdict.bad { background: var(--bad-bg); }
+.verdict .vicon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--ok); color: var(--ink-text); }
+.verdict.bad .vicon { background: var(--bad); color: #fff; }
+.verdict b { display: block; font-size: 18px; font-weight: 650; }
+.verdict p { margin-top: 1px; color: var(--text2); }
+.checks { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.checks li { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 6px; font-weight: 500; }
+.checks .dot { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ok-bg); color: var(--ok); }
+.checks li.fail .dot { background: var(--bad-bg); color: var(--bad); }
+.checks li.fail { color: var(--bad); }
+
+dialog { width: min(760px, calc(100% - 64px)); max-height: calc(100vh - 64px); overflow: auto; padding: 30px 32px 28px; border: 0; border-radius: 22px; background: var(--panel); color: var(--text); box-shadow: 0 0 0 1px var(--line), 0 40px 90px -24px rgba(0,0,0,.5); }
+dialog::backdrop { background: rgba(10,11,13,.38); backdrop-filter: blur(6px); }
+dialog .head { display: flex; align-items: center; margin-bottom: 4px; }
+.count { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--ink); color: var(--ink-text); font-size: 12px; font-weight: 600; text-align: center; }
+.files { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.file { display: flex; align-items: center; gap: 12px; width: 100%; height: 44px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--tint); color: var(--text); cursor: pointer; text-align: left; }
+.file:hover { background: var(--tint2); }
+.file b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+.file .kind { padding: 2px 9px; border-radius: 999px; background: var(--panel); box-shadow: 0 0 0 1px var(--line); font-size: 12.5px; color: var(--text2); }
+#dropHint { position: fixed; inset: 14px; z-index: 50; display: grid; place-items: center; border-radius: 22px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(5px); box-shadow: 0 0 0 2px var(--ink); font-size: 20px; font-weight: 600; pointer-events: none; }
+#dropHint[hidden] { display: none; }
+.nav-cap { padding: 14px 12px 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+nav .nav-cap:first-child { padding-top: 0; }
+dialog h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+dialog h2 { margin: 24px 0 6px; font-size: 14px; font-weight: 650; }
+dialog p { color: var(--text2); line-height: 1.55; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.fact { padding: 16px 18px; border-radius: 14px; background: var(--tint); }
+.fact b { display: block; font-size: 26px; line-height: 1.15; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fact b.bad { color: var(--bad); }
+.fact p { margin-top: 4px; font-size: 13px; }
+.hash { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: var(--tint); font: 12px/1.5 var(--mono); word-break: break-all; color: var(--text); }
+.small { font-size: 12.5px; }
+.site { display: grid; grid-template-columns: 1fr 290px; gap: 40px; align-items: start; }
+.matrix { display: grid; grid-template-columns: 74px repeat(9, 1fr); gap: 6px; align-items: center; }
+.matrix .lab { font-size: 12.5px; color: var(--text3); font-weight: 550; }
+.matrix .posn { text-align: center; font: 12px var(--mono); color: var(--text3); }
+.sbase { display: grid; place-items: center; height: 42px; border-radius: 11px; font: 650 18px var(--mono); background: var(--tint); color: var(--text); }
+.sbase.hit { background: var(--neg-bg); color: var(--neg-text); box-shadow: inset 0 0 0 1.5px var(--neg); }
+.cell { display: grid; place-items: center; height: 42px; border: 0; border-radius: 11px; font: 12px var(--mono); color: var(--text); cursor: pointer; }
+.cell:hover { box-shadow: 0 0 0 2px var(--line2); }
+.cell.on { box-shadow: 0 0 0 2px var(--ink); }
+.cell.na { background: repeating-linear-gradient(135deg, var(--tint) 0 6px, transparent 6px 12px); color: var(--text3); cursor: not-allowed; }
+.cell.na:hover { box-shadow: none; }
+.cell.ref { background: none; color: var(--text3); cursor: default; }
+.cell.ref:hover { box-shadow: none; }
+.site-side { display: flex; flex-direction: column; gap: 16px; }
+.site-side .k { display: block; margin-bottom: 2px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.site-side .v { font: 600 20px/1.2 var(--mono); letter-spacing: .06em; }
+.site-side .g { font: 12.5px var(--mono); color: var(--text3); letter-spacing: .06em; }
+.site-side .q { font-size: 30px; font-weight: 650; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; line-height: 1.5; color: var(--text2); }
+.cond { display: grid; grid-template-columns: 1fr 300px; gap: 40px; align-items: start; }
+.phase { display: flex; align-items: center; gap: 22px; min-height: 52px; }
+.phase .pn { width: 62px; font-weight: 650; }
+.phase label { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text2); }
+.phase input[type=number] { width: 84px; }
+.phase .sig { flex: 1; }
+.phase input[type=range] { flex: 1; min-width: 120px; accent-color: var(--ink); }
+.phase .sigv { width: 38px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.btn.icon { width: 32px; padding: 0; height: 32px; font-size: 18px; color: var(--text2); }
+.presets { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 13px; color: var(--text2); }
+.timeline { display: flex; align-items: flex-end; gap: 3px; height: 74px; }
+.timeline .tl { display: flex; align-items: flex-end; min-width: 6px; height: 100%; border-radius: 8px; background: var(--tint); overflow: hidden; }
+.timeline .tl i { display: block; width: 100%; background: color-mix(in srgb, var(--ink) 55%, transparent); border-radius: 8px 8px 0 0; }
+.adv { margin-top: 14px; }
+.adv summary { display: flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); width: max-content; }
+.adv summary::-webkit-details-marker { display: none; }
+.adv summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--text3); border-bottom: 2px solid var(--text3); transform: rotate(-45deg); transition: transform .15s; }
+.adv[open] summary::before { transform: rotate(45deg); }
+.initial { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+.initial label { display: flex; align-items: center; gap: 8px; font: 13px var(--mono); color: var(--text2); }
+.initial input { width: 76px; }
+.flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+.fstep { position: relative; padding: 16px 18px; border-radius: 16px; background: var(--panel); box-shadow: 0 0 0 1px var(--line), var(--shadow); min-width: 0; }
+.fstep:not(:last-child)::after { content: ""; position: absolute; right: -12px; top: 50%; width: 8px; height: 8px; border-top: 2px solid var(--text3); border-right: 2px solid var(--text3); transform: translateY(-50%) rotate(45deg); }
+.fstep .fk { display: block; font-size: 13px; font-weight: 600; color: var(--text2); }
+.fstep .fv { margin-top: 4px; font: 650 21px/1.2 var(--mono); letter-spacing: .02em; }
+.fstep .fv.plain { font-family: inherit; letter-spacing: -.01em; }
+.fstep .fv mark { padding: 1px 5px; border-radius: 6px; background: var(--neg-bg); color: var(--neg-text); }
+.fstep .fs { margin-top: 4px; font-size: 12.5px; color: var(--text3); }
+.keys { display: flex; gap: 8px; flex-wrap: wrap; }
+.key { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--tint); color: var(--text); font-size: 13px; font-weight: 550; cursor: pointer; }
+.key i { width: 14px; height: 4px; border-radius: 2px; background: var(--c); }
+.key[aria-pressed=false] { opacity: .45; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 32px; }
+.chart .ch-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.chart .ch-head b { font-size: 14px; font-weight: 650; }
+.read { display: flex; gap: 12px; font: 12.5px var(--mono); color: var(--text2); }
+.read span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--c); }
+.chart canvas { cursor: crosshair; }
+.two-col { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start; }
+.two-col .panel { margin-bottom: 0; }
+.prov { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin-top: 16px; font-size: 12.5px; }
+.prov span:nth-child(odd) { color: var(--text3); }
+.prov span:nth-child(even) { font-family: var(--mono); color: var(--text2); }
+.assume { list-style: none; counter-reset: a; margin: 0; padding: 0; display: grid; gap: 10px; }
+.assume li { counter-increment: a; display: flex; gap: 12px; color: var(--text2); line-height: 1.5; }
+.assume li::before { content: counter(a); flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--tint); color: var(--text2); font-size: 12px; font-weight: 650; }
+.scope { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--tint); font-size: 13px; color: var(--text2); }
+.read .tm::before { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="var(--ink)"/><g fill="none" stroke="var(--ink-text)" stroke-width="2" stroke-linecap="round"><path d="M12 8c0 6 10 7 10 13s-5 5-5 5M22 8c0 6-10 7-10 13s5 5 5 5" opacity=".95"/><path d="M13.6 12.5h6.8M13.6 21.5h6.8" opacity=".55"/></g></svg>
+      <div><b>Epigenesis Studio</b><span data-k="brand.sub"></span></div>
+    </div>
+    <nav role="tablist">
+      <span class="nav-cap" role="presentation" data-k="nav.g.sim"></span>
+      <button role="tab" id="tab-sim" aria-selected="true" aria-controls="sim"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3 0 3-10 6-10s3 10 6 10 3-10 6-10"/><path d="M3 21h18" opacity=".5"/></svg><span data-k="nav.sim"></span></button>
+      <span class="nav-cap" role="presentation" data-k="nav.g.pred"></span>
+      <button role="tab" id="tab-scan" aria-selected="false" aria-controls="scan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span data-k="nav.scan"></span></button>
+      <button role="tab" id="tab-pairs" aria-selected="false" aria-controls="pairs"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg><span data-k="nav.pairs"></span></button>
+      <span class="nav-cap" role="presentation" data-k="nav.g.rec"></span>
+      <button role="tab" id="tab-verify" aria-selected="false" aria-controls="verify"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.7-3.1 8-7.5 9.5-4.4-1.5-7.5-4.8-7.5-9.5V6L12 3z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.4"/></svg><span data-k="nav.verify"></span></button>
+    </nav>
+    <div class="side-foot">
+      <button id="openBtn" class="btn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5A2.5 2.5 0 016 5h3.2l2 2.3H18a2.5 2.5 0 012.5 2.5v6.7A2.5 2.5 0 0118 19H6a2.5 2.5 0 01-2.5-2.5v-9z"/></svg><span data-k="open.btn"></span><span id="openCount" class="count" hidden></span></button>
+      <button id="aboutBtn" class="btn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.1"/></svg><span data-k="about.btn"></span></button>
+      <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="bg" aria-pressed="false">БГ</button></div>
+      <p class="proto"><b data-k="proto.badge"></b><span data-k="proto.text"></span></p>
+    </div>
+  </aside>
+
+  <main>
+  <div class="view">
+  <section id="sim" role="tabpanel" aria-labelledby="tab-sim">
+    <div class="page"><h1 data-k="sim.title"></h1><p data-k="sim.lead"></p></div>
+    <p id="simOff" class="alert" hidden data-k="sim.unavailable"></p>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="grow"><h2 data-k="sim.step1"></h2><p class="sub" data-k="sim.step1.help"></p></div>
+        <div class="tools"><div class="seg" id="protSeg" role="group"><button type="button" data-prot="GLI2" aria-pressed="true">GLI2</button><button type="button" data-prot="GLI3" aria-pressed="false">GLI3</button></div></div>
+      </div>
+      <div class="site">
+        <div><div class="matrix" id="siteGrid"></div><p class="note" style="margin-top:14px" data-k="sim.matrix.read"></p></div>
+        <div class="site-side">
+          <div><span class="k" data-k="sim.site.ref"></span><div class="v" id="siteRef"></div><div class="g"><span data-k="sim.site.strand"></span> <span id="siteRefG"></span></div></div>
+          <div><span class="k" data-k="sim.site.var"></span><div class="v" id="siteVar"></div><div class="g"><span data-k="sim.site.strand"></span> <span id="siteVarG"></span></div></div>
+          <div><span class="k" data-k="sim.site.q"></span><div class="q" id="siteQ"></div><div class="note" id="siteQSub"></div></div>
+          <button id="usePublished" class="btn" type="button" data-k="sim.published"></button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="grow"><h2 data-k="sim.step2"></h2><p class="sub" data-k="sim.step2.help"></p></div></div>
+      <div class="cond">
+        <div>
+          <div class="presets"><span data-k="sim.presets"></span><div class="seg" id="presetSeg" role="group"><button type="button" data-preset="const" aria-pressed="false" data-k="sim.p.const"></button><button type="button" data-preset="primed" aria-pressed="false" data-k="sim.p.primed"></button><button type="button" data-preset="low" aria-pressed="false" data-k="sim.p.low"></button></div></div>
+          <div id="phases"></div>
+          <div class="actions" style="margin-top:8px"><button id="addPhase" class="btn" type="button" data-k="sim.addPhase"></button></div>
+          <details class="adv"><summary data-k="sim.initial"></summary><p class="note" style="margin-top:8px" data-k="sim.initial.help"></p><div id="initial" class="initial"></div></details>
+        </div>
+        <div><span class="d-label" data-k="sim.timeline"></span><div class="timeline" id="timeline" aria-hidden="true"></div><p class="meta" style="margin-top:8px" id="tlTotal"></p></div>
+      </div>
+      <div class="actions" style="margin-top:20px">
+        <button id="simRun" class="btn primary" type="button" data-k="sim.run"></button>
+        <span class="grow"></span><span id="simInfo" class="meta"></span>
+      </div>
+      <p id="simErr" class="alert" role="alert" hidden></p>
+    </div>
+
+    <div id="simOut" hidden>
+      <div class="flow" id="flow"></div>
+      <div class="stats" id="simStats"></div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="grow"><h2 data-k="sim.chart.title"></h2><p class="sub" data-k="sim.chart.help"></p></div>
+          <div class="tools"><button id="simCsv" class="btn" type="button" data-k="csv"></button><button id="simReceipt" class="btn" type="button" data-k="receipt.dl"></button></div>
+        </div>
+        <div class="keys" id="keys" style="margin-bottom:18px"></div>
+        <div class="chart" style="margin-bottom:16px"><div class="ch-head"><b data-k="sim.signal.title"></b><div class="read" id="sigRead"></div></div><div><canvas id="sigChart" role="img" data-label="sim.signal.title"></canvas></div></div>
+        <div class="charts" id="charts"></div>
+      </div>
+      <div class="two-col">
+        <div class="panel"><div class="panel-head"><div class="grow"><h2 data-k="sim.rep.title"></h2><p class="sub" data-k="sim.rep.help"></p></div></div>
+          <div class="chart"><div class="ch-head"><b data-k="sim.rep.axis"></b><div class="read" id="repRead"></div></div><div><canvas id="repChart" role="img" data-label="sim.rep.title"></canvas></div></div></div>
+        <div class="panel"><div class="panel-head"><h2 data-k="sim.c.title"></h2></div><ul class="checks" id="simChecks"></ul><div class="prov" id="prov"></div></div>
+      </div>
+      <div class="panel" style="margin-top:16px"><div class="panel-head"><h2 data-k="sim.assume.title"></h2></div><ol class="assume" id="assume"></ol><p class="scope" data-k="sim.scope"></p><p class="scope" id="bio" hidden></p></div>
+    </div>
+  </section>
+
+  <section id="scan" role="tabpanel" aria-labelledby="tab-scan" hidden>
+    <div class="page"><h1 data-k="scan.title"></h1><p data-k="scan.lead"></p></div>
+    <div class="panel">
+      <label class="field-label" for="seq" data-k="scan.label"></label>
+      <textarea id="seq" rows="4" spellcheck="false" data-ph="scan.ph"></textarea>
+      <div class="actions">
+        <button id="scanBtn" class="btn primary" type="button" data-k="scan.go"></button>
+        <button id="exampleSeq" class="btn" type="button" data-k="scan.example"></button>
+        <span class="grow"></span>
+        <span id="seqInfo" class="meta"></span>
+      </div>
+      <p id="scanErr" class="alert" role="alert" hidden></p>
+    </div>
+    <div id="scanHint" class="hint"><div class="mini" id="mini" aria-hidden="true"></div><p data-k="scan.hint"></p></div>
+
+    <div id="scanOut" hidden>
+      <div class="stats">
+        <div class="stat"><span class="k" data-k="stat.bases"></span><b id="stBases"></b><span class="sub" id="stBasesSub"></span></div>
+        <div class="stat"><span class="k" data-k="stat.up"></span><b class="up" id="stUp"></b><span class="sub"><button class="chip" id="stUpGo" type="button"></button></span></div>
+        <div class="stat"><span class="k" data-k="stat.down"></span><b class="down" id="stDown"></b><span class="sub"><button class="chip" id="stDownGo" type="button"></button></span></div>
+        <div class="stat"><span class="k" data-k="stat.typ"></span><b id="stTyp"></b><span class="sub" data-k="stat.typSub"></span></div>
+      </div>
+      <div class="panel" id="mapPanel">
+        <div class="panel-head">
+          <div class="grow"><h2 data-k="map.title"></h2><p class="sub" data-k="map.read"></p></div>
+          <div class="legend"><span class="down"><span data-k="map.down"></span> <span id="lo"></span></span><i></i><span class="up"><span id="hi"></span> <span data-k="map.up"></span></span></div>
+        </div>
+        <div class="hm-wrap" id="hmWrap"><canvas id="hm" role="img" data-label="map.alt"></canvas><div id="tip" hidden></div></div>
+      </div>
+      <div class="panel"><div id="detail" class="detail"></div></div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="grow" data-k="rank.title"></h2>
+          <div class="tools">
+            <div class="seg" id="dirSeg" role="group"><button type="button" data-dir="" aria-pressed="true" data-k="dir.all"></button><button type="button" data-dir="1" aria-pressed="false" data-k="dir.up"></button><button type="button" data-dir="-1" aria-pressed="false" data-k="dir.down"></button></div>
+            <span class="seg-wrap"><span data-k="rank.show"></span><select id="topN"><option>10</option><option selected>25</option><option>50</option><option>100</option></select></span>
+            <button id="scanCsv" class="btn" type="button" data-k="csv"></button>
+            <button id="scanReceipt" class="btn" type="button" data-k="receipt.dl"></button>
+          </div>
+        </div>
+        <table><thead><tr><th class="num">#</th><th data-k="col.change"></th><th class="num" data-k="col.effect"></th><th></th><th data-k="col.dir"></th></tr></thead><tbody id="scanRows"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section id="pairs" role="tabpanel" aria-labelledby="tab-pairs" hidden>
+    <div class="page"><h1 data-k="pairs.title"></h1><p data-k="pairs.lead"></p></div>
+    <div class="panel">
+      <div class="two">
+        <div>
+          <label class="field-label" for="edits" data-k="pairs.label"></label>
+          <textarea id="edits" rows="8" spellcheck="false" data-ph="pairs.ph"></textarea>
+        </div>
+        <div class="options">
+          <div>
+            <label class="field-label" for="budget" data-k="pairs.budget"></label>
+            <input id="budget" type="number" min="1" step="1" data-ph="pairs.budgetNone">
+            <p class="meta" style="margin-top:8px" data-k="pairs.budgetHelp"></p>
+          </div>
+          <div>
+            <span class="field-label" data-k="pairs.format"></span>
+            <div class="cols"><code>id</code><code>reference</code><code>sequence</code><code class="opt">family</code></div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="pairsBtn" class="btn primary" type="button" data-k="pairs.go"></button>
+        <button id="examplePairs" class="btn" type="button" data-k="pairs.example"></button>
+        <button id="fileBtn" class="btn" type="button" data-k="pairs.file"></button><input id="file" type="file" accept=".csv,.tsv,.json,.txt" hidden>
+        <span class="grow"></span>
+        <span id="pairsInfo" class="meta"></span>
+      </div>
+      <p id="pairsErr" class="alert" role="alert" hidden></p>
+    </div>
+
+    <div id="pairsOut" hidden>
+      <div class="panel" id="picksPanel">
+        <div class="panel-head"><div class="grow"><h2 id="pairsTitle"></h2></div>
+          <div class="tools"><button id="pairsCsv" class="btn" type="button" data-k="csv"></button><button id="pairsReceipt" class="btn" type="button" data-k="receipt.dl"></button></div></div>
+        <div id="picks" class="picks"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="grow"><h2 data-k="pairs.strip"></h2><p class="sub" data-k="pairs.stripHelp"></p></div>
+          <div class="legend"><span class="down"><span data-k="map.down"></span></span><i></i><span class="up"><span data-k="map.up"></span></span></div></div>
+        <div class="strip-wrap" id="stripWrap"><canvas id="strip" role="img" data-label="pairs.stripAlt"></canvas><div id="stripTip" hidden></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2 class="grow" data-k="pairs.all"></h2>
+          <div class="tools"><input id="filter" type="text" data-ph="pairs.filter" data-label="pairs.filter"></div></div>
+        <table><thead><tr><th class="num">#</th><th data-k="col.edit"></th><th data-k="col.family"></th><th class="num" data-k="col.effect"></th><th></th><th data-k="col.dir"></th><th data-k="col.panel"></th></tr></thead><tbody id="pairsRows"></tbody></table>
+        <p id="more" class="meta" style="margin-top:12px" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="verify" role="tabpanel" aria-labelledby="tab-verify" hidden>
+    <div class="page"><h1 data-k="verify.title"></h1><p data-k="verify.lead"></p></div>
+    <div class="drop" id="drop">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4l4 4"/><path d="M4.5 14v4a2 2 0 002 2h11a2 2 0 002-2v-4"/></svg>
+      <b data-k="verify.drop"></b>
+      <button id="rfileBtn" class="btn primary" type="button" data-k="verify.choose"></button>
+      <input id="rfile" type="file" accept=".json" hidden>
+      <span id="rname" class="meta"></span>
+    </div>
+    <p id="verErr" class="alert" role="alert" hidden></p>
+    <div id="verOut" class="panel" style="margin-top:16px" hidden></div>
+    <div class="steps" id="verSteps">
+      <div class="step"><span class="n">1</span><div><b data-k="verify.s1"></b><p data-k="verify.s1d"></p></div></div>
+      <div class="step"><span class="n">2</span><div><b data-k="verify.s2"></b><p data-k="verify.s2d"></p></div></div>
+      <div class="step"><span class="n">3</span><div><b data-k="verify.s3"></b><p data-k="verify.s3d"></p></div></div>
+    </div>
+  </section>
+  </div>
+  </main>
+</div>
+
+<dialog id="open">
+  <div class="head"><h1 class="grow" data-k="open.title"></h1><button id="openClose" class="btn" type="button" data-k="about.close"></button></div>
+  <p><span data-k="open.in"></span> <code id="openFolder"></code></p>
+  <ul id="openList" class="files"></ul>
+  <p id="openNone" class="meta" style="margin-top:14px" data-k="open.none" hidden></p>
+  <div class="actions">
+    <button id="openImport" class="btn primary" type="button" data-k="open.import"></button>
+    <input id="openFile" type="file" accept=".csv,.tsv,.json,.fa,.fasta,.fna,.fas,.seq,.txt" hidden>
+    <span class="meta" data-k="open.hint"></span>
+  </div>
+  <p id="openErr" class="alert" role="alert" hidden></p>
+</dialog>
+<div id="dropHint" hidden data-k="open.drop"></div>
+
+<dialog id="about">
+  <div class="head"><h1 class="grow" data-k="about.title"></h1><button id="aboutClose" class="btn" type="button" data-k="about.close"></button></div>
+  <h2 data-k="about.predicts"></h2><p data-k="about.predicts.p"></p>
+  <h2 data-k="about.how"></h2><p id="aboutHow"></p>
+  <h2 data-k="about.evidence"></h2>
+  <div class="facts">
+    <div class="fact"><b>−3.02%</b><p data-k="ev.int"></p></div>
+    <div class="fact"><b>r = 0.0490</b><p data-k="ev.ext"></p></div>
+    <div class="fact"><b class="bad">+9.52%</b><p data-k="ev.mse"></p></div>
+    <div class="fact"><b class="bad">13</b><p data-k="ev.tests"></p></div>
+  </div>
+  <h2 data-k="about.scope"></h2><p data-k="about.scope.p"></p>
+  <h2 data-k="about.identity"></h2>
+  <p class="small" data-k="about.sha"></p><div class="hash" id="sha"></div>
+  <p class="small" id="aboutCredits" style="margin-top:12px"></p>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const BASES = 'ACGT';
+const fmt = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const dirOf = e => e < 0 ? 'down' : e > 0 ? 'up' : 'none';
+const ARROW = { up: '↑ ', down: '↓ ', none: '' };
+const TOL_DIGITS = 3;
+let model = null, scan = null, pairs = null, ver = null, dirFilter = '';
+
+class Fail extends Error { constructor(key, params = {}) { super(key || params.msg); this.key = key; this.params = params; } }
+
+/* the en and bg blocks must hold the same keys; tests/test_studio.py checks that */
+const T = { en: {/*en*/
+  'brand.sub': 'DNA edit scoring',
+  'nav.scan': 'Scan', 'nav.pairs': 'Edits', 'nav.verify': 'Verify',
+  'about.btn': 'About this model',
+  'proto.badge': 'Research prototype',
+  'proto.text': 'Scores rank edits for the Siraj SK-N-SH reporter assay. They are not probabilities. Everything runs on this computer.',
+  'scan.title': 'Scan a sequence',
+  'scan.lead': 'See what every possible single-base change would do to reporter activity.',
+  'scan.label': 'Sequence',
+  'scan.ph': 'Paste DNA (A, C, G, T) or a FASTA record, up to 1,000 bases',
+  'scan.count': '{n} bases',
+  'scan.go': 'Scan every change', 'scan.example': 'Load an example',
+  'scan.exampleNote': 'Example: a 200-base insert from the Siraj et al. screen.',
+  'scan.hint': 'Every position gets a column of three cells, one for each other base. Orange cells raise reporter activity and blue cells lower it.',
+  'stat.bases': 'Bases scanned', 'stat.basesSub': '{n} changes in {s} s',
+  'stat.up': 'Strongest increase', 'stat.down': 'Strongest decrease',
+  'stat.typ': 'Typical change', 'stat.typSub': 'median absolute effect',
+  'map.title': 'Every possible change',
+  'map.read': 'A column is a position and a row is the base it changes to. Letters show the unchanged base. The bars on top show the largest effect at each position. Click a cell for details.',
+  'map.alt': 'Heatmap of the predicted effect of every single-base change. The ranked table lists the same values.',
+  'map.down': 'Lowers', 'map.up': 'Raises',
+  'detail.empty': 'Select a cell in the map or a row below to inspect that change.',
+  'detail.effect': 'Predicted effect', 'detail.context': 'Surrounding sequence',
+  'detail.ref': 'Reference', 'detail.edit': 'Edited',
+  'detail.parts': 'Where it comes from', 'detail.words': '5-mers', 'detail.motifs': 'Motifs',
+  'dir.all': 'All', 'dir.up': 'Increase', 'dir.down': 'Decrease', 'dir.none': 'No change',
+  'rank.title': 'Largest changes', 'rank.show': 'Show',
+  'col.change': 'Change', 'col.effect': 'Effect', 'col.dir': 'Direction', 'col.edit': 'Edit', 'col.family': 'Family', 'col.panel': 'Panel',
+  'csv': 'Download CSV', 'receipt.dl': 'Download receipt',
+  'pairs.title': 'Score edits',
+  'pairs.lead': 'Rank the edits you are considering and choose a panel with one edit per family.',
+  'pairs.label': 'Edits',
+  'pairs.ph': 'Paste a CSV with the columns id, reference, sequence and an optional family, or a JSON array of the same records',
+  'pairs.budget': 'Panel size', 'pairs.budgetNone': 'none',
+  'pairs.budgetHelp': 'A panel keeps the largest effect in each family, then takes the top edits. Every row needs a family.',
+  'pairs.format': 'Columns',
+  'pairs.go': 'Score edits', 'pairs.example': 'Load 64 example edits', 'pairs.file': 'Open a file',
+  'pairs.exampleNote': '64 real edits from 11 families (Siraj et al.).',
+  'pairs.done': '{n} edits scored in {s} s',
+  'pairs.panelTitle': 'Panel of {n} edits from {m}', 'pairs.scoredTitle': '{n} edits scored',
+  'pairs.strip': 'All edits by predicted effect',
+  'pairs.stripHelp': 'Each dot is one edit. Numbered dots are the panel. Click a dot to find it in the table.',
+  'pairs.stripAlt': 'Strip plot of the predicted effect of every edit. The table lists the same values.',
+  'pairs.all': 'All edits', 'pairs.filter': 'Filter by id or family',
+  'pairs.more': 'Showing the top {n} of {m}. The CSV and the receipt hold all of them.',
+  'verify.title': 'Verify a receipt',
+  'verify.lead': 'Replays the stored request on this computer and checks that every score comes out the same.',
+  'verify.drop': 'Drop a receipt file here', 'verify.choose': 'Choose a file',
+  'verify.s1': 'Score', 'verify.s1d': 'Download the receipt from any result.',
+  'verify.s2': 'Share', 'verify.s2d': 'Send the file along with your results.',
+  'verify.s3': 'Verify', 'verify.s3d': 'Anyone with this tool replays it and sees three checks.',
+  'verify.ok': 'Replays exactly', 'verify.okSub': 'This computer reproduces every stored score.',
+  'verify.bad': 'Does not replay', 'verify.badSub': 'Do not rely on this receipt.',
+  'verify.c.0': 'The digest matches the content', 'verify.c.1': 'The model matches this installation', 'verify.c.2': 'Scores replay within {tol}',
+  'verify.gap': 'Largest difference from the stored scores: {d}',
+  'nav.g.sim': 'Simulation', 'nav.g.pred': 'Prediction', 'nav.g.rec': 'Receipts',
+  'open.btn': 'Open file', 'open.title': 'Open a file', 'open.in': 'Found in', 'open.import': 'Import a file',
+  'open.none': 'This folder has no sequences, edit tables or receipts. Import one, or start the command in another folder.',
+  'open.hint': 'or drop a file anywhere in this window.', 'open.drop': 'Drop a file to open it',
+  'kind.sequence': 'Sequence', 'kind.edits': 'Edits', 'kind.receipt': 'Receipt',
+  'err.unknown_file': 'This is not a sequence (FASTA or plain bases), an edit table (CSV or JSON with reference and sequence columns) or a receipt.',
+  'err.no_file': 'That file is not in this folder any more.',
+  'about.title': 'About this model', 'about.close': 'Close',
+  'about.predicts': 'What it predicts',
+  'about.predicts.p': 'The change in reporter activity caused by one edit: the edited sequence minus the reference, as a log2 ratio. Positive means more activity. Use it to rank edits for follow-up. The size of a score is not a probability or an error bar.',
+  'about.how': 'How it works',
+  'about.how.p': 'A Huber-linear model on 5-mer counts and {n} JASPAR 2024 motif potentials, fitted on the Siraj et al. (2026) SK-N-SH reporter screen. A score depends only on the bases within {r} positions of the change.',
+  'about.evidence': 'Evidence',
+  'ev.int': 'Internal error against a 5-mer baseline, on 16,986 edits in 1,759 families. These data guided development, so read it as descriptive.',
+  'ev.ext': 'Correlation on five external neural reporter studies.',
+  'ev.mse': 'Error on those studies, compared with predicting no effect.',
+  'ev.tests': 'Frozen tests found no reliable gain over simple baselines.',
+  'about.scope': 'Scope',
+  'about.scope.p': 'The model is fitted to one assay. It has no validated transfer to other assays, cell types or endogenous expression, so no result here supports use outside the Siraj assay.',
+  'about.identity': 'Identity', 'about.sha': 'Model manifest SHA-256',
+  'about.credits': 'Motif data: JASPAR 2024 CORE vertebrates ({lic}). Training data: Siraj et al., Nature (2026). Code: Apache-2.0.',
+  'where.sequence': 'The sequence', 'where.edit': 'Edit "{id}", {field}',
+  'field.reference': 'reference', 'field.sequence': 'sequence',
+  'err.not_text': '{where} must be text.',
+  'err.bad_chars': '{where} contains characters other than A, C, G and T: {chars}',
+  'err.bad_length': '{where} needs {min} to {max} bases.',
+  'err.scan_max': 'A scan takes at most {max} bases.',
+  'err.row_count': 'Provide 1 to {max} edits.',
+  'err.row_shape': 'Each edit needs an id, a reference and a sequence, and may add a family.',
+  'err.bad_family': 'Edit "{id}": the family must be a nonempty text.',
+  'err.dup_id': 'Edit IDs must be unique. "{id}" appears more than once.',
+  'err.bad_budget': 'The panel size must be a positive whole number.',
+  'err.need_families': 'A panel of {budget} needs a family on every edit and at least {budget} different families.',
+  'err.unsupported': 'The server could not read that request.',
+  'err.not_receipt': 'That file is not an Epigenesis Studio receipt.',
+  'err.malformed_receipt': 'The receipt is damaged or incomplete.',
+  'err.json': 'The edits are not valid JSON.',
+  'err.csv_need': 'The CSV needs a "{c}" column.',
+  'err.csv_unknown': 'Unknown column "{c}". Use id, reference, sequence and family.',
+  'err.no_edits': 'Paste edits or open a file first.',
+  'err.not_json': 'That file is not JSON.',
+  'nav.sim': 'Simulate',
+  'sim.title': 'Simulate a DNA change',
+  'sim.lead': 'Change a regulatory DNA site and see how a neural-development model responds over time.',
+  'sim.unavailable': 'The simulation backend (examples/neural-patterning) was not found. Install Studio from a repository checkout to enable it.',
+  'sim.step1': '1 · The DNA site',
+  'sim.step1.help': 'The nine-base GLI binding site of the Nkx2.2 enhancer, in the orientation of the binding measurements. Choose one substitution. Each cell shows how strongly the new base binds compared with the reference base.',
+  'sim.matrix.read': 'Darker blue means weaker binding. Hatched cells are not supported: their published weight is zero, which does not prove zero binding.',
+  'sim.site.ref': 'Reference', 'sim.site.var': 'Variant', 'sim.site.strand': 'Genome strand', 'sim.site.q': 'Binding ratio q',
+  'sim.weaker': '{x}× weaker than the reference', 'sim.pick': 'Pick a substitution in the table.',
+  'sim.cell.tip': '{from}{pos}→{to}: binding ×{q}', 'sim.cell.na': 'Not supported: the published weight is zero.',
+  'sim.published': 'Use the published substitution',
+  'sim.step2': '2 · Conditions',
+  'sim.step2.help': 'Every sequence runs under the same signal history and starting state. The signal is the fraction of GLI in its activator form, not a measured Shh concentration. Time and concentration are in model units.',
+  'sim.presets': 'Presets', 'sim.p.const': 'Constant signal', 'sim.p.primed': 'Primed, then low', 'sim.p.low': 'Low only',
+  'sim.phase': 'Phase {n}', 'sim.duration': 'Duration', 'sim.units': 'units', 'sim.signal': 'GLI activator',
+  'sim.addPhase': 'Add a phase', 'sim.remove': 'Remove this phase',
+  'sim.timeline': 'Signal over time', 'sim.total': 'Total {n} model units',
+  'sim.initial': 'Starting state', 'sim.initial.help': 'Concentration of each gene at time zero, from 0 to 1 in model units. The default is zero for all four.',
+  'sim.run': 'Run simulation', 'sim.running': 'Compiling and simulating…',
+  'flow.dna': 'DNA site', 'flow.dna.sub': 'Compiled and checked · {h}',
+  'flow.q': 'Binding ratio q', 'flow.q.sub': 'variant ÷ reference, from the measured GLI profile',
+  'flow.param': 'Model parameter', 'flow.param.v': 'Gli affinity × q', 'flow.param.sub': 'Nkx2.2 promoter: activation and repression together',
+  'flow.dyn': 'Dynamics', 'flow.dyn.sub': 'four-gene model over time',
+  'sim.t.bind': 'Binding', 'sim.t.bind.sub': 'weaker by {x}×',
+  'sim.t.nkx': 'Nkx2.2 at the end', 'sim.t.nkx.sub': 'reference {r}',
+  'sim.t.diff': 'Largest difference', 'sim.t.diff.sub': '{gene} at t = {t}',
+  'sim.t.rev': 'Reverting the base', 'sim.t.rev.exact': 'Exact', 'sim.t.rev.off': 'Differs', 'sim.t.rev.sub': 'largest difference {d}',
+  'sim.chart.title': 'Gene trajectories',
+  'sim.chart.help': 'Move over a chart to read all genes at one time. The dotted line at 0.5 is a display convention, not a measured cell-fate boundary.',
+  'sim.signal.title': 'GLI activator signal',
+  'sim.s.ref': 'Reference', 'sim.s.var': 'Variant (edit inside the network)', 'sim.s.rev': 'Reverted to reference', 'sim.s.rep': 'Variant as passive reporter',
+  'sim.rep.title': 'Reporter or edit inside the network?',
+  'sim.rep.help': 'As a passive reporter, the variant changes only how the promoter reads the unchanged network. As an edit inside the network, the change feeds back into all four genes.',
+  'sim.rep.axis': 'Nkx2.2 promoter occupancy',
+  'sim.c.title': 'Controls',
+  'sim.c.revert': 'Reverting the base restores the reference trajectory exactly (largest difference {d}).',
+  'sim.c.module': 'The reverted DNA compiles to the same Development Module as the reference.',
+  'sim.c.reporter': 'As a passive reporter, the variant leaves the four-gene trajectory unchanged.',
+  'sim.prov.ref': 'Reference module', 'sim.prov.var': 'Variant module',
+  'sim.assume.title': 'Assumptions you accept',
+  'sim.scope': 'Supported: one substitution in this nine-base site, under a signal protocol you set. A different genome or site is outside the supported path. The result is a conditional mechanistic simulation, not a prediction of embryo outcomes.',
+  'sim.bio': 'Peterson et al. (2012) saw reporter expression in {a} of {b} embryos with the reference site and in {c} of {d} with this substitution. The model does not score these counts.',
+  'sim.a.0': 'A published, normalized binding-profile ratio is transferred as a relative affinity multiplier. The original normalization pipeline is not fully recovered.',
+  'sim.a.1': 'The same GLI profile scales activator and repressor affinity. GLI2 is primary; GLI3 is a sensitivity analysis.',
+  'sim.a.2': 'A nine-base site is assigned to a published Nkx2.2 regulatory context. Other enhancer sequence, chromatin and cofactors are fixed and not modelled.',
+  'sim.a.3': 'Reporter mode reads promoter occupancy on an unchanged endogenous trajectory. Endogenous mode is a hypothetical genomic edit with feedback.',
+  'sim.a.4': 'The signal is the GLI activator fraction A in [0, 1]; the repressor fraction is 1 − A. It is not a calibrated Shh concentration.',
+  'sim.a.5': 'Time and concentration are model units. No fluorescence scale, detection threshold, biological clock or embryo probability is inferred.',
+  'err.multi_record': 'The FASTA has {n} records. Scan one record at a time.',
+  'err.sim_unavailable': 'The simulation backend (examples/neural-patterning) was not found.',
+  'err.sim_site_shape': 'The site must be {length} bases of A, C, G and T.',
+  'err.sim_same': 'Choose a substitution: the site equals the reference.',
+  'err.sim_site_multi': 'Only one substitution from the reference site is supported.',
+  'err.sim_site_zero': 'That substitution has a published weight of zero, which the model cannot use.',
+  'err.sim_protein': 'Choose GLI2 or GLI3.',
+  'err.sim_phases': 'Give 1 to {max} phases, each with a positive duration and a signal from 0 to 1.',
+  'err.sim_time': 'The total duration is at most {max} model units.',
+  'err.sim_initial': 'The starting state needs all four genes, each from 0 to 1.'
+/*end*/}, bg: {/*bg*/
+  'brand.sub': 'Оценка на ДНК редакции',
+  'nav.scan': 'Сканиране', 'nav.pairs': 'Редакции', 'nav.verify': 'Проверка',
+  'about.btn': 'За модела',
+  'proto.badge': 'Изследователски прототип',
+  'proto.text': 'Оценките подреждат редакциите за репортерния анализ SK-N-SH на Siraj. Те не са вероятности. Всичко се изчислява на този компютър.',
+  'scan.title': 'Сканиране на последователност',
+  'scan.lead': 'Вижте как всяка възможна промяна на една база би променила активността на репортера.',
+  'scan.label': 'Последователност',
+  'scan.ph': 'Поставете ДНК (A, C, G, T) или FASTA запис, до 1000 бази',
+  'scan.count': '{n} бази',
+  'scan.go': 'Сканирай всички промени', 'scan.example': 'Зареди пример',
+  'scan.exampleNote': 'Пример: фрагмент от 200 бази от скрийна на Siraj и др.',
+  'scan.hint': 'Всяка позиция получава колона от три клетки, по една за всяка друга база. Оранжевите клетки повишават активността на репортера, а сините я понижават.',
+  'stat.bases': 'Сканирани бази', 'stat.basesSub': '{n} промени за {s} с',
+  'stat.up': 'Най-силно повишаване', 'stat.down': 'Най-силно понижаване',
+  'stat.typ': 'Типична промяна', 'stat.typSub': 'медиана на абсолютния ефект',
+  'map.title': 'Всички възможни промени',
+  'map.read': 'Колоната е позиция, а редът е базата, в която се променя. Буквите показват непроменената база. Лентите отгоре са най-големият ефект във всяка позиция. Щракнете върху клетка за подробности.',
+  'map.alt': 'Топлинна карта на предсказания ефект на всяка промяна на една база. Подредената таблица съдържа същите стойности.',
+  'map.down': 'Понижава', 'map.up': 'Повишава',
+  'detail.empty': 'Изберете клетка от картата или ред отдолу, за да разгледате промяната.',
+  'detail.effect': 'Предсказан ефект', 'detail.context': 'Околна последователност',
+  'detail.ref': 'Референтна', 'detail.edit': 'Редактирана',
+  'detail.parts': 'От какво идва', 'detail.words': '5-мери', 'detail.motifs': 'Мотиви',
+  'dir.all': 'Всички', 'dir.up': 'Повишаване', 'dir.down': 'Понижаване', 'dir.none': 'Без промяна',
+  'rank.title': 'Най-големи промени', 'rank.show': 'Покажи',
+  'col.change': 'Промяна', 'col.effect': 'Ефект', 'col.dir': 'Посока', 'col.edit': 'Редакция', 'col.family': 'Семейство', 'col.panel': 'Панел',
+  'csv': 'Свали CSV', 'receipt.dl': 'Свали удостоверение',
+  'pairs.title': 'Оценка на редакции',
+  'pairs.lead': 'Подредете редакциите, които обмисляте, и изберете панел с по една редакция от всяко семейство.',
+  'pairs.label': 'Редакции',
+  'pairs.ph': 'Поставете CSV с колоните id, reference, sequence и по избор family, или JSON масив със същите записи',
+  'pairs.budget': 'Размер на панела', 'pairs.budgetNone': 'няма',
+  'pairs.budgetHelp': 'Панелът взема най-големия ефект във всяко семейство и после най-добрите редакции. Всеки ред трябва да има семейство.',
+  'pairs.format': 'Колони',
+  'pairs.go': 'Оцени редакциите', 'pairs.example': 'Зареди 64 примерни редакции', 'pairs.file': 'Отвори файл',
+  'pairs.exampleNote': '64 реални редакции от 11 семейства (Siraj и др.).',
+  'pairs.done': '{n} редакции, оценени за {s} с',
+  'pairs.panelTitle': 'Панел от {n} редакции от общо {m}', 'pairs.scoredTitle': '{n} оценени редакции',
+  'pairs.strip': 'Всички редакции по предсказан ефект',
+  'pairs.stripHelp': 'Всяка точка е една редакция. Номерираните точки са панелът. Щракнете върху точка, за да я намерите в таблицата.',
+  'pairs.stripAlt': 'Точкова диаграма на предсказания ефект на всяка редакция. Таблицата съдържа същите стойности.',
+  'pairs.all': 'Всички редакции', 'pairs.filter': 'Филтър по id или семейство',
+  'pairs.more': 'Показани са първите {n} от {m}. CSV и удостоверението съдържат всички.',
+  'verify.title': 'Проверка на удостоверение',
+  'verify.lead': 'Изчислява записаната заявка отново на този компютър и проверява дали всяка оценка излиза същата.',
+  'verify.drop': 'Пуснете файл с удостоверение тук', 'verify.choose': 'Изберете файл',
+  'verify.s1': 'Оценете', 'verify.s1d': 'Свалете удостоверението от резултата.',
+  'verify.s2': 'Изпратете', 'verify.s2d': 'Приложете файла към резултатите си.',
+  'verify.s3': 'Проверете', 'verify.s3d': 'Който има този инструмент, го изчислява отново и вижда три проверки.',
+  'verify.ok': 'Възпроизвежда се точно', 'verify.okSub': 'Този компютър възпроизвежда всяка записана оценка.',
+  'verify.bad': 'Не се възпроизвежда', 'verify.badSub': 'Не разчитайте на това удостоверение.',
+  'verify.c.0': 'Контролната сума съвпада със съдържанието', 'verify.c.1': 'Моделът съвпада с тази инсталация', 'verify.c.2': 'Оценките се възпроизвеждат с точност до {tol}',
+  'verify.gap': 'Най-голяма разлика от записаните оценки: {d}',
+  'nav.g.sim': 'Симулация', 'nav.g.pred': 'Предсказване', 'nav.g.rec': 'Удостоверения',
+  'open.btn': 'Отваряне на файл', 'open.title': 'Отваряне на файл', 'open.in': 'Намерени в', 'open.import': 'Импортиране на файл',
+  'open.none': 'В тази папка няма последователности, таблици с редакции или удостоверения. Импортирайте файл или стартирайте командата в друга папка.',
+  'open.hint': 'или пуснете файл навсякъде в прозореца.', 'open.drop': 'Пуснете файл, за да го отворите',
+  'kind.sequence': 'Последователност', 'kind.edits': 'Редакции', 'kind.receipt': 'Удостоверение',
+  'err.unknown_file': 'Това не е последователност (FASTA или чисти бази), таблица с редакции (CSV или JSON с колони reference и sequence) или удостоверение.',
+  'err.no_file': 'Файлът вече не е в тази папка.',
+  'about.title': 'За модела', 'about.close': 'Затвори',
+  'about.predicts': 'Какво предсказва',
+  'about.predicts.p': 'Промяната в активността на репортера от една редакция: редактираната последователност минус референтната, като log2 съотношение. Положителна стойност означава повече активност. Използвайте оценките, за да подредите редакции за по-нататъшна работа. Големината на оценката не е вероятност и не е интервал на грешката.',
+  'about.how': 'Как работи',
+  'about.how.p': 'Линеен модел с Huber загуба върху броя на 5-мерите и {n} мотивни потенциала от JASPAR 2024, обучен върху репортерния скрийн SK-N-SH на Siraj и др. (2026). Оценката зависи само от базите в рамките на {r} позиции от промяната.',
+  'about.evidence': 'Доказателства',
+  'ev.int': 'Вътрешна грешка спрямо 5-мерна основа върху 16 986 редакции в 1759 семейства. Тези данни са ползвани при разработката, затова стойността е описателна.',
+  'ev.ext': 'Корелация върху пет външни невронни репортерни изследвания.',
+  'ev.mse': 'Грешка върху същите изследвания спрямо предвиждане на нулев ефект.',
+  'ev.tests': 'Замразените тестове не откриха сигурна полза спрямо прости базови модели.',
+  'about.scope': 'Обхват',
+  'about.scope.p': 'Моделът е обучен върху един анализ. Няма валидиран пренос към други анализи, типове клетки или ендогенна експресия, затова нищо тук не оправдава употреба извън анализа на Siraj.',
+  'about.identity': 'Идентичност', 'about.sha': 'SHA-256 на манифеста на модела',
+  'about.credits': 'Мотивни данни: JASPAR 2024 CORE за гръбначни ({lic}). Данни за обучение: Siraj и др., Nature (2026). Код: Apache-2.0.',
+  'where.sequence': 'Последователността', 'where.edit': 'Редакция „{id}“, {field}',
+  'field.reference': 'референтната последователност', 'field.sequence': 'редактираната последователност',
+  'err.not_text': '{where} трябва да е текст.',
+  'err.bad_chars': '{where} съдържа символи, различни от A, C, G и T: {chars}',
+  'err.bad_length': '{where} трябва да е от {min} до {max} бази.',
+  'err.scan_max': 'Сканирането приема най-много {max} бази.',
+  'err.row_count': 'Подайте от 1 до {max} редакции.',
+  'err.row_shape': 'Всяка редакция трябва да има id, reference и sequence и може да има family.',
+  'err.bad_family': 'Редакция „{id}“: семейството трябва да е непразен текст.',
+  'err.dup_id': 'Идентификаторите трябва да са уникални. „{id}“ се среща повече от веднъж.',
+  'err.bad_budget': 'Размерът на панела трябва да е положително цяло число.',
+  'err.need_families': 'Панел от {budget} изисква семейство за всяка редакция и поне {budget} различни семейства.',
+  'err.unsupported': 'Сървърът не можа да прочете заявката.',
+  'err.not_receipt': 'Този файл не е удостоверение на Epigenesis Studio.',
+  'err.malformed_receipt': 'Удостоверението е повредено или непълно.',
+  'err.json': 'Редакциите не са валиден JSON.',
+  'err.csv_need': 'CSV трябва да има колона „{c}“.',
+  'err.csv_unknown': 'Непозната колона „{c}“. Използвайте id, reference, sequence и family.',
+  'err.no_edits': 'Първо поставете редакции или отворете файл.',
+  'err.not_json': 'Този файл не е JSON.',
+  'nav.sim': 'Симулация',
+  'sim.title': 'Симулация на промяна в ДНК',
+  'sim.lead': 'Променете регулаторен ДНК сайт и вижте как моделът на невронно развитие реагира във времето.',
+  'sim.unavailable': 'Не е намерена базата за симулация (examples/neural-patterning). Инсталирайте Studio от копие на хранилището, за да я включите.',
+  'sim.step1': '1 · ДНК сайтът',
+  'sim.step1.help': 'Деветбазовият сайт за свързване на GLI в енхансъра на Nkx2.2, в ориентацията на измерванията на свързването. Изберете една замяна. Всяка клетка показва колко силно се свързва новата база в сравнение с референтната.',
+  'sim.matrix.read': 'По-тъмносиньо означава по-слабо свързване. Щрихованите клетки не се поддържат: публикуваното им тегло е нула, а това не доказва нулево свързване.',
+  'sim.site.ref': 'Референтен', 'sim.site.var': 'Вариант', 'sim.site.strand': 'Верига в генома', 'sim.site.q': 'Съотношение на свързване q',
+  'sim.weaker': '{x} пъти по-слабо от референтния', 'sim.pick': 'Изберете замяна в таблицата.',
+  'sim.cell.tip': '{from}{pos}→{to}: свързване ×{q}', 'sim.cell.na': 'Не се поддържа: публикуваното тегло е нула.',
+  'sim.published': 'Публикуваната замяна',
+  'sim.step2': '2 · Условия',
+  'sim.step2.help': 'Всяка последователност се изпълнява при една и съща история на сигнала и едно и също начално състояние. Сигналът е делът на GLI в активаторна форма, а не измерена концентрация на Shh. Времето и концентрацията са в единици на модела.',
+  'sim.presets': 'Шаблони', 'sim.p.const': 'Постоянен сигнал', 'sim.p.primed': 'Задействане, после нисък', 'sim.p.low': 'Само нисък',
+  'sim.phase': 'Фаза {n}', 'sim.duration': 'Продължителност', 'sim.units': 'единици', 'sim.signal': 'GLI активатор',
+  'sim.addPhase': 'Добави фаза', 'sim.remove': 'Премахни фазата',
+  'sim.timeline': 'Сигнал във времето', 'sim.total': 'Общо {n} единици на модела',
+  'sim.initial': 'Начално състояние', 'sim.initial.help': 'Концентрация на всеки ген в момент нула, от 0 до 1 в единици на модела. По подразбиране и четирите са нула.',
+  'sim.run': 'Пусни симулацията', 'sim.running': 'Компилиране и симулиране…',
+  'flow.dna': 'ДНК сайт', 'flow.dna.sub': 'Компилиран и проверен · {h}',
+  'flow.q': 'Съотношение на свързване q', 'flow.q.sub': 'вариант ÷ референтен, от измерения GLI профил',
+  'flow.param': 'Параметър на модела', 'flow.param.v': 'Афинитет към GLI × q', 'flow.param.sub': 'Промотор на Nkx2.2: активиране и репресия заедно',
+  'flow.dyn': 'Динамика', 'flow.dyn.sub': 'модел на четири гена във времето',
+  'sim.t.bind': 'Свързване', 'sim.t.bind.sub': 'по-слабо {x} пъти',
+  'sim.t.nkx': 'Nkx2.2 в края', 'sim.t.nkx.sub': 'референтен {r}',
+  'sim.t.diff': 'Най-голяма разлика', 'sim.t.diff.sub': '{gene} при t = {t}',
+  'sim.t.rev': 'Връщане на базата', 'sim.t.rev.exact': 'Точно', 'sim.t.rev.off': 'Различава се', 'sim.t.rev.sub': 'най-голяма разлика {d}',
+  'sim.chart.title': 'Траектории на гените',
+  'sim.chart.help': 'Движете курсора върху графика, за да четете всички гени в един момент. Пунктираната линия при 0.5 е условност на показването, а не измерена граница на клетъчната съдба.',
+  'sim.signal.title': 'Сигнал на GLI активатора',
+  'sim.s.ref': 'Референтен', 'sim.s.var': 'Вариант (редакция вътре в мрежата)', 'sim.s.rev': 'Върнат към референтния', 'sim.s.rep': 'Вариант като пасивен репортер',
+  'sim.rep.title': 'Репортер или редакция вътре в мрежата?',
+  'sim.rep.help': 'Като пасивен репортер вариантът променя само как промоторът отчита непроменената мрежа. Като редакция вътре в мрежата промяната се връща обратно във всичките четири гена.',
+  'sim.rep.axis': 'Заетост на промотора на Nkx2.2',
+  'sim.c.title': 'Контроли',
+  'sim.c.revert': 'Връщането на базата възстановява референтната траектория точно (най-голяма разлика {d}).',
+  'sim.c.module': 'Върнатата ДНК се компилира до същия Development Module като референтната.',
+  'sim.c.reporter': 'Като пасивен репортер вариантът не променя траекторията на четирите гена.',
+  'sim.prov.ref': 'Модул на референтния', 'sim.prov.var': 'Модул на варианта',
+  'sim.assume.title': 'Допускания, които приемате',
+  'sim.scope': 'Поддържа се: една замяна в този деветбазов сайт при зададен от вас протокол на сигнала. Друг геном или сайт е извън поддържания път. Резултатът е условна механистична симулация, а не предвиждане на изхода при ембрион.',
+  'sim.bio': 'При Peterson и др. (2012) репортерът е експресиран при {a} от {b} ембриона с референтния сайт и при {c} от {d} с тази замяна. Моделът не оценява тези броя.',
+  'sim.a.0': 'Публикувано нормализирано съотношение от профила на свързване се пренася като относителен множител на афинитета. Първоначалният процес на нормализиране не е напълно възстановен.',
+  'sim.a.1': 'Един и същ GLI профил мащабира афинитета на активатора и на репресора. GLI2 е основният избор, а GLI3 е анализ на чувствителността.',
+  'sim.a.2': 'Деветбазовият сайт е отнесен към публикуван регулаторен контекст на Nkx2.2. Останалата последователност на енхансъра, хроматинът и кофакторите са фиксирани и не се моделират.',
+  'sim.a.3': 'Режимът на репортер отчита заетостта на промотора върху непроменена ендогенна траектория. Ендогенният режим е хипотетична редакция на генома с обратна връзка.',
+  'sim.a.4': 'Сигналът е делът на GLI активатора A в [0, 1]; делът на репресора е 1 − A. Той не е калибрирана концентрация на Shh.',
+  'sim.a.5': 'Времето и концентрацията са в единици на модела. Не се извежда флуоресцентна скала, праг на откриване, биологичен часовник или вероятност за ембрион.',
+  'err.multi_record': 'FASTA съдържа {n} записа. Сканирайте по един запис.',
+  'err.sim_unavailable': 'Не е намерена базата за симулация (examples/neural-patterning).',
+  'err.sim_site_shape': 'Сайтът трябва да е {length} бази A, C, G и T.',
+  'err.sim_same': 'Изберете замяна: сайтът е равен на референтния.',
+  'err.sim_site_multi': 'Поддържа се само една замяна спрямо референтния сайт.',
+  'err.sim_site_zero': 'Тази замяна има публикувано тегло нула и моделът не може да я използва.',
+  'err.sim_protein': 'Изберете GLI2 или GLI3.',
+  'err.sim_phases': 'Задайте от 1 до {max} фази, всяка с положителна продължителност и сигнал от 0 до 1.',
+  'err.sim_time': 'Общата продължителност е най-много {max} единици на модела.',
+  'err.sim_initial': 'Началното състояние трябва да съдържа и четирите гена, всеки от 0 до 1.'
+/*end*/} };
+
+let lang = /^bg/i.test(navigator.language) ? 'bg' : 'en';
+try { const saved = localStorage.getItem('studio-lang'); if (saved in T) lang = saved; } catch {}
+const t = (key, p = {}) => (T[lang][key] ?? T.en[key] ?? key).replace(/\{(\w+)\}/g, (_, n) => p[n] ?? '');
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === 'class' ? node.className = v : node.setAttribute(k, v);
+  for (const kid of kids) node.append(kid);
+  return node;
+}
+const say = (node, key, params) => { node.dataset.k = key; params ? node.dataset.p = JSON.stringify(params) : delete node.dataset.p; node.textContent = t(key, params); };
+const plain = (node, text) => { delete node.dataset.k; delete node.dataset.p; node.textContent = text; };
+
+function errText(f) {
+  if (!f.key) return f.params.msg;
+  const p = { ...f.params };
+  if ('field' in p) p.where = p.id == null ? t('where.sequence') : t('where.edit', { id: p.id, field: t('field.' + p.field) });
+  return t(f.key, p);
+}
+const showErr = (box, f) => { box._f = f; box.textContent = errText(f); box.hidden = false; };
+const clearErr = box => { box._f = null; box.hidden = true; };
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw data.code ? new Fail('err.' + data.code, data.params) : new Fail(null, { msg: data.error || r.statusText });
+  return data;
+}
+
+async function guarded(button, box, work) {
+  clearErr(box); button.disabled = true;
+  try { await work(); }
+  catch (e) { showErr(box, e instanceof Fail ? e : new Fail(null, { msg: e.message })); }
+  finally { button.disabled = false; }
+}
+
+function save(name, text, type) {
+  const a = el('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  document.body.append(a); a.click(); a.remove();
+}
+const csvCell = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+const toCsv = (head, rows) => [head, ...rows].map(r => r.map(csvCell).join(',')).join('\n') + '\n';
+const csvDirection = e => ({ up: 'increase', down: 'decrease', none: 'none' })[dirOf(e)];
+const saveReceipt = r => save(`epigenesis-receipt-${r.receipt_sha256.slice(0, 8)}.json`, JSON.stringify(r, null, 1) + '\n', 'application/json');
+
+function bar(effect, scale) {
+  const w = Math.min(1, Math.abs(effect) / scale) * 50, b = el('b');
+  b.style.width = w + '%'; b.style.background = effect < 0 ? 'var(--neg)' : 'var(--pos)'; b.style.left = effect < 0 ? (50 - w) + '%' : '50%';
+  return el('div', { class: 'bar', 'aria-hidden': 'true' }, b);
+}
+const dirCell = e => el('td', { class: 'dir ' + dirOf(e) }, ARROW[dirOf(e)] + t('dir.' + dirOf(e)));
+
+// language
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-k]').forEach(e => { e.textContent = t(e.dataset.k, e.dataset.p && JSON.parse(e.dataset.p)); });
+  document.querySelectorAll('[data-ph]').forEach(e => { e.placeholder = t(e.dataset.ph); });
+  document.querySelectorAll('[data-label]').forEach(e => e.setAttribute('aria-label', t(e.dataset.label)));
+  document.querySelectorAll('.alert').forEach(e => { if (e._f) e.textContent = errText(e._f); });
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  if (model) fillAbout();
+  renderOpen();
+  if (siteTable) { renderSite(); renderPhases(); }
+  renderSim();
+  if (scan) renderScan(scan);
+  if (pairs) renderPairs();
+  renderVerify();
+}
+document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => {
+  lang = b.dataset.lang; try { localStorage.setItem('studio-lang', lang); } catch {}
+  applyLang();
+});
+
+// tabs
+const tabs = ['sim', 'scan', 'pairs', 'verify'];
+function show(name) {
+  for (const id of tabs) { $('#' + id).hidden = id !== name; $('#tab-' + id).setAttribute('aria-selected', String(id === name)); }
+  if (name === 'sim' && sim.result) drawSim();
+  if (name === 'scan' && scan) drawScan();
+  if (name === 'pairs' && pairs) drawStrip();
+}
+for (const id of tabs) $('#tab-' + id).onclick = () => show(id);
+
+// heat colors
+const rgb = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const mix = (a, b, f) => a.map((x, i) => Math.round(x + (b[i] - x) * f));
+const roundBox = (ctx, x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect && r > 0) ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2)); else ctx.rect(x, y, w, h); };
+
+// simulate
+let siteTable = null;
+const sim = { protein: 'GLI2', index: null, alt: null, phases: [[20, .2]], initial: {}, hidden: new Set(), cursor: null, result: null, charts: [] };
+const PRESETS = { const: [[20, .2]], primed: [[5, 1], [15, .05]], low: [[20, .05]] };
+const revComp = s => [...s].reverse().map(c => ({ A: 'T', C: 'G', G: 'C', T: 'A' })[c]).join('');
+const fold = q => { const x = 1 / q; return x >= 10 ? String(Math.round(x)) : x.toFixed(1); };
+const variantSite = () => sim.index === null ? null : siteTable.consensus.slice(0, sim.index) + sim.alt + siteTable.consensus.slice(sim.index + 1);
+const ratioOf = () => sim.index === null ? null : siteTable.proteins[sim.protein][sim.index][sim.alt];
+
+function pickSite(site) {
+  const i = [...site].findIndex((b, k) => b !== siteTable.consensus[k]);
+  sim.index = i < 0 ? null : i; sim.alt = i < 0 ? null : site[i];
+}
+
+function renderSite() {
+  if (!siteTable) return;
+  const c = siteTable.consensus, rows = siteTable.proteins[sim.protein];
+  const label = text => el('span', { class: 'lab' }, text), kids = [el('span'), ...[...c].map((_, i) => el('span', { class: 'posn' }, String(i + 1)))];
+  kids.push(label(t('sim.site.ref')), ...[...c].map(b => el('span', { class: 'sbase' }, b)));
+  for (const alt of BASES) {
+    kids.push(label('→ ' + alt));
+    [...c].forEach((base, i) => {
+      if (base === alt) return kids.push(el('span', { class: 'cell ref' }, '·'));
+      const q = rows[i][alt];
+      if (q === null) return kids.push(el('span', { class: 'cell na', title: t('sim.cell.na') }, '–'));
+      const cell = el('button', { class: 'cell' + (sim.index === i && sim.alt === alt ? ' on' : ''), type: 'button', title: t('sim.cell.tip', { from: base, pos: i + 1, to: alt, q: q.toPrecision(2) }) }, q.toPrecision(2));
+      cell.style.background = `color-mix(in srgb, var(--neg) ${Math.round(14 + Math.min(1, Math.max(0, (-Math.log10(q) - .7) / 2.8)) * 52)}%, var(--tint2))`;
+      cell.onclick = () => { sim.index = i; sim.alt = alt; renderSite(); };
+      kids.push(cell);
+    });
+  }
+  kids.push(label(t('sim.site.var')), ...[...c].map((b, i) => el('span', { class: 'sbase' + (sim.index === i ? ' hit' : '') }, sim.index === i ? sim.alt : b)));
+  $('#siteGrid').replaceChildren(...kids);
+  const v = variantSite(), q = ratioOf();
+  $('#siteRef').textContent = c; $('#siteRefG').textContent = siteTable.genome_strand;
+  $('#siteVar').textContent = v ?? '–'; $('#siteVarG').textContent = v ? revComp(v) : '–';
+  $('#siteQ').textContent = q === null ? '–' : '×' + q.toPrecision(2);
+  q === null ? say($('#siteQSub'), 'sim.pick') : say($('#siteQSub'), 'sim.weaker', { x: fold(q) });
+  document.querySelectorAll('#protSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.prot === sim.protein)));
+}
+document.querySelectorAll('#protSeg button').forEach(b => b.onclick = () => {
+  sim.protein = b.dataset.prot;
+  if (sim.index !== null && siteTable.proteins[sim.protein][sim.index][sim.alt] === null) sim.index = sim.alt = null;
+  renderSite();
+});
+$('#usePublished').onclick = () => { sim.protein = siteTable.published.protein; pickSite(siteTable.published.site); renderSite(); };
+
+function renderTimeline() {
+  const total = sim.phases.reduce((s, p) => s + (p[0] > 0 ? p[0] : 0), 0);
+  $('#timeline').replaceChildren(...sim.phases.map(p => {
+    const segment = el('div', { class: 'tl' }), fill = el('i');
+    segment.style.flexGrow = p[0] > 0 ? p[0] : 0; fill.style.height = Math.round(Math.min(1, Math.max(0, p[1])) * 100) + '%';
+    segment.append(fill); return segment;
+  }));
+  say($('#tlTotal'), 'sim.total', { n: +total.toFixed(2) });
+  document.querySelectorAll('#presetSeg button').forEach(b => b.setAttribute('aria-pressed', String(JSON.stringify(PRESETS[b.dataset.preset]) === JSON.stringify(sim.phases))));
+}
+function renderPhases() {
+  $('#phases').replaceChildren(...sim.phases.map((p, i) => {
+    const duration = el('input', { type: 'number', min: '0.1', step: '1', value: String(p[0]), 'aria-label': t('sim.duration') });
+    const signal = el('input', { type: 'range', min: '0', max: '1', step: '0.01', value: String(p[1]), 'aria-label': t('sim.signal') });
+    const shown = el('b', { class: 'sigv' }, p[1].toFixed(2)), remove = el('button', { class: 'btn icon', type: 'button', title: t('sim.remove'), 'aria-label': t('sim.remove') }, '×');
+    duration.oninput = () => { sim.phases[i][0] = duration.valueAsNumber; renderTimeline(); };
+    signal.oninput = () => { sim.phases[i][1] = +signal.value; shown.textContent = (+signal.value).toFixed(2); renderTimeline(); };
+    remove.disabled = sim.phases.length === 1; remove.onclick = () => { sim.phases.splice(i, 1); renderPhases(); };
+    return el('div', { class: 'phase' }, el('span', { class: 'pn' }, t('sim.phase', { n: i + 1 })),
+      el('label', {}, t('sim.duration'), duration, el('span', {}, t('sim.units'))), el('label', { class: 'sig' }, t('sim.signal'), signal, shown), remove);
+  }));
+  $('#addPhase').disabled = !siteTable || sim.phases.length >= siteTable.max_phases;
+  renderTimeline();
+}
+$('#addPhase').onclick = () => { sim.phases.push([10, .2]); renderPhases(); };
+document.querySelectorAll('#presetSeg button').forEach(b => b.onclick = () => { sim.phases = PRESETS[b.dataset.preset].map(p => [...p]); renderPhases(); });
+function buildInitial() {
+  $('#initial').replaceChildren(...siteTable.genes.map(gene => {
+    const input = el('input', { type: 'number', min: '0', max: '1', step: '0.05', value: String(sim.initial[gene]), 'aria-label': gene });
+    input.oninput = () => { sim.initial[gene] = input.valueAsNumber; };
+    return el('label', {}, gene, input);
+  }));
+}
+
+$('#simRun').onclick = () => guarded($('#simRun'), $('#simErr'), async () => {
+  if (sim.index === null) throw new Fail('err.sim_same');
+  say($('#simInfo'), 'sim.running');
+  try {
+    const t0 = performance.now();
+    const receipt = await api('/api/score', { mode: 'simulate', site: variantSite(), protein: sim.protein, phases: sim.phases.map(p => [...p]), initial_state: sim.initial });
+    sim.result = { receipt, seconds: (performance.now() - t0) / 1000 }; sim.cursor = null; renderSim();
+    plain($('#simInfo'), sim.result.seconds.toFixed(1) + ' s');
+  } catch (e) { plain($('#simInfo'), ''); throw e; }
+});
+
+const SERIES = () => ({ reference: { color: css('--text'), width: 2.4, dash: [] }, reversion: { color: css('--ok'), width: 2.2, dash: [3, 6] },
+  variant: { color: css('--pos'), width: 2.4, dash: [] }, reporter: { color: css('--neg'), width: 2.4, dash: [] } });
+const CH = { h: 176, l: 38, r: 12, t: 12, b: 26 };
+
+function drawChart(canvas, o) {
+  const W = canvas.parentElement.clientWidth;
+  if (!W) return;
+  const H = o.h ?? CH.h, dpr = window.devicePixelRatio || 1, ctx = canvas.getContext('2d');
+  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const T = o.time[o.time.length - 1], x = v => CH.l + v / T * (W - CH.l - CH.r), y = v => H - CH.b - v * (H - CH.b - CH.t);
+  const t3 = css('--text3'), axis = css('--axis');
+  ctx.font = '11.5px ui-monospace, Menlo, monospace'; ctx.fillStyle = t3; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (const v of [0, .5, 1]) {
+    ctx.strokeStyle = axis; ctx.lineWidth = 1; ctx.setLineDash(v === .5 && o.threshold ? [2, 4] : []); ctx.globalAlpha = v === 0 ? 1 : .55;
+    ctx.beginPath(); ctx.moveTo(CH.l, y(v)); ctx.lineTo(W - CH.r, y(v)); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillText(String(v), CH.l - 8, y(v));
+  }
+  ctx.setLineDash([]); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const step = [1, 2, 5, 10, 20, 25, 50].find(s => T / s <= 8) ?? 100;
+  for (let v = 0; v <= T + 1e-9; v += step) ctx.fillText(String(+v.toFixed(2)), x(v), H - CH.b + 8);
+  for (const c of o.curves) {
+    ctx.beginPath();
+    o.time.forEach((time, i) => {
+      const px = x(time), py = y(c.values[i]);
+      if (!i) ctx.moveTo(px, py); else { if (o.step) ctx.lineTo(px, y(c.values[i - 1])); ctx.lineTo(px, py); }
+    });
+    if (o.fill) { ctx.save(); ctx.lineTo(x(T), y(0)); ctx.lineTo(x(0), y(0)); ctx.closePath(); ctx.globalAlpha = .12; ctx.fillStyle = c.color; ctx.fill(); ctx.restore(); ctx.beginPath(); o.time.forEach((time, i) => { const px = x(time), py = y(c.values[i]); if (!i) ctx.moveTo(px, py); else { ctx.lineTo(px, y(c.values[i - 1])); ctx.lineTo(px, py); } }); }
+    ctx.strokeStyle = c.color; ctx.lineWidth = c.width; ctx.setLineDash(c.dash); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (o.cursor !== null) {
+    const px = x(o.time[o.cursor]);
+    ctx.strokeStyle = t3; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px, CH.t); ctx.lineTo(px, H - CH.b); ctx.stroke();
+    for (const c of o.curves) { ctx.fillStyle = c.color; ctx.strokeStyle = css('--panel'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, y(c.values[o.cursor]), 4, 0, 6.2832); ctx.fill(); ctx.stroke(); }
+  }
+  canvas._geometry = { l: CH.l, r: W - CH.r, W };
+}
+
+function simCurves(which) {
+  const r = sim.result.receipt.result, s = SERIES(), show = key => !sim.hidden.has(key), column = (run, g) => r.runs[run].states.map(row => row[g]);
+  if (which === 'signal') return [{ values: r.signal, color: css('--text2'), width: 2, dash: [] }];
+  if (which === 'occupancy') return [{ key: 'reference', values: r.runs.reference.occupancy, ...s.reference }, { key: 'reporter', values: r.runs.reporter.occupancy, ...s.reporter }, { key: 'variant', values: r.runs.variant.occupancy, ...s.variant }];
+  const g = r.genes.indexOf(which), exact = r.controls.reversion_max_difference === 0, out = [];
+  if (show('reference')) out.push({ key: 'reference', values: column('reference', g), ...s.reference });
+  if (show('reversion') && exact) out.push({ key: 'reversion', values: column('reference', g), ...s.reversion });
+  if (show('variant')) out.push({ key: 'variant', values: column('variant', g), ...s.variant });
+  return out;
+}
+
+function drawSim() {
+  if (!sim.result) return;
+  const r = sim.result.receipt.result, last = r.time.length - 1, i = sim.cursor ?? last;
+  for (const chart of sim.charts) {
+    const curves = simCurves(chart.which);
+    drawChart(chart.canvas, { h: chart.which === 'signal' ? 100 : undefined, time: r.time, curves, threshold: chart.which !== 'signal', cursor: sim.cursor, step: chart.which === 'signal', fill: chart.which === 'signal' });
+    chart.read.replaceChildren(...curves.map(c => { const span = el('span', {}, c.values[i].toFixed(3)); span.style.setProperty('--c', c.color); return span; }));
+    if (chart.which === 'signal') chart.read.prepend(el('span', { class: 'tm' }, `t = ${+r.time[i].toFixed(2)}`));
+  }
+}
+
+function bindChart(canvas) {
+  const move = ev => {
+    const g = canvas._geometry, n = sim.result.receipt.result.time.length;
+    if (!g) return;
+    const f = (ev.clientX - canvas.getBoundingClientRect().left - g.l) / (g.r - g.l);
+    sim.cursor = Math.min(n - 1, Math.max(0, Math.round(f * (n - 1)))); drawSim();
+  };
+  canvas.onmousemove = move; canvas.onmouseleave = () => { sim.cursor = null; drawSim(); };
+}
+
+function renderSim() {
+  $('#simOut').hidden = !sim.result;
+  if (!sim.result) return;
+  const r = sim.result.receipt.result, genes = r.genes, last = r.time.length - 1, nkx = genes.indexOf('Nkx2.2'), q = r.site.ratio, ctl = r.controls;
+  const flowStep = (key, value, sub, cls = '') => el('div', { class: 'fstep' }, el('span', { class: 'fk' }, t(key)), el('div', { class: 'fv ' + cls }, value), el('div', { class: 'fs' }, sub));
+  const site = (text, at) => { const frag = document.createDocumentFragment(); [...text].forEach((b, i) => frag.append(i === at ? el('mark', {}, b) : b)); return frag; };
+  $('#flow').replaceChildren(
+    flowStep('flow.dna', site(r.site.variant, r.site.position - 1), t('flow.dna.sub', { h: r.compiled.variant.development_sha256.slice(0, 8) })),
+    flowStep('flow.q', q.toPrecision(3), t('flow.q.sub')),
+    flowStep('flow.param', t('flow.param.v'), t('flow.param.sub'), 'plain'),
+    flowStep('flow.dyn', genes.join(' · '), t('flow.dyn.sub'), 'plain'));
+  let worst = { d: -1 };
+  r.time.forEach((time, i) => genes.forEach((gene, g) => { const d = Math.abs(r.runs.reference.states[i][g] - r.runs.variant.states[i][g]); if (d > worst.d) worst = { d, gene, time }; }));
+  const tile = (key, value, sub, cls = '') => el('div', { class: 'stat' }, el('span', { class: 'k' }, t(key)), el('b', { class: cls }, value), el('span', { class: 'sub' }, sub));
+  const endNkx = r.runs.variant.states[last][nkx], endRef = r.runs.reference.states[last][nkx];
+  $('#simStats').replaceChildren(
+    tile('sim.t.bind', '×' + q.toPrecision(2), t('sim.t.bind.sub', { x: fold(q) })),
+    tile('sim.t.nkx', endNkx.toFixed(2), t('sim.t.nkx.sub', { r: endRef.toFixed(2) }), endNkx < endRef ? 'down' : 'up'),
+    tile('sim.t.diff', worst.d.toFixed(2), t('sim.t.diff.sub', { gene: worst.gene, t: +worst.time.toFixed(2) })),
+    tile('sim.t.rev', t(ctl.reversion_max_difference === 0 ? 'sim.t.rev.exact' : 'sim.t.rev.off'), t('sim.t.rev.sub', { d: ctl.reversion_max_difference.toExponential(0).replace('e+0', '') })));
+  const palette = SERIES(), names = { reference: 'sim.s.ref', variant: 'sim.s.var', reversion: 'sim.s.rev' };
+  $('#keys').replaceChildren(...Object.entries(names).map(([key, label]) => {
+    const chip = el('button', { class: 'key', type: 'button', 'aria-pressed': String(!sim.hidden.has(key)) }, el('i'), t(label));
+    chip.firstChild.style.setProperty('--c', palette[key].color);
+    chip.onclick = () => { sim.hidden.has(key) ? sim.hidden.delete(key) : sim.hidden.add(key); renderSim(); };
+    return chip;
+  }));
+  const chartBox = which => {
+    const head = el('div', { class: 'ch-head' }, el('b', {}, which)), read = el('div', { class: 'read' }), canvas = el('canvas', { role: 'img', 'aria-label': which });
+    head.append(read); bindChart(canvas); sim.charts.push({ which, canvas, read });
+    return el('div', { class: 'chart' }, head, el('div', {}, canvas));
+  };
+  sim.charts = [{ which: 'signal', canvas: $('#sigChart'), read: $('#sigRead') }, { which: 'occupancy', canvas: $('#repChart'), read: $('#repRead') }];
+  bindChart($('#sigChart')); bindChart($('#repChart'));
+  $('#charts').replaceChildren(...genes.map(chartBox));
+  const check = (ok, text) => { const dot = withIcon(el('span', { class: 'dot' }), ok ? ICON.ok : ICON.bad); dot.firstChild.setAttribute('width', 14); dot.firstChild.setAttribute('height', 14); return el('li', ok ? {} : { class: 'fail' }, dot, text); };
+  $('#simChecks').replaceChildren(check(ctl.reversion_max_difference === 0, t('sim.c.revert', { d: ctl.reversion_max_difference.toExponential(0).replace('e+0', '') })),
+    check(ctl.reversion_same_module, t('sim.c.module')), check(ctl.reporter_max_difference === 0, t('sim.c.reporter')));
+  $('#prov').replaceChildren(...['reference', 'variant'].flatMap(name => [el('span', {}, t('sim.prov.' + (name === 'reference' ? 'ref' : 'var'))),
+    el('span', { title: r.compiled[name].development_sha256 }, r.compiled[name].development_sha256.slice(0, 16) + '…')]));
+  $('#assume').replaceChildren(...r.assumptions.map((text, i) => el('li', {}, lang !== 'en' && r.assumptions.length === 6 ? t('sim.a.' + i) : text)));
+  const pub = siteTable.published, bio = $('#bio');
+  bio.hidden = !(r.site.variant === pub.site && r.site.protein === pub.protein);
+  bio.textContent = t('sim.bio', { a: pub.reference_embryos[0], b: pub.reference_embryos[1], c: pub.variant_embryos[0], d: pub.variant_embryos[1] });
+  drawSim();
+}
+
+$('#simCsv').onclick = () => {
+  const r = sim.result.receipt.result, head = ['time', 'signal'];
+  r.genes.forEach(g => head.push(g + '_reference', g + '_variant'));
+  head.push('Nkx2.2_promoter_occupancy_reference', 'Nkx2.2_promoter_occupancy_variant_edit', 'Nkx2.2_promoter_occupancy_variant_reporter');
+  save('epigenesis-simulation.csv', toCsv(head, r.time.map((time, i) => [time, r.signal[i], ...r.genes.flatMap((_, g) => [r.runs.reference.states[i][g], r.runs.variant.states[i][g]]),
+    r.runs.reference.occupancy[i], r.runs.variant.occupancy[i], r.runs.reporter.occupancy[i]])), 'text/csv');
+};
+$('#simReceipt').onclick = () => saveReceipt(sim.result.receipt);
+
+// scan
+function prepScan(receipt, seconds) {
+  const ref = receipt.request.sequence, L = ref.length;
+  const grid = [...BASES].map(() => new Array(L).fill(null)), rows = [];
+  for (const p of receipt.result.predictions) {
+    const m = /^(\d+):([ACGT])>([ACGT])$/.exec(p.id), pos = +m[1] - 1;
+    grid[BASES.indexOf(m[3])][pos] = p.effect;
+    rows.push({ ...p, pos, ref: m[2], alt: m[3] });
+  }
+  const magnitudes = rows.map(r => Math.abs(r.effect)).sort((a, b) => a - b);
+  const scale = Math.max(magnitudes[Math.floor(0.99 * (magnitudes.length - 1))], 1e-9);
+  const peak = Array.from({ length: L }, (_, i) => grid.reduce((best, g) => g[i] !== null && Math.abs(g[i]) > Math.abs(best) ? g[i] : best, 0));
+  rows.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.pos - b.pos);
+  rows.forEach((r, i) => r.rank = i + 1);
+  return { receipt, ref, L, grid, rows, scale, peak, seconds, median: magnitudes[(magnitudes.length - 1) >> 1], sel: null };
+}
+
+const G = { left: 46, strip: 64, gap: 14, cell: 28, axis: 26 };
+const cellWidth = L => Math.max(4, Math.min(18, ($('#hmWrap').clientWidth - G.left - 6) / L));
+
+function drawScan() {
+  const wrap = $('#hmWrap');
+  if (!scan || !wrap.clientWidth) return;
+  const { L, grid, scale, peak, ref, sel } = scan, cw = scan.cw = cellWidth(L), dpr = window.devicePixelRatio || 1;
+  const xs = i => Math.round(G.left + i * cw), top = G.strip + G.gap, W = xs(L) + 6, H = top + 4 * G.cell + G.axis;
+  const cv = $('#hm'), ctx = cv.getContext('2d');
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const zero = rgb(css('--zero')), pos = rgb(css('--pos')), neg = rgb(css('--neg')), t2 = css('--text2'), t3 = css('--text3'), ink = css('--text');
+  const color = v => 'rgb(' + mix(zero, v < 0 ? neg : pos, Math.min(1, Math.abs(v) / scale)).join(',') + ')';
+  const r = cw >= 7 ? 2.5 : 0, cellW = i => Math.max(1, xs(i + 1) - xs(i) - 1);
+  if (sel) { ctx.globalAlpha = .07; ctx.fillStyle = ink; roundBox(ctx, xs(sel.pos) - 2, 0, cellW(sel.pos) + 4, top + 4 * G.cell, 5); ctx.fill(); ctx.globalAlpha = 1; }
+  const peakMax = Math.max(...peak.map(Math.abs), 1e-9);
+  for (let i = 0; i < L; i++) {
+    const h = Math.max(2, Math.abs(peak[i]) / peakMax * (G.strip - 6));
+    ctx.fillStyle = peak[i] < 0 ? css('--neg') : css('--pos'); ctx.globalAlpha = .85;
+    roundBox(ctx, xs(i), G.strip - h, cellW(i), h, r); ctx.fill();
+  }
+  ctx.globalAlpha = 1; ctx.textBaseline = 'middle';
+  for (let b = 0; b < 4; b++) {
+    const y = top + b * G.cell;
+    ctx.font = '600 12.5px ui-monospace, Menlo, monospace'; ctx.textAlign = 'right'; ctx.fillStyle = t2; ctx.fillText('→ ' + BASES[b], G.left - 10, y + G.cell / 2);
+    ctx.textAlign = 'center';
+    for (let i = 0; i < L; i++) {
+      const v = grid[b][i], x = xs(i), w = cellW(i);
+      if (v === null) { if (cw >= 9) { ctx.font = '600 11px ui-monospace, Menlo, monospace'; ctx.fillStyle = t3; ctx.fillText(BASES[b], x + w / 2, y + G.cell / 2); } continue; }
+      ctx.fillStyle = color(v); roundBox(ctx, x, y, w, G.cell - 2, r); ctx.fill();
+    }
+  }
+  ctx.fillStyle = t3; ctx.font = '11.5px ui-monospace, Menlo, monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+  const step = cw >= 9 ? 10 : 20;
+  for (let i = 0; i < L; i++) if (i === 0 || (i + 1) % step === 0) ctx.fillText(String(i + 1), xs(i) + cellW(i) / 2, top + 4 * G.cell + 6);
+  if (sel) { ctx.strokeStyle = ink; ctx.lineWidth = 2; roundBox(ctx, xs(sel.pos) - 1, top + sel.alt * G.cell - 1, cellW(sel.pos) + 2, G.cell, r + 1); ctx.stroke(); }
+  $('#lo').textContent = fmt(-scale); $('#hi').textContent = fmt(scale);
+}
+
+function cellAt(ev) {
+  const rect = $('#hm').getBoundingClientRect(), x = ev.clientX - rect.left - G.left, y = ev.clientY - rect.top - G.strip - G.gap;
+  const pos = Math.floor(x / scan.cw), alt = Math.floor(y / G.cell);
+  return pos >= 0 && pos < scan.L && alt >= 0 && alt < 4 && scan.grid[alt][pos] !== null ? { pos, alt } : null;
+}
+
+function context(pos, alt, withAlt) {
+  const { ref } = scan, a = ref.slice(Math.max(0, pos - 10), pos), b = ref.slice(pos + 1, pos + 11);
+  return [(pos > 10 ? '…' : '') + a, ref[pos], alt, b + (pos + 11 < ref.length ? '…' : '')];
+}
+
+function renderDetail() {
+  const box = $('#detail');
+  if (!scan.sel) { box.className = 'detail'; box.style.display = 'block'; box.replaceChildren(el('p', { class: 'empty' }, t('detail.empty'))); return; }
+  box.style.display = '';
+  const { pos, alt } = scan.sel, e = scan.grid[alt][pos], d = dirOf(e), row = scan.rows.find(r => r.pos === pos && r.alt === BASES[alt]);
+  const [before, was, now, after] = context(pos, BASES[alt]);
+  const part = (key, v) => el('div', { class: 'part' }, el('span', {}, t(key)), bar(v, scan.scale), el('b', { class: dirOf(v) }, fmt(v)));
+  box.replaceChildren(
+    el('div', {}, el('span', { class: 'd-label' }, t('detail.effect')), el('div', { class: 'd-big' }, `${was}${pos + 1}→${now}`),
+      el('div', { class: 'd-num ' + d }, fmt(e), el('span', {}, ARROW[d] + t('dir.' + d)))),
+    el('div', {}, el('span', { class: 'd-label' }, t('detail.context')),
+      el('div', { class: 'seq-row' }, el('span', { class: 'seq-name' }, t('detail.ref')), el('span', { class: 'seq' }, before, el('mark', {}, was), after)),
+      el('div', { class: 'seq-row' }, el('span', { class: 'seq-name' }, t('detail.edit')), el('span', { class: 'seq' }, before, el('mark', { class: d }, now), after))),
+    el('div', {}, el('span', { class: 'd-label' }, t('detail.parts')), part('detail.words', row.word_effect), part('detail.motifs', row.motif_effect)));
+}
+
+function select(pos, alt) {
+  scan.sel = { pos, alt }; drawScan(); renderDetail();
+  const id = scan.rows.find(r => r.pos === pos && r.alt === BASES[alt]).id;
+  document.querySelectorAll('#scanRows tr').forEach(tr => tr.classList.toggle('on', tr.dataset.id === id));
+}
+function focusCell(r) {
+  select(r.pos, BASES.indexOf(r.alt));
+  $('#hmWrap').scrollLeft = Math.max(0, G.left + r.pos * scan.cw - 240);
+  $('#mapPanel').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function renderScanRows() {
+  const rows = scan.rows.filter(r => !dirFilter || Math.sign(r.effect) === +dirFilter).slice(0, +$('#topN').value);
+  const sel = scan.sel && scan.rows.find(r => r.pos === scan.sel.pos && BASES.indexOf(r.alt) === scan.sel.alt);
+  $('#scanRows').replaceChildren(...rows.map(r => {
+    const tr = el('tr', { class: 'pick' + (sel && sel.id === r.id ? ' on' : ''), 'data-id': r.id, tabindex: '0' },
+      el('td', { class: 'num rank' }, String(r.rank)), el('td', { class: 'mono' }, `${r.ref}${r.pos + 1}→${r.alt}`),
+      el('td', { class: 'num' }, fmt(r.effect)), el('td', {}, bar(r.effect, scan.scale)), dirCell(r.effect));
+    tr.onclick = () => focusCell(r); tr.onkeydown = e => { if (e.key === 'Enter') focusCell(r); };
+    return tr;
+  }));
+}
+
+function renderScan(s) {
+  scan = s; $('#scanOut').hidden = false; $('#scanHint').hidden = true;
+  plain($('#stBases'), String(s.L)); say($('#stBasesSub'), 'stat.basesSub', { n: s.rows.length, s: s.seconds.toFixed(1) });
+  for (const [name, sign] of [['Up', 1], ['Down', -1]]) {
+    const r = s.rows.find(x => Math.sign(x.effect) === sign), chip = $('#st' + name + 'Go');
+    $('#st' + name).textContent = r ? fmt(r.effect) : '–'; chip.hidden = !r;
+    if (r) { chip.textContent = `${r.ref}${r.pos + 1}→${r.alt}`; chip.onclick = () => focusCell(r); }
+  }
+  $('#stTyp').textContent = s.median.toFixed(3);
+  renderDetail(); renderScanRows(); drawScan();
+}
+
+const countBases = text => text.split('\n').filter(l => !l.startsWith('>')).join('').replace(/[\s\d]/g, '').length;
+$('#seq').oninput = () => { const n = countBases($('#seq').value); n ? say($('#seqInfo'), 'scan.count', { n }) : plain($('#seqInfo'), ''); };
+$('#scanBtn').onclick = () => guarded($('#scanBtn'), $('#scanErr'), async () => {
+  const t0 = performance.now();
+  const receipt = await api('/api/score', { mode: 'scan', sequence: $('#seq').value });
+  renderScan(prepScan(receipt, (performance.now() - t0) / 1000));
+});
+$('#exampleSeq').onclick = async () => { $('#seq').value = (await api('/api/example'))[0].reference; say($('#seqInfo'), 'scan.exampleNote'); };
+$('#hm').onmousemove = ev => {
+  const c = scan && cellAt(ev), tip = $('#tip');
+  if (!c) { tip.hidden = true; return; }
+  const r = $('#hmWrap').getBoundingClientRect();
+  tip.hidden = false; tip.textContent = `${scan.ref[c.pos]}${c.pos + 1}→${BASES[c.alt]}  ${fmt(scan.grid[c.alt][c.pos])}`;
+  tip.style.left = (ev.clientX - r.left + $('#hmWrap').scrollLeft) + 'px'; tip.style.top = (ev.clientY - r.top) + 'px';
+};
+$('#hm').onmouseleave = () => { $('#tip').hidden = true; };
+$('#hm').onclick = ev => { const c = scan && cellAt(ev); if (c) select(c.pos, c.alt); };
+$('#topN').onchange = () => scan && renderScanRows();
+document.querySelectorAll('#dirSeg button').forEach(b => b.onclick = () => {
+  dirFilter = b.dataset.dir;
+  document.querySelectorAll('#dirSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  if (scan) renderScanRows();
+});
+$('#scanCsv').onclick = () => save('epigenesis-scan.csv', toCsv(['position', 'ref', 'alt', 'effect', 'word_effect', 'motif_effect', 'direction'],
+  [...scan.rows].sort((a, b) => a.pos - b.pos || a.alt.localeCompare(b.alt)).map(r => [r.pos + 1, r.ref, r.alt, r.effect, r.word_effect, r.motif_effect, csvDirection(r.effect)])), 'text/csv');
+$('#scanReceipt').onclick = () => saveReceipt(scan.receipt);
+
+// a static preview of the map, so the empty state shows what the result looks like
+(() => {
+  const cells = [];
+  for (let i = 0; i < 42; i++) for (let b = 0; b < 4; b++) {
+    const refBase = (i * 5 + 3) % 4, v = Math.sin(i * 0.62 + b * 1.7) * Math.cos(i * 0.21 + 0.4), p = Math.round(Math.min(1, Math.abs(v) * 1.5) * 100);
+    const cell = el('i'); cell.style.gridColumn = i + 1; cell.style.gridRow = b + 1;
+    if (b === refBase) { cell.className = 'ref'; cell.textContent = BASES[b]; }
+    else cell.style.background = `color-mix(in srgb, var(${v < 0 ? '--neg' : '--pos'}) ${p}%, var(--zero))`;
+    cells.push(cell);
+  }
+  $('#mini').replaceChildren(...cells);
+})();
+
+// score edits
+function csvRecords(text) {
+  const out = []; let row = [], cell = '', quoted = false;
+  const sep = text.split('\n', 1)[0].includes('\t') ? '\t' : ',';
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else quoted = false; } else cell += c; }
+    else if (c === '"') quoted = true;
+    else if (c === sep) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); cell = ''; if (row.some(x => x !== '')) out.push(row); row = []; }
+    else cell += c;
+  }
+  row.push(cell); if (row.some(x => x !== '')) out.push(row);
+  return out;
+}
+
+function parseEdits(text) {
+  text = text.trim();
+  if (!text) throw new Fail('err.no_edits');
+  if (text[0] === '[') { try { return JSON.parse(text); } catch { throw new Fail('err.json'); } }
+  const [head, ...body] = csvRecords(text), cols = head.map(h => h.trim().toLowerCase());
+  for (const need of ['id', 'reference', 'sequence']) if (!cols.includes(need)) throw new Fail('err.csv_need', { c: need });
+  for (const c of cols) if (!['id', 'reference', 'sequence', 'family'].includes(c)) throw new Fail('err.csv_unknown', { c });
+  return body.map(r => Object.fromEntries(cols.map((c, i) => [c, (r[i] ?? '').trim()]).filter(([c, v]) => c !== 'family' || v !== '')));
+}
+
+function renderPairs() {
+  const { receipt } = pairs, preds = receipt.result.predictions, fam = Object.fromEntries(receipt.request.rows.map(r => [r.id, r.family || '']));
+  const selection = receipt.result.selection || [], chosen = new Map(selection.map((s, i) => [s.id, i + 1]));
+  const rows = preds.map(p => ({ ...p, family: fam[p.id] })).sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.id.localeCompare(b.id));
+  rows.forEach((r, i) => r.rank = i + 1);
+  pairs.rows = rows; pairs.chosen = chosen; pairs.scale = Math.max(...rows.map(r => Math.abs(r.effect)), 1e-9);
+  $('#pairsTitle').textContent = chosen.size ? t('pairs.panelTitle', { n: chosen.size, m: rows.length }) : t('pairs.scoredTitle', { n: rows.length });
+  $('#picks').hidden = !chosen.size;
+  $('#picks').replaceChildren(...selection.map((s, i) => el('div', { class: 'pick-card' },
+    el('div', { class: 'top' }, el('span', { class: 'badge' }, String(i + 1)), el('span', { class: 'pc-id', title: s.id }, s.id)),
+    el('div', { class: 'pc-fam' }, s.family || ''), el('div', { class: 'pc-eff ' + dirOf(s.effect) }, fmt(s.effect)), bar(s.effect, pairs.scale))));
+  $('#pairsOut').hidden = false; drawPairs(); drawStrip();
+}
+
+function drawPairs() {
+  const q = $('#filter').value.trim().toLowerCase(), LIMIT = 200;
+  const all = pairs.rows.filter(r => !q || r.id.toLowerCase().includes(q) || r.family.toLowerCase().includes(q)), shown = all.slice(0, LIMIT);
+  $('#pairsRows').replaceChildren(...shown.map(r => el('tr', {},
+    el('td', { class: 'num rank' }, String(r.rank)), el('td', { class: 'mono' }, r.id), el('td', { class: 'mono' }, r.family),
+    el('td', { class: 'num' }, fmt(r.effect)), el('td', {}, bar(r.effect, pairs.scale)), dirCell(r.effect),
+    el('td', {}, pairs.chosen.has(r.id) ? el('span', { class: 'badge' }, String(pairs.chosen.get(r.id))) : ''))));
+  $('#more').hidden = all.length <= LIMIT;
+  $('#more').textContent = t('pairs.more', { n: LIMIT, m: all.length });
+}
+
+const STRIP = { h: 150, pad: 30, top: 18, bottom: 40 };
+function drawStrip() {
+  const wrap = $('#stripWrap');
+  if (!pairs || !wrap.clientWidth) return;
+  const W = wrap.clientWidth, H = STRIP.h, dpr = window.devicePixelRatio || 1, cv = $('#strip'), ctx = cv.getContext('2d');
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const m = pairs.scale * 1.1, x = e => STRIP.pad + (e + m) / (2 * m) * (W - 2 * STRIP.pad), band = H - STRIP.top - STRIP.bottom;
+  const pos = css('--pos'), neg = css('--neg'), t3 = css('--text3'), ink = css('--text'), axis = css('--axis');
+  ctx.strokeStyle = axis; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(STRIP.pad, H - STRIP.bottom + 12); ctx.lineTo(W - STRIP.pad, H - STRIP.bottom + 12); ctx.stroke();
+  ctx.strokeStyle = css('--line2'); ctx.beginPath(); ctx.moveTo(x(0), STRIP.top - 4); ctx.lineTo(x(0), H - STRIP.bottom + 18); ctx.stroke();
+  ctx.fillStyle = t3; ctx.font = '11.5px ui-monospace, Menlo, monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+  for (const v of [-m / 1.1, 0, m / 1.1]) ctx.fillText(v === 0 ? '0' : fmt(v), x(v), H - STRIP.bottom + 22);
+  const jitter = i => ((Math.imul(i + 1, 2654435761) >>> 0) % 997) / 997;
+  pairs.dots = [];
+  const dot = (r, i, radius) => { const px = x(r.effect), py = STRIP.top + jitter(i) * band; pairs.dots.push({ px, py, radius, r }); return [px, py]; };
+  ctx.globalAlpha = .62;
+  pairs.rows.forEach((r, i) => { if (pairs.chosen.has(r.id)) return; const [px, py] = dot(r, i, 4); ctx.fillStyle = r.effect < 0 ? neg : pos; ctx.beginPath(); ctx.arc(px, py, 4, 0, 6.2832); ctx.fill(); });
+  ctx.globalAlpha = 1; ctx.textBaseline = 'middle'; ctx.font = '650 11px -apple-system, system-ui, sans-serif';
+  pairs.rows.forEach((r, i) => {
+    if (!pairs.chosen.has(r.id)) return;
+    const [px, py] = dot(r, i, 10);
+    ctx.fillStyle = r.effect < 0 ? neg : pos; ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 10, 0, 6.2832); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.fillText(String(pairs.chosen.get(r.id)), px, py + .5);
+  });
+}
+const dotAt = ev => {
+  const rect = $('#strip').getBoundingClientRect(), x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+  let best = null, bd = Infinity;
+  for (const d of pairs?.dots || []) { const dist = Math.hypot(d.px - x, d.py - y); if (dist <= Math.max(d.radius, 7) && (dist < bd || d.radius > (best?.radius ?? 0))) { best = d; bd = dist; } }
+  return best;
+};
+$('#strip').onmousemove = ev => {
+  const d = dotAt(ev), tip = $('#stripTip');
+  $('#strip').style.cursor = d ? 'pointer' : '';
+  if (!d) { tip.hidden = true; return; }
+  const r = $('#stripWrap').getBoundingClientRect();
+  tip.hidden = false; tip.textContent = `${d.r.id}  ${fmt(d.r.effect)}`;
+  tip.style.left = (ev.clientX - r.left) + 'px'; tip.style.top = (ev.clientY - r.top) + 'px';
+};
+$('#strip').onmouseleave = () => { $('#stripTip').hidden = true; };
+$('#strip').onclick = ev => { const d = dotAt(ev); if (d) { $('#filter').value = d.r.id; drawPairs(); } };
+
+$('#pairsBtn').onclick = () => guarded($('#pairsBtn'), $('#pairsErr'), async () => {
+  const rows = parseEdits($('#edits').value), b = $('#budget').value, request = { mode: 'pairs', rows };
+  if (b !== '') request.budget = Number(b);
+  const t0 = performance.now(), receipt = await api('/api/score', request);
+  pairs = { receipt }; $('#filter').value = ''; renderPairs();
+  say($('#pairsInfo'), 'pairs.done', { n: rows.length, s: ((performance.now() - t0) / 1000).toFixed(1) });
+});
+$('#examplePairs').onclick = async () => {
+  $('#edits').value = JSON.stringify(await api('/api/example'), null, 1); $('#budget').value = 3;
+  say($('#pairsInfo'), 'pairs.exampleNote');
+};
+$('#fileBtn').onclick = () => $('#file').click();
+$('#file').onchange = async e => { const f = e.target.files[0]; if (f) { $('#edits').value = await f.text(); plain($('#pairsInfo'), f.name); } e.target.value = ''; };
+$('#filter').oninput = () => pairs && drawPairs();
+$('#pairsCsv').onclick = () => save('epigenesis-scores.csv', toCsv(['rank', 'id', 'family', 'effect', 'word_effect', 'motif_effect', 'direction', 'panel_rank'],
+  pairs.rows.map(r => [r.rank, r.id, r.family, r.effect, r.word_effect, r.motif_effect, csvDirection(r.effect), pairs.chosen.get(r.id) ?? ''])), 'text/csv');
+$('#pairsReceipt').onclick = () => saveReceipt(pairs.receipt);
+
+window.addEventListener('resize', () => { scan && drawScan(); pairs && drawStrip(); sim.result && drawSim(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { scan && drawScan(); pairs && drawStrip(); sim.result && drawSim(); });
+
+// verify
+const ICON = {
+  ok: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  bad: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>'
+};
+const withIcon = (node, svg) => { node.innerHTML = svg; return node; };
+
+function renderVerify() {
+  const box = $('#verOut');
+  box.hidden = !ver; $('#verSteps').hidden = !!ver;
+  if (!ver) return;
+  const { out } = ver, verdict = el('div', { class: 'verdict' + (out.ok ? '' : ' bad') },
+    withIcon(el('span', { class: 'vicon' }), out.ok ? ICON.ok : ICON.bad),
+    el('div', {}, el('b', {}, t(out.ok ? 'verify.ok' : 'verify.bad')), el('p', {}, t(out.ok ? 'verify.okSub' : 'verify.badSub'))));
+  const list = el('ul', { class: 'checks' }, ...out.checks.map((c, i) => {
+    const dot = withIcon(el('span', { class: 'dot' }), c.ok ? ICON.ok : ICON.bad); dot.firstChild.setAttribute('width', 14); dot.firstChild.setAttribute('height', 14);
+    return el('li', c.ok ? {} : { class: 'fail' }, dot, t('verify.c.' + i, { tol: out.tolerance }));
+  }));
+  box.replaceChildren(verdict, list, ...(out.max_abs_difference === null ? [] : [el('p', { class: 'meta', style: 'margin-top:8px' }, t('verify.gap', { d: out.max_abs_difference.toExponential(2) }))]));
+}
+
+async function verifyFile(f) {
+  plain($('#rname'), f.name); ver = null; renderVerify();
+  await guarded($('#rfileBtn'), $('#verErr'), async () => {
+    let receipt; try { receipt = JSON.parse(await f.text()); } catch { throw new Fail('err.not_json'); }
+    ver = { out: await api('/api/verify', receipt) }; renderVerify();
+  });
+}
+$('#rfileBtn').onclick = () => $('#rfile').click();
+$('#rfile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) verifyFile(f); };
+const drop = $('#drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) verifyFile(f); };
+
+// open: files found in the folder the command ran in, or imported by hand
+let folder = { folder: '', files: [] };
+function renderOpen() {
+  $('#openFolder').textContent = folder.folder; $('#openNone').hidden = folder.files.length > 0;
+  $('#openList').replaceChildren(...folder.files.map(f => {
+    const row = el('button', { type: 'button', class: 'file' }, el('b', {}, f.name), el('span', { class: 'kind' }, t('kind.' + f.kind)), el('span', { class: 'meta' }, Math.max(1, Math.round(f.size / 1024)) + ' kB'));
+    row.onclick = () => openFolderFile(row, f.name);
+    return el('li', {}, row);
+  }));
+  $('#openCount').hidden = !folder.files.length; $('#openCount').textContent = folder.files.length;
+}
+function openDoc({ name, text, kind }) {
+  if (kind === 'edits') { show('pairs'); $('#edits').value = text; plain($('#pairsInfo'), name); $('#pairsBtn').click(); }
+  else if (kind === 'sequence') { show('scan'); $('#seq').value = text; $('#seq').oninput(); $('#scanBtn').click(); }
+  else { show('verify'); verifyFile({ name, text: async () => text }); }
+}
+const openDialog = () => { if (!$('#open').open) $('#open').showModal(); };
+const openWork = (button, work) => guarded(button, $('#openErr'), async () => { await work(); $('#open').close(); });
+async function openFolderFile(row, name) {
+  await openWork(row, async () => openDoc(await api('/api/file?name=' + encodeURIComponent(name))));
+  if (!$('#openErr').hidden) openDialog();
+}
+async function importFile(f) {
+  await openWork($('#openImport'), async () => { const text = await f.text(); openDoc({ name: f.name, text, kind: (await api('/api/kind', { name: f.name, text })).kind }); });
+  if (!$('#openErr').hidden) openDialog();
+}
+$('#openBtn').onclick = () => { clearErr($('#openErr')); openDialog(); };
+$('#openClose').onclick = () => $('#open').close();
+$('#open').onclick = e => { if (e.target === $('#open')) $('#open').close(); };
+$('#openImport').onclick = () => $('#openFile').click();
+$('#openFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importFile(f); };
+addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) { e.preventDefault(); $('#dropHint').hidden = false; } });
+addEventListener('dragleave', e => { if (!e.relatedTarget) $('#dropHint').hidden = true; });
+addEventListener('drop', e => {
+  e.preventDefault(); $('#dropHint').hidden = true;
+  const f = e.dataTransfer.files[0];
+  if (f && !e.target.closest?.('#drop')) importFile(f);
+});
+
+// about
+function fillAbout() {
+  say($('#aboutHow'), 'about.how.p', { n: model.motifs, r: model.radius });
+  say($('#aboutCredits'), 'about.credits', { lic: model.motif_source });
+  $('#sha').textContent = model.manifest_sha256;
+}
+$('#aboutBtn').onclick = () => $('#about').showModal();
+$('#aboutClose').onclick = () => $('#about').close();
+$('#about').onclick = e => { if (e.target === $('#about')) $('#about').close(); };
+
+(async () => {
+  applyLang();
+  model = await api('/api/model'); fillAbout();
+  if (model.simulation) {
+    siteTable = await api('/api/site'); sim.protein = siteTable.published.protein; pickSite(siteTable.published.site);
+    sim.initial = Object.fromEntries(siteTable.genes.map(g => [g, 0])); buildInitial(); renderSite(); renderPhases();
+  } else { $('#simOff').hidden = false; $('#simRun').disabled = true; }
+  folder = await api('/api/files'); renderOpen();
+  const pre = await api('/api/preload');
+  if (pre) openDoc(pre); else if (folder.files.length) openDialog();
+})();
+</script>
+</body>
+</html>

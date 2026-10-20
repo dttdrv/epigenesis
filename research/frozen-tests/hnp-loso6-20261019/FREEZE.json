@@ -1,0 +1,26 @@
+{
+ "sealed_before_new_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "fcfe9728226ea6d3ef393326afe68fc368e0923d3ad8717e0b1ef838ef9f4fd0",
+  "scripts/common.py": "2507e1c390d52e671a30315bfc416bf35cd763c895919be4e9163732a54d3b80",
+  "scripts/ensembl.py": "8073f3e8ba49c4dd14d52510a4759fb71907efd5ba7cf45222b5799aedc6c0d5",
+  "scripts/xlsx_to_tsv.py": "4a9c2191a8107e54827d0c94b55ff7c80f93ada7d979e35804199d3ae39e1c74",
+  "scripts/build6.py": "da9a89a035d196d815f3cc9a4833139b6317ecba5e96000deb6f16d16af2b0d1",
+  "scripts/train_predict6.py": "a837920d68e1156ea9b1533402a5314c1f5b760ffce9d1f6f89f20c7f9b60b58",
+  "scripts/score6.py": "d434977db533f3216826181d2421fc88809f73100238fe6c51e740dbcfb3059e",
+  "derived/POPULATION.json": "224461daabd5c0d1c1bba10589c9efada83934784acd141d54d1727faedbdb77",
+  "derived/PREDICTIONS.npz": "ad8df72af1dd8fc35d2cf0193b42eb6427c3a40fb8f7b4636347e15b6b0d65a6",
+  "derived/TRAINING.json": "6ab19e86a946c7e8490c0eba06f4e46f8e3ef017f3b02e6ef348a12ad4909ca1",
+  "derived/inputs_lee.json": "2b075dc926029764c248d58977bd083827d8f61b0b54d35df4f96460695bbdd1",
+  "derived/inputs_mcafee.json": "da4d394fab80390bc7bcb920bbef61282fdc2b416ca8c36f49eaf523088e5426",
+  "derived/inputs_matoba.json": "a5f9f9498bf3ed0f54946a3d60c59ea5faa37c7cd7c5579953bfa9f7564048b5",
+  "derived/inputs_gse225815.json": "3658887168858a206573c56edf7c244a75f9db68a9b4ac690b70935c0a0296df",
+  "derived/inputs_gse221384.json": "94c5b221b1965cb40fa5b8a0708d521ab6d5812b3567a8ee851f39df21a36ca1",
+  "derived/inputs_weiss.json": "ee352418d0e40953b1d829dc3887bf45e733d22281eff6b7e564f05d36f6bee0"
+ },
+ "notes": [
+  "outcome files for training studies were opened by train_predict6.py; the held-out study outcome is never opened there (asserted in target())",
+  "new-study outcomes were first computed by build6.py before sealing and used only as training targets for other folds",
+  "earlier-three folds are not blind"
+ ]
+}

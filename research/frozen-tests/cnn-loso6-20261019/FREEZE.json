@@ -1,0 +1,14 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "cf8046bdeccef2094676e4bb53b1a171d0dbc149a72c4b7ca988bc27db392da3",
+  "scripts/train_cnn.py": "14563706e8de23c39c4b23b403e406805cfc889a85148a9487834c592210c6b7",
+  "scripts/assemble.py": "523eabfdaffa5b5ed8e113651cf79a84774b9d4937b571c6254ba439aa8af6e2",
+  "scripts/score10.py": "d3d98483abe02f287734cc6352a03635ee3b11335bf4d189736d35ce5ff009e8",
+  "derived/PREDICTIONS.npz": "f5ad37196ecf033f10d6944a03304e37d4993d0c86ebd7fa50b34a1597d63aa6",
+  "derived/TRAINING.json": "58b6208b6092b130239573a771ad2f17ec008141db218d5bb7852b5208d583dc"
+ },
+ "notes": [
+  "train_cnn.py never opens the held-out study outcome (asserted in target())"
+ ]
+}

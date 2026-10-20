@@ -1,0 +1,20 @@
+{
+ "lee": {
+  "eligible": 12959,
+  "families": 4474,
+  "heldout_eligible": 6876,
+  "heldout_families": 2588
+ },
+ "mcafee": {
+  "eligible": 4743,
+  "families": 1944,
+  "heldout_eligible": 1867,
+  "heldout_families": 736
+ },
+ "matoba": {
+  "eligible": 6901,
+  "families": 109,
+  "heldout_eligible": 4055,
+  "heldout_families": 97
+ }
+}

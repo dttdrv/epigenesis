@@ -54,9 +54,9 @@ class ReleaseIdentityTests(unittest.TestCase):
             ROOT / "README.md",
             ROOT / "SPEC.md",
             ROOT / "pyproject.toml",
-            ROOT / "docs" / "RELEASE-1.6.md",
-            ROOT / "docs" / "STANDARDS.md",
-            ROOT / "docs" / "PRIOR_ART.md",
+            ROOT / "docs" / "releases" / "RELEASE-1.6.md",
+            ROOT / "docs" / "reference" / "STANDARDS.md",
+            ROOT / "docs" / "reference" / "PRIOR_ART.md",
         ]
         combined = "\n".join(
             path.read_text(encoding="utf-8")

@@ -1,0 +1,12 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "baa1d53a9f3283c6b7c170f54386cd1b90f4b2dd578d2a4dd18701ef8958fb75",
+  "scripts/predict_act.py": "5a0056c865bc6fd43ba30d075006bb6b1cd8c56c44cb8789f81c6bddadefbdd5",
+  "scripts/score9.py": "9e892b1178781f9427e1e312ceccedaa8080a2278a54b4d645fefd4e81ec9f90",
+  "derived/PREDICTIONS.npz": "bb064726833dd082a163e784acc5d2e27cd9dd6d67146ae23dab45e734085c5f"
+ },
+ "notes": [
+  "no fitting on any of the six studies"
+ ]
+}

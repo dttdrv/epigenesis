@@ -1,0 +1,38 @@
+{
+ "lee": {
+  "eligible": 12959,
+  "families": 4474,
+  "heldout_eligible": 5916,
+  "heldout_families": 2340
+ },
+ "mcafee": {
+  "eligible": 4743,
+  "families": 1944,
+  "heldout_eligible": 1682,
+  "heldout_families": 676
+ },
+ "matoba": {
+  "eligible": 6901,
+  "families": 109,
+  "heldout_eligible": 4013,
+  "heldout_families": 97
+ },
+ "gse225815": {
+  "eligible": 2399,
+  "families": 1256,
+  "heldout_eligible": 611,
+  "heldout_families": 349
+ },
+ "gse221384": {
+  "eligible": 1778,
+  "families": 1254,
+  "heldout_eligible": 748,
+  "heldout_families": 571
+ },
+ "weiss": {
+  "eligible": 11661,
+  "families": 8827,
+  "heldout_eligible": 9247,
+  "heldout_families": 6930
+ }
+}

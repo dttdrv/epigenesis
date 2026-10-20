@@ -1,0 +1,21 @@
+{
+ "sealed_before_heldout_outcome_scored": true,
+ "files": {
+  "PLAN.md": "4a50f979999e2d41b78166967d53511d3ff6e2afcccd9ebc8720cf4782460c75",
+  "scripts/common.py": "9d52aea9e47ebfdd91fac58bea5f2a8e5086fd7401a51709272457ee37f31ed8",
+  "scripts/build_inputs.py": "b4abe9a7b935d7c79d6431ed2c215e74f5930400ac12fe00922f57f13f6d4003",
+  "scripts/build_outcomes.py": "95297e3a46136e99020dfda928fde9eaa3c08527338bd0dd4f7b8aa7e30330ed",
+  "scripts/train_predict.py": "5d808f14d61443e3788318d048378bf2839fa57ae0cce640434322e569bb3775",
+  "scripts/score.py": "18597ce7f5ce51b194605991f03eb9421307ad84d55d7952fb341201da35aa66",
+  "derived/POPULATION.json": "7048573c1f2333cd1d14bd54dd7a17979ac35de6396b574ca37b577bbd110512",
+  "derived/PREDICTIONS.npz": "140576e1fad0777a171afa5b394b7cae4f50b522a2800d476e01ac34a660ee6f",
+  "derived/TRAINING.json": "0a40561b1471a5110f5f12a4072d39d78fa4ce1561c951c367514128137bb190",
+  "derived/inputs_lee.json": "f7bda46f14d3e7e5c5f1887c12cbf7948a8ea178e52f4bdd682a27d1f919f78f",
+  "derived/inputs_mcafee.json": "cc931577bd9e3e3ded8f08b26c7edf78838662abef2ae9b687881e6b2dbee95c",
+  "derived/inputs_matoba.json": "ecbf15513b270417ec25641a666b4ea3e8998e11947e5ab27f772b2d29267a44"
+ },
+ "notes": [
+  "penalty grid extended from 1e3 to 1e5 after the first training run selected the grid edge; the run used training-study outcomes only",
+  "held-out outcomes were first opened by score.py after this file was written; Lee outcomes were seen in the earlier cross-lab test"
+ ]
+}

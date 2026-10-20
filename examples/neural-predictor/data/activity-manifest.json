@@ -1,0 +1,31 @@
+{
+  "format": "epigenesis-activity-transfer-v1",
+  "status": "development passed; held-out confirmation acceptance unmet",
+  "selected_arm": "linear",
+  "context": "salomon2026-ngn2-author-a686f1d",
+  "endpoint": "ALT minus REF log2 reporter activity coefficient",
+  "insert_bases": 270,
+  "k": 5,
+  "prediction_batch": 64,
+  "ranking_budget": 10,
+  "weights_sha256": "fe43978c8322f4b01fc0a8b5bb21e18a1365d5a6ad4426a933f8dee95c79673a",
+  "source_sha256": {
+    "activity.py": "6f03a5f21fb9461bbabb454282b2825e172e8db6d88f6229727b0fd3229ca176",
+    "predictor.py": "360c671115750626c1342358eeb49bd2701bf977b2593a67108035ab71f97355",
+    "model.py": "9409e15a6c492070eaff66e4d8cfab1813d3ac5e2bb79dd0be0728577961eee0"
+  },
+  "source_candidate_sha256": "836f05aff2fc439f08bef2f3d39e74d78160f5d5d42e84dde1d8726415cbb7cb",
+  "training": {
+    "activity_observations": 30800,
+    "edits": 21781,
+    "families": 8774,
+    "activity_penalty": 0.1,
+    "transfer_penalty": 0.1,
+    "selection": "five excluded-family TRAIN folds; minimum pooled OOF MSE",
+    "activity_parameters": 1024,
+    "baseline_parameters": 512,
+    "transfer_parameters": 1
+  },
+  "development_freeze_sha256": "b544c5fd3d5a9b37a92e70ddeef526e0c47aafdcc111748aaefa785a751269f8",
+  "confirmation_freeze_sha256": "dfb8c09cfe29bef76432527dfe439d87091e7d7e682a16ad85dc144491cab386"
+}

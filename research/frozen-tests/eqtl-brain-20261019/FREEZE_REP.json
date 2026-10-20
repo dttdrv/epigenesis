@@ -1,0 +1,15 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN_REP.md": "8166753b59bb5ebfc94fad99abfcc180ce37314267d105a1206163b431b8c23b",
+  "scripts/build_rep.py": "e1c41a6cd6af4c798fff48a420ba9337a6eb483a8ebdf4b0ddcf279b6ffddba5",
+  "scripts/run_rep.py": "2500467d17958c7f32056d848f1621d6dc748f2d71aea6ae4de4b9707d7478bd",
+  "scripts/score_rep.py": "663074db01753474001e876209dcefbe91aeda98b3cacd2219509cfb528d1da9",
+  "derived/REP_PREDICTIONS.npz": "d2a2241d3561ef77f4c45265c833c785a5a976e3fee9f5445641030bcff64c6e",
+  "derived/REP_TRAINING.json": "dcb06bd679442aeb877694b8a2b733174c077577d8ca2d9b568e42ee7caac075",
+  "derived/rep_table.json": "fd9cf3651bd47310622efb2eecd2f1de370aa6fa116f577f14c4dfee73052369"
+ },
+ "notes": [
+  "run_rep.py strips beta from test rows before modelling; pip is kept only for the PIP>=0.5 subset report"
+ ]
+}

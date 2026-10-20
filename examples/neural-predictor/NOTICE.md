@@ -11,3 +11,11 @@ and the [80K-Analysis repository](https://github.com/kircherlab/80K-Analysis/tre
 The package contains Epigenesis's fitted weights and aggregate results, not
 the source measurement tables. The upstream MIT notice is retained in
 [LICENSE.Salomon](LICENSE.Salomon).
+
+The separate linear activity-transfer model uses the same study's admitted
+physical reporter activities as additional TRAIN supervision. Its development
+comparison explored a latent activity score followed by a nonlinear map,
+motivated by [MAVE-NN](https://doi.org/10.1186/s13059-022-02661-7) and
+[SQUID](https://doi.org/10.1038/s42256-024-00851-5). TRAIN selection favored the
+linear form. This is an assay-specific predictive experiment, not a reproduction
+of those methods or an inferred biochemical mechanism.

@@ -153,5 +153,5 @@ MPRAnalyze `alpha` is not the `alpha` production parameter in the separate
 
 The current test set has now been examined. A successor model needs selection
 without these outcomes and fresh evaluation data for a confirmatory claim.
-The [neural-mechanism acceptance protocol](../../docs/NEURAL_MECHANISM_ACCEPTANCE.md)
+The [neural-mechanism acceptance protocol](../../docs/research/NEURAL_MECHANISM_ACCEPTANCE.md)
 lists the additional evidence required for a developmental mechanism.

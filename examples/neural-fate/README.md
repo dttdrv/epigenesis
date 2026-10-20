@@ -112,4 +112,4 @@ The focused verification gate prints `NEURAL-FATE-EXPERIMENT-PASSED`.
 This is a deterministic, fixed-network model reproduction. It does not infer
 biological meaning from natural DNA, build neurons or synapses, simulate
 spiking, or validate a one-to-one brain. The additional requirements for a
-biological claim are in [the acceptance protocol](../../docs/NEURAL_MECHANISM_ACCEPTANCE.md).
+biological claim are in [the acceptance protocol](../../docs/research/NEURAL_MECHANISM_ACCEPTANCE.md).

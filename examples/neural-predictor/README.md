@@ -6,9 +6,65 @@ WTC11-NGN2 neuronal assay studied by [Salomon et al.](https://doi.org/10.64898/2
 Its intended use is prioritizing edits for measurement and estimating their
 direction and effect size.
 
-The fitted predictor runs now. Its joint biological acceptance requirement
-remains open: validation ranking utility improves, while prediction error is
-still above the fixed limit. Final confirmation for this cohort is unopened.
+Two fitted predictors are available. The original attention mixture below
+improves validation ranking utility but misses the prediction-error limit.
+The new [activity-transfer model](#activity-transfer-predictor) passes both
+development requirements and improves all seven held-out point comparisons.
+Its uncertainty intervals still cross zero, leaving confirmation acceptance
+unmet. The cohort's one-use confirmation is complete.
+
+## Activity-transfer predictor
+
+This model first learns how short DNA words contribute to reporter activity,
+then uses that learned direction to improve edit-effect predictions. Both fits
+use only TRAIN families; five excluded-family folds select the final transfer.
+The exported model contains 1,024 activity coefficients, the 512-coefficient
+k5 baseline and one transfer coefficient. Its weight archive is 13,106 bytes.
+Unchanged windows cancel in its linear edit difference, so it uses at most a
+nine-base neighborhood around the edit.
+
+Use the same environment and three-field pair format described below:
+
+```sh
+python examples/neural-predictor/activity.py \
+  --input examples/neural-predictor/edits.json --output /tmp/activity-predictions.json
+```
+
+To choose ten experiments, supply a JSON object mapping every input edit ID to
+its sequence-component ID:
+
+```sh
+python examples/neural-predictor/activity.py --input my-edits.json --families my-families.json \
+  --output /tmp/activity-selection.json
+```
+
+Each component should group overlapping or identical/RC constructs, rather than
+using edit IDs as artificial independent families. The command chooses the
+largest absolute predicted effect within each family, then ten families; exact
+ties use lexical edit IDs. At least ten families are required. Output includes
+the predicted direction, signed effect, baseline and activity correction.
+Selection utility can only be measured after observing experimental outcomes.
+
+| Evaluation | Model MSE | Fixed k5 MSE | Model signed top-ten utility | Fixed k5 utility |
+|---|---:|---:|---:|---:|
+| Development: 7,390 edits / 3,029 families | 0.02852516 | 0.02862511 | 0.08842012 | 0.03510890 |
+| Confirmation: 7,372 edits / 2,938 families | 0.02895676 | 0.02899805 | 0.16957315 | 0.15278638 |
+
+All seven confirmation point gains are positive; every original bootstrap
+interval includes zero. For example, the MSE gain over k5 has interval
+[-0.00003661, 0.00012388], and the utility gain has interval [-0.23514, 0.10351].
+The fixed acceptance rule remains unmet. This is a research predictor for the
+specified reporter context; the test does not establish transfer to other
+preparations or endogenous gene expression.
+
+[Results and all seven comparisons](results/activity.json) ·
+[Exact export replay](results/activity-export.json) ·
+[Model identity](data/activity-manifest.json)
+
+The exported model reproduces all 14,762 development and confirmation predictions
+and both selection lists exactly. These implementation checks are separate from
+the statistical evidence above. The quadratic activity-map arm was evaluated
+prospectively and did not improve both development endpoints over linear transfer.
 
 ## Run
 
@@ -118,11 +174,13 @@ percentage or closeness to perfect prediction. The short calibration improves
 utility by 116.73% over k5 but has higher MSE. Both criteria must pass together.
 These are point estimates from adaptive model development, not independent
 confirmation or confidence bounds.
-The research ledger contains 300 biological fits, including failed experiments.
+At that earlier attention-mixture stage, the research ledger contained 300
+biological fits, including failed experiments. The trials below are historical;
+the current activity-transfer result and confirmation are recorded above.
 Precision sampling adds seven, the k3/k5 blend adds six, and the quadratic
 readout adds seven; packaging adds none. The
 original failed confirmation on an earlier cohort remains recorded in the
-[roadmap](../../docs/NEURAL_PREDICTOR_ROADMAP.md).
+[roadmap](../../docs/research/NEURAL_PREDICTOR_ROADMAP.md).
 
 MSE has units of squared log2 reporter effect. The mixture's RMSE is 0.16920
 log2-effect units. Its reduction in MSE relative to always predicting zero,
@@ -167,7 +225,7 @@ calibration give alpha 0.42450904. Its MSE is 0.02862093, 0.01459% below k5,
 but utility falls to 0.00342057, below the random comparator. Both original
 criteria remain required, so this trial closes without nomination or a
 replacement of the bundled weights. Independent replay matches all 109,300
-saved values and verifies the seven-fit accounting. Confirmation stays unopened.
+saved values and verifies the seven-fit accounting. This trial left confirmation unopened.
 
 A later fixed trial combines k3 λ=0.01 with k5 λ=0.1. Five fresh k3 complement
 fits and one scalar fit use the original excluded-family TRAIN folds; the
@@ -175,8 +233,8 @@ existing full-TRAIN coefficients are reused. The learned k3 weight is
 0.3699603138. Validation MSE is 0.0286300007 and signed utility is −0.0363062730,
 so both original gates fail. This six-fit trial closes without nomination or a
 change to the bundled predictor. Choosing k3 after observing its earlier
-validation utility makes the trial adaptive development. Confirmation remains
-unopened.
+validation utility makes the trial adaptive development. This trial left
+confirmation unopened.
 
 The quadratic readout adds 32 parameters to the Interlace scorer and uses the
 original 1024-update recipe in six fits, followed by one TRAIN-only scalar
@@ -201,7 +259,7 @@ weak and uneven incremental alignment with those measurements; the long and
 short uncalibrated corrections worsen pooled MSE in all three columns. These
 count contrasts differ from the original pooled BCalm targets, so the audit
 does not replace the validation results above. The
-[roadmap](../../docs/NEURAL_PREDICTOR_ROADMAP.md) records coverage and comparisons.
+[roadmap](../../docs/research/NEURAL_PREDICTOR_ROADMAP.md) records coverage and comparisons.
 
 ## Verification and scope
 
@@ -220,7 +278,7 @@ Run the independent contract tests with the predictor dependencies installed:
 python -m unittest discover -s examples/neural-predictor -p 'test_*.py' -v
 ```
 
-The [results directory](results) includes aggregate validation values, independent
+The [results directory](results/) includes aggregate validation values, independent
 mixture and uncertainty review receipts, and the inference-export check.
 The receipts identify the original local experiments; they are evidence records,
 not a substitute for reproducing their training and assay intake. This package

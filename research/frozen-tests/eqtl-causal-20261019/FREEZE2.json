@@ -1,0 +1,16 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN2.md": "c26e63560a116a5247b72ff6edda60176dd39475c443fc248257b12243523616",
+  "scripts/peaks_cs.py": "6627ce05f07552a96ff3cf415c97b4acdb3af12fc092415ed5f80897024c4609",
+  "scripts/run_cs2.py": "8559b4d8ab1fd3e8150a4d7f4513b8ac89e0651d6dff017651b029f170d0a631",
+  "scripts/score_cs2.py": "e1fc4de66b656e0609d776fd046fddf9d1b09dca409c9997a5891a9af46c41c5",
+  "derived/PREDICTIONS2.npz": "0cd8794c6412f3394f21ed11852ef661e8c4d7c7a154cb22313f2a634b86a0dd",
+  "derived/TRAINING2.json": "2f473b198caf0fd6cc1e12fc9eb996f61e5138886e8630b4cde8cdd797626d9b",
+  "derived/peaks_cs.npz": "9d389c69ce12a0c87ae3e5b209fff386cefb78ae8e5f2eb2ac9a35384f8f04c8",
+  "derived/cs_table.json": "1e1b0ec09e41a2159bbfb815111e05b13232906b88cd9c2f92158731c30e01dd"
+ },
+ "notes": [
+  "run_cs2.py never reads PIP of test sets; training CV top-1: B2 0.381, M4 0.388, M6 0.393, M7 0.394"
+ ]
+}

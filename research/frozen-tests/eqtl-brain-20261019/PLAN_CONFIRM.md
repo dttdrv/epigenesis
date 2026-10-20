@@ -1,0 +1,11 @@
+# Confirmation of eQTL direction in differentiating human neurons (frozen 2026-10-19, before any prediction on this set)
+
+Question: does the eQTL-direction signal seen in fetal neocortex (M4 54.7%, M5 56.6%) repeat on an independent natural-variant set from differentiating neurons?
+
+**Test set (never used in the first plan).** Jerber et al. 2021 iPSC-derived dopaminergic-neuron differentiation, eQTL Catalogue release 7 SuSiE credible sets, 20 cell-type-by-day datasets (QTD000630–QTD000659 subset listed in `scripts/build_confirm.py`), GRCh38. Same selection as before: single-base variants, PIP ≥ 0.5, gene on the same chromosome with a GENCODE v39 TSS, label = sign of beta. Pairs repeated across datasets are collapsed to one row per (variant, gene) with the highest PIP (ties: first dataset name); repeated pairs never disagree in sign. 320 unique pairs, 313 variants.
+
+**Models.** Exactly the M4, M5, B1, B2, B3 of `PLAN.md`, trained on the same 14,625 adult-brain rows with the same chromosome rule (a test pair on chromosome c uses only training rows from other chromosomes), same grid and cross-validation. No Walker or Aygun row is used for training. No change of features, grid or code path except reading the test table.
+
+**Scoring (scored once).** Sign accuracy and AUROC; 5–95% whole-gene bootstrap, 2,000 draws, PCG64 20261019. Checks (lower 5% bound > 0): C1 accuracy(M5) − 0.5; C2 accuracy(M4) − 0.5; C3 accuracy(M5) − accuracy(best of B1, B2, B3 by point value on this set); C4 accuracy(M4) − the same best baseline. Label `eqtl_direction_confirmed_in_differentiating_neurons` needs C1 and C3. C1 alone is reported as "above chance, not above the reporter head".
+
+**Limits.** With 320 pairs the 90% interval half-width is about 0.027, so a 3-point gain over a baseline cannot be resolved; C3 is deliberately strict. M5 was chosen as the stronger model after seeing the Walker result (adaptive); this set is the first test of that choice. Fine-mapped variants are shared across tissues, so adult → neuron is a transfer of shared regulatory logic, not new biology. Direction of expression is a molecular readout, not neural structure. Scorer qualified on a synthetic positive and null before scoring. No tuning or re-run after scoring.

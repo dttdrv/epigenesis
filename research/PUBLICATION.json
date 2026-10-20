@@ -1,0 +1,59 @@
+{
+  "format": "epigenesis-publication-copies-v1",
+  "date": "2026-10-20",
+  "changes": "Editorial attribution removed and paths normalized for publication. Numerical results, data, model parameters and original freeze digests are unchanged. Published copies are not byte-identical original pre-evaluation artifacts.",
+  "files": {
+    "activity-transfer-loso6-20261019/PLAN.md": {
+      "original_sha256": "baa1d53a9f3283c6b7c170f54386cd1b90f4b2dd578d2a4dd18701ef8958fb75",
+      "published_sha256": "3107efd41074cc98f1a11d70422ce1d431765e35587b84e209ca898884fe1dc0"
+    },
+    "activity-transfer-loso6-20261019/scripts/predict_act.py": {
+      "original_sha256": "5a0056c865bc6fd43ba30d075006bb6b1cd8c56c44cb8789f81c6bddadefbdd5",
+      "published_sha256": "1560b1aa32d09f97739626f8487f9c0ac89a2bdf358e4f58da6a95f0ecf043c3"
+    },
+    "context-loso6-20261019/PLAN.md": {
+      "original_sha256": "84673da7865b836a969859fce5b8158adfb89b0797ed361a5774936212f2a284",
+      "published_sha256": "b86200de8d58572431a1074a02ee4dfd91989ed39a8eafaecd0a2f96e463c6fe"
+    },
+    "context-loso6-20261019/RESULTS.md": {
+      "original_sha256": "d6e9119394a0899ce79ad7485547e2e3c648bff5aad74cae07f6a4f4941c3433",
+      "published_sha256": "4acc2acb288b5c87c22bb16ee5da0d9ff2214d50eee600f71b99d3dac63c9497"
+    },
+    "context-loso6-20261019/scripts/ctx_features.py": {
+      "original_sha256": "067ae840d65a7450d7fe2f0048e1ce14a28fd8beeef67ae5fd992126583a0fe9",
+      "published_sha256": "ecec2bd4d7f246acf414efe4fe650826de0a4d5cb6fd6e1104ea883d8ddea69b"
+    },
+    "context-loso6-20261019/scripts/train_ctx.py": {
+      "original_sha256": "3e2df3c3eab445112bd546eb09ca3e3a93e8d85139fcae03f09046bd2705443b",
+      "published_sha256": "792d0364e51f4397d054ce7f6b13e48f8bd572c36ef3e2e35ca8e3f0c5d280d0"
+    },
+    "huber-transfer-20261020/FREEZE.json": {
+      "original_sha256": "d1e366e8f534db375c1da098222a24a296e8eefb141f8e9e7680f31760c0b824",
+      "published_sha256": "34568b4a8a1a8bf11946ae9fc4d779bfb7730a5dee0bce776c03cadc40aba392"
+    },
+    "huber-transfer-20261020/ZERO_REFERENCE.json": {
+      "original_sha256": "f243c1f84fbc1cea2e3b60ea76d87fae89b628b65f4e1e32ae7d5c857a355260",
+      "published_sha256": "3dcf077022f48f824aeb0b617a2d4d1633a1343ea782118958a8118457336ff6"
+    },
+    "huber-transfer-20261020/prediction/SEAL.json": {
+      "original_sha256": "b18b3a669741c3122156910723885d3c0c8155cf0428fc2887a140e446acba52",
+      "published_sha256": "8e1993932bb927cf8c708cc5e1c68420fda355fb467a4244a0f61cedf44f5af2"
+    },
+    "huber-transfer-20261020/run.py": {
+      "original_sha256": "0d1642403bd3d285f0c533c1eff266d4aa8c9276a8ec3098c53014dd17120f76",
+      "published_sha256": "0004af2ce8992d960806548cb277a6659cde29c643b494a13cc7b4f5ffd17e19"
+    },
+    "huber-transfer-20261020/scoring/RESULT.json": {
+      "original_sha256": "360f922037d0f0cddcd9aeaead9881b5b6c5413faca7d06a6cbcea1a71df94e4",
+      "published_sha256": "be268dc1dcf7bd9f0c2ea92361f26f2bed4a92c41660a349ef04977079a2a3c3"
+    },
+    "sei-features-20261019/PLAN.md": {
+      "original_sha256": "564e487003b20dc7f06fec19eae5943260311049441748249947869575d6baec",
+      "published_sha256": "0434f87726481fd590217779d3aeaae0e899f50635c3801b8a0e14292776f9c7"
+    },
+    "sei-features-20261019/RESULTS.md": {
+      "original_sha256": "0fb5f874cff3eb9878d35d67c8fe1ddce7236c1ab7788a2c93c2ae1c0edef325",
+      "published_sha256": "11f98fb976d9d0299cb401335069cd5b1e799c6e09bcbe3ec1ed00d691fd9ac7"
+    }
+  }
+}

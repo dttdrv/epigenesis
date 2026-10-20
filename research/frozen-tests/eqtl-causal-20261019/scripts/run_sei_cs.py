@@ -1,0 +1,66 @@
+"""Sei ref/alt predictions for the unique fine-mapped eQTL variants (GRCh38, SNVs) (forward strand, no reverse-complement averaging); keeps the 40 histone-normalised sequence-class
+variant scores and the alt-minus-ref probabilities of a fixed neural/brain profile subset. outcomes are never read here."""
+import importlib.util, json, re, sys, time
+from pathlib import Path
+import numpy as np, torch
+
+HERE = Path(__file__).resolve().parent.parent.parent / 'sei-features-20261019'
+D6 = HERE.parent / 'hnp-loso6-20261019/derived'
+W = HERE / 'source/weights/model/'
+OUT = HERE / 'derived'
+STUDIES = ('lee', 'mcafee', 'matoba', 'gse225815', 'gse221384', 'weiss')
+NEURAL = re.compile(r'Neural_Progenitor|Neuronal_Progenitor|Neural_Stem|Neuroepithelial|Neuroectoderm|Neurosphere|Fetal_Brain|Germinal_Matrix|Cortical_Neuron|^Neuron|_Neuron|Astrocyte|Cortex_Prefrontal|Hippocampus|Midbrain|SK-N-SH|SH-SY5Y|ReN-VM|Brain_')
+
+targets = [l.strip() for l in open(W / 'target.names')]
+sel = np.array([i for i, t in enumerate(targets) if NEURAL.search(t.split(' | ')[0]) and 'Kidney' not in t and 'Bone_Marrow' not in t])
+proj, hist = np.load(W / 'projvec_targets.npy'), np.load(W / 'histone_inds.npy')
+print('neural profiles', len(sel), flush=True)
+
+spec = importlib.util.spec_from_file_location('sei', W / 'sei.py'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+net = mod.Sei(); sd = torch.load(W / 'sei.pth', map_location='cpu')
+net.load_state_dict({k.replace('module.model.', '').replace('module.', ''): v for k, v in sd.items()}); net.eval()
+with torch.no_grad(): net(torch.zeros(1, 4, 4096))  # builds the lazy spline matrix
+dev = 'mps'; net = net.to(dev)
+for m in net.modules():
+    if getattr(m, '_spline_tr', None) is not None: m._spline_tr = m._spline_tr.to(dev)
+
+HERE_E = HERE.parent / 'eqtl-causal-20261019'
+var = json.load(open(HERE_E / 'derived/cs_ctx4k_variants.json'))
+ctx = np.load(HERE_E / 'derived/cs_ctx4k.npy', mmap_mode='r'); assert len(ctx) == len(var)
+LUT = np.full(256, 4, np.uint8)
+for i, b in enumerate(b'ACGT'): LUT[b] = i
+EYE = np.vstack([np.eye(4, dtype=np.float32), np.zeros((1, 4), np.float32)])
+
+def alleles(i):
+    a, b = np.array(ctx[i]), np.array(ctx[i]); assert a[2048] == LUT[ord(var[i][2])]
+    b[2048] = LUT[ord(var[i][3])]
+    return a, b
+
+def classes(ref, alt):  # sei-framework utils.sc_hnorm_varianteffect
+    mid = 0.5 * ref[:, hist].sum(1) + 0.5 * alt[:, hist].sum(1)
+    r, a = ref.copy(), alt.copy()
+    r[:, hist] *= (mid / ref[:, hist].sum(1))[:, None]; a[:, hist] *= (mid / alt[:, hist].sum(1))[:, None]
+    p = lambda x: x @ proj.T / np.linalg.norm(proj, axis=1)
+    return (p(a) - p(r))[:, :40]
+
+EB = HERE.parent / 'eqtl-brain-20261019/derived'; cache = {}
+for vf, sf in (('ctx4k_variants.json', 'sei_eqtl.npz'), ('confirm_ctx4k_variants.json', 'confirm_sei.npz'), ('rep_ctx4k_variants.json', 'rep_sei.npz')):
+    cv, cz = json.load(open(EB / vf)), np.load(EB / sf); cc, cn = cz['classes'], cz['neural']
+    for j, v in enumerate(cv): cache[tuple(v)] = (cc[j], cn[j])
+N, B = len(var), 32
+cls = np.zeros((N, 40), np.float32); neu = np.zeros((N, len(sel)), np.float32)
+todo = []
+for i, v in enumerate(var):
+    if tuple(v) in cache: cls[i], neu[i] = cache[tuple(v)]
+    else: todo.append(i)
+print('cached', N - len(todo), 'to compute', len(todo), flush=True)
+t0 = time.time()
+for s in range(0, len(todo), B):
+    idx = todo[s:s + B]; pair = [alleles(i) for i in idx]
+    x = torch.from_numpy(EYE[np.stack([p[k] for p in pair for k in (0, 1)])]).permute(0, 2, 1).contiguous().to(dev)
+    with torch.no_grad(): y = net(x).float().cpu().numpy().astype(np.float64)
+    ref, alt = y[0::2], y[1::2]
+    cls[idx] = classes(ref, alt); neu[idx] = (alt - ref)[:, sel]
+    if (s // B) % 50 == 0: print(s, round(time.time() - t0), 's', flush=True)
+np.savez(HERE_E / 'derived/cs_sei.npz', classes=cls, neural=neu, profiles=np.array(targets)[sel])
+print('done', N, round(time.time() - t0), 's')

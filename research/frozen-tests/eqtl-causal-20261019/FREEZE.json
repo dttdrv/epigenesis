@@ -1,0 +1,15 @@
+{
+ "sealed_before_outcomes_scored": true,
+ "files": {
+  "PLAN.md": "d793920450b40f27d0da81dc0ee90426dfdaf31eecb3002d4ab05db0faa0fed5",
+  "scripts/build_cs.py": "0b959cd8e19c4564a32a7273edb038ad3bf46d96b3daa2a5273b05f9f269b994",
+  "scripts/run_cs.py": "c25f70abc13a22f96fbe968f1a69aaa2ea7bdb73cd18c2b31cc8c9df33a8bdf9",
+  "scripts/score_cs.py": "2861ab0a1dd8b54b6e90410025ff5cec7689752bb55dd522c20585c0627536f6",
+  "derived/PREDICTIONS.npz": "4bb5ee8c7888e52805c5e861226c2b04a682f3d6783641c6e05ca2d71ae88d7d",
+  "derived/TRAINING.json": "ccf18bcdfb0cf7f731ad503a3e154dd3a6acca7be0cd0c7ecfb378aaa60e153b",
+  "derived/cs_table.json": "1e1b0ec09e41a2159bbfb815111e05b13232906b88cd9c2f92158731c30e01dd"
+ },
+ "notes": [
+  "run_cs.py never reads PIP of test sets; training-fold CV top-1 (training data only): B2 0.381, M4 0.388, M5 0.392"
+ ]
+}
