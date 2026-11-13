@@ -58,6 +58,8 @@ def _circuit_opts(args):
         extra += ['--target', args.target]
     if getattr(args, 'signal', None) is not None:
         extra += ['--signal', args.signal]
+    if getattr(args, 'background_floor', None) is not None:
+        extra += ['--background-floor', args.background_floor]
     return extra
 
 
@@ -72,6 +74,52 @@ def scan(args):
     rc = run(*cmd)
     if rc == 0:
         print(f'\nScan output: {out / "scan.json"}')
+    return rc
+
+
+def radar(args):
+    script = EX / 'neural-v2f' / 'radar.py'
+    modes = sum([bool(args.fasta is not None), bool(args.variants is not None), bool(args.benchmark)])
+    if modes > 1:
+        p.error('radar accepts at most one of --fasta, --variants, or --benchmark')
+    out = args.output or (OUT / ('v2f-benchmark' if args.benchmark else 'v2f-radar'))
+    if out.exists() and args.output is not None:
+        sys.exit(f'{out} already exists; delete it or choose another --output.')
+    while out.exists():
+        out = out.parent / f'{out.name}-next'
+    OUT.mkdir(exist_ok=True)
+    opts = []
+    if args.circuit is not None:
+        opts += ['--circuit', args.circuit]
+    if args.protein is not None:
+        opts += ['--protein', args.protein]
+    if args.target is not None:
+        opts += ['--target', args.target]
+    if args.signal_min is not None:
+        opts += ['--signal-min', args.signal_min]
+    if args.signal_max is not None:
+        opts += ['--signal-max', args.signal_max]
+    if args.steps is not None:
+        opts += ['--steps', args.steps]
+    if getattr(args, 'background_floor', None) is not None:
+        opts += ['--background-floor', args.background_floor]
+    if args.no_sequence_models:
+        opts.append('--no-sequence-models')
+    if args.benchmark:
+        if args.shuffles is not None:
+            opts += ['--shuffles', args.shuffles]
+        return run(script, 'benchmark', *opts, '--output', out)
+    if args.variants is not None:
+        return run(script, 'variants', '--variants', args.variants, *opts, '--output', out)
+    if args.fasta is not None:
+        if args.shuffles is not None:
+            opts += ['--shuffles', args.shuffles]
+        return run(script, 'scan', '--fasta', args.fasta, *opts, '--output', out)
+    if args.shuffles is not None:
+        opts += ['--shuffles', args.shuffles]
+    rc = run(script, 'demo', '--locus', args.locus, *opts, '--output', out)
+    if rc == 0:
+        print(f'\nOpen {out / "index.html"} in your browser.')
     return rc
 
 
@@ -121,6 +169,7 @@ cc.add_argument('--locus', default='chr15:90936956-90937127')
 cc.add_argument('--target')
 cc.add_argument('--protein')
 cc.add_argument('--signal', type=float)
+cc.add_argument('--background-floor', type=float)
 cc.add_argument('--reference')
 cc.add_argument('--variant')
 cc.add_argument('--mapping', type=Path)
@@ -135,7 +184,23 @@ sc.add_argument('--circuit')
 sc.add_argument('--protein')
 sc.add_argument('--target')
 sc.add_argument('--signal', type=float)
+sc.add_argument('--background-floor', type=float)
 sc.add_argument('--output', type=Path)
+rd = sub.add_parser('radar', help='run V2F tipping-point, dual rescue, and null-control radar')
+rd.add_argument('--locus', default='chr15:90936956-90937127')
+rd.add_argument('--fasta', type=Path)
+rd.add_argument('--variants', type=Path)
+rd.add_argument('--benchmark', action='store_true')
+rd.add_argument('--circuit')
+rd.add_argument('--protein')
+rd.add_argument('--target')
+rd.add_argument('--signal-min', type=float)
+rd.add_argument('--signal-max', type=float)
+rd.add_argument('--steps', type=int)
+rd.add_argument('--shuffles', type=int)
+rd.add_argument('--background-floor', type=float)
+rd.add_argument('--no-sequence-models', action='store_true')
+rd.add_argument('--output', type=Path)
 sub.add_parser('construction', help='compile a 480-bp developmental recipe and run the CX3D + LIF assay')
 q = sub.add_parser('predict', help='score reporter DNA edits with Huber-linear (default) or Kreimer 0-72h (needs numpy)')
 q.add_argument('--input', required=True, help='JSON list of {id, reference, sequence, optional family}; uppercase ACGT, at least 5 bases per sequence (see studio/epigenesis_studio/example-edits.json)')
@@ -159,6 +224,8 @@ elif args.cmd == 'circuit':
     sys.exit(circuit(args))
 elif args.cmd == 'scan':
     sys.exit(scan(args))
+elif args.cmd == 'radar':
+    sys.exit(radar(args))
 elif args.cmd == 'construction':
     out = OUT / 'neural-construction'
     if out.exists():

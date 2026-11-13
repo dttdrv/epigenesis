@@ -101,6 +101,8 @@ def _append_circuit_opts(cmd: list[str | Path], args: argparse.Namespace) -> Non
         cmd.extend(["--target", str(args.target)])
     if getattr(args, "signal", None) is not None:
         cmd.extend(["--signal", str(args.signal)])
+    if getattr(args, "background_floor", None) is not None:
+        cmd.extend(["--background-floor", str(args.background_floor)])
 
 
 def _cmd_circuit(args: argparse.Namespace) -> int:
@@ -165,6 +167,68 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     rc = _run_py(cmd)
     if rc == 0:
         print(f"\nScan output: {out / 'scan.json'}")
+    return rc
+
+
+def _cmd_radar(args: argparse.Namespace) -> int:
+    repo = _find_repo(args.repo)
+    script = repo / "examples/neural-v2f/radar.py"
+    modes = sum([bool(args.fasta is not None), bool(args.variants is not None), bool(args.benchmark)])
+    if modes > 1:
+        print("radar accepts at most one of --fasta, --variants, or --benchmark", file=sys.stderr)
+        return 2
+
+    common: list[str | Path] = []
+    if args.circuit is not None:
+        common.extend(["--circuit", str(args.circuit)])
+    if args.protein is not None:
+        common.extend(["--protein", str(args.protein)])
+    if args.target is not None:
+        common.extend(["--target", str(args.target)])
+    if args.signal_min is not None:
+        common.extend(["--signal-min", str(args.signal_min)])
+    if args.signal_max is not None:
+        common.extend(["--signal-max", str(args.signal_max)])
+    if args.steps is not None:
+        common.extend(["--steps", str(args.steps)])
+    if getattr(args, "background_floor", None) is not None:
+        common.extend(["--background-floor", str(args.background_floor)])
+    if args.no_sequence_models:
+        common.append("--no-sequence-models")
+
+    if args.benchmark:
+        out = _resolve_out(args.output, "v2f-benchmark")
+        cmd: list[str | Path] = [script, "benchmark", *common, "--output", out]
+        if args.shuffles is not None:
+            cmd.extend(["--shuffles", str(args.shuffles)])
+        rc = _run_py(cmd)
+        if rc == 0:
+            print(f"\nV2F benchmark report: {out / 'radar_benchmark.json'}")
+        return rc
+    if args.variants is not None:
+        out = _resolve_out(args.output, "v2f-variants")
+        cmd = [script, "variants", "--variants", args.variants, *common, "--output", out]
+        rc = _run_py(cmd)
+        if rc == 0:
+            print(f"\nWet-lab candidates CSV: {out / 'wetlab_candidates.csv'}")
+        return rc
+    if args.fasta is not None:
+        out = _resolve_out(args.output, "v2f-scan")
+        cmd = [script, "scan", "--fasta", args.fasta, *common, "--output", out]
+        if args.shuffles is not None:
+            cmd.extend(["--shuffles", str(args.shuffles)])
+        rc = _run_py(cmd)
+        if rc == 0:
+            print(f"\nOpen {out / 'index.html'} in your browser.")
+        return rc
+
+    out = _resolve_out(args.output, "v2f-radar")
+    cmd = [script, "demo", "--locus", args.locus, *common, "--output", out]
+    if args.shuffles is not None:
+        cmd.extend(["--shuffles", str(args.shuffles)])
+    rc = _run_py(cmd)
+    if rc == 0:
+        print(f"\nOpen {out / 'index.html'} in your browser.")
     return rc
 
 
@@ -242,6 +306,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if args.full:
         steps.extend([
             [repo / "tests/verify.py", "neural-circuit"],
+            [repo / "tests/verify.py", "neural-v2f"],
             [repo / "tests/verify.py", "neural-construction"],
             [repo / "tests/verify.py", "contract-attacks"],
         ])
@@ -277,6 +342,7 @@ def build_parser() -> argparse.ArgumentParser:
     cc.add_argument("--target", help="regulated target gene in the chosen circuit (e.g. Nkx2.2, Olig2, Both, All, or GeneA)")
     cc.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
     cc.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
+    cc.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
     cc.add_argument("--reference", help="custom reference DNA sequence or FASTA path for pairwise comparison")
     cc.add_argument("--variant", help="custom variant DNA sequence or FASTA path (SNV, MNV, or indel)")
     cc.add_argument("--mapping", type=Path, help="optional JSON mapping of GRN gene steady state to CX3D Program fields")
@@ -291,9 +357,26 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("fasta", type=Path, help="FASTA file containing a single enhancer sequence")
     sc.add_argument("--circuit", help="circuit preset ('neural-tube', 'mutual-toggle', 'tri-lineage-switch') or JSON spec path")
     sc.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
-    sc.add_argument("--target", help="regulated target gene in the chosen circuit")
+    sc.add_argument("--target", help="regulated target gene name in the chosen circuit")
     sc.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
+    sc.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
     sc.add_argument("--output", type=Path, help="output directory")
+
+    rd = sub.add_parser("radar", help="run V2F tipping-point, dual rescue, and null-control radar for silent non-coding variants")
+    rd.add_argument("--locus", default="chr15:90936956-90937127", help="GSE188264 reference enhancer locus for demo")
+    rd.add_argument("--fasta", type=Path, help="optional FASTA enhancer to scan across full signaling regime")
+    rd.add_argument("--variants", type=Path, help="optional JSON/CSV/TSV table of targeted variants (SNVs, MNVs, indels)")
+    rd.add_argument("--benchmark", action="store_true", help="benchmark across curated GSE188264 loci + measured perturbations")
+    rd.add_argument("--circuit", help="circuit preset ('neural-tube', 'mutual-toggle', 'tri-lineage-switch') or JSON spec path")
+    rd.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID, or custom PWM JSON path")
+    rd.add_argument("--target", help="regulated target gene in the chosen circuit")
+    rd.add_argument("--signal-min", type=float, help="minimum morphogen signal S (default 0.06)")
+    rd.add_argument("--signal-max", type=float, help="maximum morphogen signal S (default 0.85)")
+    rd.add_argument("--steps", type=int, help="number of morphogen signal grid points >= 3 (default 9)")
+    rd.add_argument("--shuffles", type=int, help="dinucleotide-shuffled decoy controls per locus")
+    rd.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
+    rd.add_argument("--no-sequence-models", action="store_true", help="skip optional Siraj/Kreimer sequence predictor scoring")
+    rd.add_argument("--output", type=Path, help="output directory")
 
     pr = sub.add_parser("predict", help="score DNA edit pairs with Huber-linear (default) or Kreimer 0-72h")
     pr.add_argument("--input", type=Path, required=True, help="JSON list of {id, reference, sequence, optional family}")
@@ -319,7 +402,7 @@ def build_parser() -> argparse.ArgumentParser:
     cx.add_argument("--output", type=Path, help="output directory")
 
     ck = sub.add_parser("check", help="run self-checks (unit tests, compiler boundary, research freeze)")
-    ck.add_argument("--full", action="store_true", help="also run neural-circuit, construction, attacks, and studio checks")
+    ck.add_argument("--full", action="store_true", help="also run neural-circuit, neural-v2f, construction, attacks, and studio checks")
 
     return parser
 
@@ -334,6 +417,7 @@ def main(argv: list[str] | None = None) -> int:
         "studio": _cmd_studio,
         "circuit": _cmd_circuit,
         "scan": _cmd_scan,
+        "radar": _cmd_radar,
         "predict": _cmd_predict,
         "evidence": _cmd_evidence,
         "patterning": _cmd_patterning,

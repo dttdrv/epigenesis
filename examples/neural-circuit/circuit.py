@@ -46,6 +46,7 @@ import patterning as pat
 
 TARGET = "org.epigenesis.example.neural-circuit"
 DEFAULT_EPSILON = 1e-4
+DEFAULT_BACKGROUND_FLOOR = 2e-4
 DEFAULT_SIGNAL = 0.20
 DEFAULT_TARGET = "Nkx2.2"
 DEFAULT_CIRCUIT = "neural-tube"
@@ -309,13 +310,33 @@ def boltzmann_affinity(sequence: str, protein: str | dict = "GLI2", epsilon: flo
 boltzmann_gli_affinity = boltzmann_affinity
 
 
-def affinity_ratio(reference: str, variant: str, protein: str | dict = "GLI2", epsilon: float = DEFAULT_EPSILON) -> float:
-    """Compute thermodynamic TF affinity ratio q = Z(variant) / Z(reference) (> 0) for any PWM."""
+def _resolve_background_floor(background_floor: float | None, epsilon: float = DEFAULT_EPSILON) -> float:
+    """Resolve non-specific partition floor Z_ns (0.0 when epsilon==0 for exact Hallikas parity)."""
+    if type(epsilon) not in (int, float) or not math.isfinite(epsilon) or epsilon < 0:
+        raise ValueError("epsilon must be finite and nonnegative")
+    if background_floor is None:
+        return 0.0 if epsilon == 0.0 else DEFAULT_BACKGROUND_FLOOR
+    if not _num(background_floor) or background_floor < 0:
+        raise ValueError("background_floor must be finite and nonnegative")
+    return float(background_floor)
+
+
+def affinity_ratio(
+    reference: str,
+    variant: str,
+    protein: str | dict = "GLI2",
+    epsilon: float = DEFAULT_EPSILON,
+    background_floor: float | None = None,
+) -> float:
+    """Compute thermodynamic TF affinity ratio q = (Z(variant) + Z_ns) / (Z(reference) + Z_ns) (> 0)."""
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
     z_ref = boltzmann_affinity(reference, protein, epsilon)["partition_sum"]
     z_var = boltzmann_affinity(variant, protein, epsilon)["partition_sum"]
-    if z_ref <= 0 or z_var <= 0 or not math.isfinite(z_var / z_ref):
+    numer = z_var + eff_floor
+    denom = z_ref + eff_floor
+    if denom <= 0 or numer <= 0 or not math.isfinite(numer / denom):
         raise ValueError("affinity ratio requires positive finite partition sums")
-    return z_var / z_ref
+    return numer / denom
 
 
 def multi_tf_affinity(
@@ -323,8 +344,10 @@ def multi_tf_affinity(
     variant: str,
     motif_specs: list[str | dict] | tuple[str | dict, ...] | dict[str, str | dict],
     epsilon: float = DEFAULT_EPSILON,
+    background_floor: float | None = None,
 ) -> dict:
     """Compute simultaneous Boltzmann partition ratios across multiple TFs on the same enhancer pair."""
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
     if isinstance(motif_specs, dict):
         items = list(motif_specs.items())
     elif isinstance(motif_specs, (list, tuple)) and motif_specs:
@@ -337,13 +360,20 @@ def multi_tf_affinity(
     for label, spec in items:
         wp = boltzmann_affinity(reference, spec, epsilon)
         vp = boltzmann_affinity(variant, spec, epsilon)
-        q = vp["partition_sum"] / wp["partition_sum"]
+        denom = wp["partition_sum"] + eff_floor
+        numer = vp["partition_sum"] + eff_floor
+        q = numer / denom if denom > 0 else float("nan")
         if not math.isfinite(q) or q <= 0:
             raise ValueError(f"invalid affinity ratio for {label}")
         ratios[label] = q
         wt_parts[label] = wp
         var_parts[label] = vp
-    return {"ratios": ratios, "wt_partitions": wt_parts, "variant_partitions": var_parts}
+    return {
+        "ratios": ratios,
+        "wt_partitions": wt_parts,
+        "variant_partitions": var_parts,
+        "background_floor": eff_floor,
+    }
 
 
 def _delta_partition_single(reference: str, pos: int, alt_base: str, ratios: dict[str, list[float]], width: int) -> float:
@@ -358,6 +388,94 @@ def _delta_partition_single(reference: str, pos: int, alt_base: str, ratios: dic
             _site_weight(ref_w, ratios) + _site_weight(pat.reverse_complement(ref_w), ratios)
         )
     return delta
+
+
+_BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
+_IDX_TO_BASE = ("A", "C", "G", "T")
+
+
+def _precompute_window_weights(sequence: str, ratios: dict[str, list[float]], width: int) -> dict:
+    """Precompute per-window forward/reverse weights and base ratios for fast O(width) SNV deltas."""
+    n = len(sequence)
+    if n < width:
+        raise ValueError(f"sequence length {n} < motif width {width}")
+    seq_idx = [_BASE_TO_IDX[ch] for ch in sequence]
+    r_mat = (ratios["A"], ratios["C"], ratios["G"], ratios["T"])
+    all_pos = all(v > 0.0 for row in r_mat for v in row)
+    n_win = n - width + 1
+    wf = [0.0] * n_win
+    wr = [0.0] * n_win
+    total = 0.0
+    peak_weight = -1.0
+    r0, r1, r2, r3 = r_mat
+    for start in range(n_win):
+        fw = 1.0
+        rw = 1.0
+        for k in range(width):
+            bi = seq_idx[start + k]
+            fw *= r_mat[bi][k]
+            rw *= r_mat[3 - bi][width - 1 - k]
+        wf[start] = fw
+        wr[start] = rw
+        total += fw + rw
+        if fw > peak_weight:
+            peak_weight = fw
+        if rw > peak_weight:
+            peak_weight = rw
+    # Precompute relative multiplicative changes (r_alt / r_ref - 1.0) indexed by [ref][alt][k]
+    rel_diff = None
+    if all_pos:
+        rel_diff = [
+            [
+                [r_mat[alt][k] / r_mat[ref][k] - 1.0 for k in range(width)]
+                for alt in range(4)
+            ]
+            for ref in range(4)
+        ]
+    return {
+        "seq": sequence,
+        "seq_idx": seq_idx,
+        "r_mat": r_mat,
+        "rel_diff": rel_diff,
+        "width": width,
+        "n_win": n_win,
+        "wf": wf,
+        "wr": wr,
+        "total": total,
+        "peak_weight": peak_weight,
+        "all_pos": all_pos,
+    }
+
+
+def _fast_delta_partition_single(pre: dict, pos: int, alt_idx: int) -> float:
+    """Exact local partition-sum delta Z(alt) - Z(ref) using precomputed window weights."""
+    seq_idx = pre["seq_idx"]
+    ref_idx = seq_idx[pos]
+    if alt_idx == ref_idx:
+        return 0.0
+    rel_diff = pre["rel_diff"]
+    if rel_diff is None:
+        r_mat = pre["r_mat"]
+        ratios = {"A": r_mat[0], "C": r_mat[1], "G": r_mat[2], "T": r_mat[3]}
+        return _delta_partition_single(pre["seq"], pos, _IDX_TO_BASE[alt_idx], ratios, pre["width"])
+    width = pre["width"]
+    wf = pre["wf"]
+    wr = pre["wr"]
+    lo = pos - width + 1
+    if lo < 0:
+        lo = 0
+    hi = pre["n_win"] - 1
+    if pos < hi:
+        hi = pos
+    fwd_diff = rel_diff[ref_idx][alt_idx]
+    rev_diff = rel_diff[3 - ref_idx][3 - alt_idx]
+    wm1 = width - 1
+    delta = 0.0
+    for start in range(lo, hi + 1):
+        k = pos - start
+        delta += wf[start] * fwd_diff[k] + wr[start] * rev_diff[wm1 - k]
+    return delta
+
 
 
 def _num(value) -> bool:
@@ -1008,6 +1126,7 @@ def compile_circuit_bundle(
     *,
     protein: str | dict = "GLI2",
     epsilon: float = DEFAULT_EPSILON,
+    background_floor: float | None = None,
     output: Path,
     motif_specs: list[str | dict] | tuple[str | dict, ...] | None = None,
     circuit: str | dict | None = None,
@@ -1024,7 +1143,8 @@ def compile_circuit_bundle(
         and specs[0] in ("GLI2", "GLI3")
     )
 
-    multi = multi_tf_affinity(reference, variant, specs, epsilon)
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
+    multi = multi_tf_affinity(reference, variant, specs, epsilon, background_floor=eff_floor)
     tf_labels = [_motif_spec_label(s) for s in specs]
     q_vec = [multi["ratios"][lbl] for lbl in tf_labels]
     q = q_vec[0]
@@ -1039,6 +1159,7 @@ def compile_circuit_bundle(
         contract = {
             "format": "epigenesis.neural-circuit-pair", "version": 2,
             "protein": specs[0], "epsilon": epsilon,
+            "background_floor": eff_floor,
             "reference_length": len(reference), "variant_length": len(variant),
             "data_sha256": pat.DATA_SHA256,
         }
@@ -1055,6 +1176,7 @@ def compile_circuit_bundle(
             "protein": tf_labels[0],
             "proteins": tf_labels,
             "epsilon": epsilon,
+            "background_floor": eff_floor,
             "reference_length": len(reference), "variant_length": len(variant),
             "data_sha256": pat.DATA_SHA256,
             "jaspar_manifest_sha256": _load_jaspar_catalog()["manifest_sha256"] if jaspar_used else None,
@@ -1136,6 +1258,7 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
     version = contract.get("version")
     if version not in (2, 3):
         raise ValueError(f"unsupported circuit bundle version: {version!r}")
+    eff_floor = _resolve_background_floor(contract.get("background_floor", 0.0), contract["epsilon"])
     pair_path = directory / "pair.fasta"
     validation = validate_development_paths(directory / "source", directory / "development", source_inputs={"sequence": pair_path})
     if not validation["valid"]:
@@ -1154,7 +1277,9 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
 
     stored_q = struct.unpack("<d", tensors["affinity_ratio"])[0]
     if version == 2:
-        recomputed_q = affinity_ratio(reference, variant, contract["protein"], contract["epsilon"])
+        recomputed_q = affinity_ratio(
+            reference, variant, contract["protein"], contract["epsilon"], background_floor=eff_floor
+        )
         if not math.isclose(stored_q, recomputed_q, rel_tol=1e-12, abs_tol=1e-12):
             raise ValueError("compiled affinity ratio disagrees with partition sum")
         return {
@@ -1162,6 +1287,7 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
             "bundle_sha256": bundle["artifact_sha256"],
             "development_sha256": artifacts["development_module"]["artifact_sha256"],
             "affinity_ratio": stored_q,
+            "background_floor": eff_floor,
             "length": len(reference),
             "reference_length": len(reference),
             "variant_length": len(variant),
@@ -1186,7 +1312,9 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
     proteins = contract["proteins"]
     specs = [custom_motifs[lbl] if lbl in custom_motifs else lbl for lbl in proteins]
     stored_vec = list(struct.unpack(f"<{len(proteins)}d", tensors["affinity_ratios"]))
-    recomputed = multi_tf_affinity(reference, variant, specs, contract["epsilon"])["ratios"]
+    recomputed = multi_tf_affinity(
+        reference, variant, specs, contract["epsilon"], background_floor=eff_floor
+    )["ratios"]
     for lbl, sq in zip(proteins, stored_vec):
         if not math.isclose(sq, recomputed[lbl], rel_tol=1e-12, abs_tol=1e-12):
             raise ValueError(f"compiled affinity ratio for {lbl} disagrees with partition sum")
@@ -1198,6 +1326,7 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
         "development_sha256": artifacts["development_module"]["artifact_sha256"],
         "affinity_ratio": stored_q,
         "affinity_ratios": dict(zip(proteins, stored_vec)),
+        "background_floor": eff_floor,
         "length": len(reference),
         "reference_length": len(reference),
         "variant_length": len(variant),
@@ -1257,6 +1386,7 @@ def scan_enhancer(
     signal: float | None = None,
     protein: str | dict | Path | None = None,
     epsilon: float = DEFAULT_EPSILON,
+    background_floor: float | None = None,
     target: str | list[str] | tuple[str, ...] | None = None,
     duration: float = 40.0,
     phases: list | None = None,
@@ -1267,6 +1397,7 @@ def scan_enhancer(
     motif_model_dir: Path | None = None,
 ) -> dict:
     """Scan all 3*L single-base mutations in an enhancer for reporter-vs-circuit dissociations."""
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
     ctx = _resolve_context(circuit, protein, target, signal, roles, mechanisms)
     model = ctx["model"]
     genes = ctx["genes"]
@@ -1315,7 +1446,7 @@ def scan_enhancer(
             q_by_tf = {}
             for lbl, tbl in tf_tables.items():
                 z_mut = tbl["z_wt"] + _delta_partition_single(reference, pos, alt, tbl["ratios"], tbl["width"])
-                q_by_tf[lbl] = z_mut / tbl["z_wt"]
+                q_by_tf[lbl] = (z_mut + eff_floor) / (tbl["z_wt"] + eff_floor)
             ratio_map = {g: q_by_tf[_motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
             q_primary = q_by_tf[primary_label]
             key = tuple(round(ratio_map[g], 8) for g in bound_genes)
@@ -1368,7 +1499,8 @@ def scan_enhancer(
     return {
         "circuit": ctx["circuit_name"], "genes": genes,
         "protein": primary_label, "proteins": [lbl for lbl, _ in ctx["unique_specs"]],
-        "target": eff_target, "epsilon": epsilon, "signal": eff_signal, "duration": duration,
+        "target": eff_target, "epsilon": epsilon, "background_floor": eff_floor,
+        "signal": eff_signal, "duration": duration,
         "length": len(reference), "wt_partition": wt_info,
         "wt_partitions": {lbl: tbl["wt_part"] for lbl, tbl in tf_tables.items()},
         "wt_end_state": dict(zip(genes, wt_end)), "wt_fate": wt_fate, "wt_reporter_end": wt_rep_end,
@@ -1383,6 +1515,7 @@ def compare_variants(
     *,
     protein: str | dict | Path | None = None,
     epsilon: float = DEFAULT_EPSILON,
+    background_floor: float | None = None,
     signal: float | None = None,
     target: str | list[str] | tuple[str, ...] | None = None,
     duration: float = 40.0,
@@ -1395,6 +1528,7 @@ def compare_variants(
     compile_dir: Path | None = None,
 ) -> dict:
     """Compare any reference vs variant DNA pair (SNV, MNV, insertion, or deletion) end-to-end."""
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
     ctx = _resolve_context(circuit, protein, target, signal, roles, mechanisms)
     model = ctx["model"]
     genes = ctx["genes"]
@@ -1402,7 +1536,7 @@ def compare_variants(
     eff_target = ctx["target"]
     bindings = ctx["bindings"]
 
-    multi = multi_tf_affinity(reference, variant, dict(ctx["unique_specs"]), epsilon)
+    multi = multi_tf_affinity(reference, variant, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor)
     wt_parts = multi["wt_partitions"]
     var_parts = multi["variant_partitions"]
     q_by_tf = multi["ratios"]
@@ -1427,7 +1561,9 @@ def compare_variants(
         protocol, ratio=ratio_map, mode="reporter", target=eff_target, initial=initial,
         circuit=ctx["circuit_arg"], roles=ctx["roles"], mechanisms=ctx["mechanisms"],
     )
-    rev_multi = multi_tf_affinity(reference, reference, dict(ctx["unique_specs"]), epsilon)["ratios"]
+    rev_multi = multi_tf_affinity(
+        reference, reference, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+    )["ratios"]
     rev_ratios = {g: rev_multi[_motif_spec_label(b["protein"])] for g, b in bindings.items()}
     rev_assay = run_circuit_assay(
         protocol, ratio=rev_ratios, mode="endogenous", target=eff_target, initial=initial,
@@ -1453,7 +1589,7 @@ def compare_variants(
         motif_list = [spec for _, spec in ctx["unique_specs"]]
         receipt = compile_circuit_bundle(
             reference, variant, protein=ctx["primary_protein"], epsilon=epsilon,
-            output=compile_dir, motif_specs=motif_list, circuit=ctx["circuit_arg"],
+            background_floor=eff_floor, output=compile_dir, motif_specs=motif_list, circuit=ctx["circuit_arg"],
         )
         compiled = verify_circuit_bundle(compile_dir, receipt)
 
@@ -1467,6 +1603,7 @@ def compare_variants(
         "proteins": [lbl for lbl, _ in ctx["unique_specs"]],
         "target": eff_target,
         "epsilon": epsilon,
+        "background_floor": eff_floor,
         "protocol": protocol,
         "edit_kind": _edit_kind(reference, variant),
         "reference_length": len(reference),
@@ -1513,6 +1650,7 @@ def find_second_site_rescue(
     protein: str | dict | Path | None = "GLI2",
     epsilon: float = DEFAULT_EPSILON,
     *,
+    background_floor: float | None = None,
     signal: float | None = None,
     target: str | list[str] | tuple[str, ...] | None = None,
     duration: float = 40.0,
@@ -1523,6 +1661,7 @@ def find_second_site_rescue(
     mechanisms: dict[str, str] | None = None,
 ) -> dict | None:
     """Search single-base edits elsewhere in the enhancer that move TF affinity back toward WT and test ODE fate rescue."""
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
     ctx = _resolve_context(circuit, protein, target, signal, roles, mechanisms)
     model = ctx["model"]
     genes = ctx["genes"]
@@ -1552,7 +1691,7 @@ def find_second_site_rescue(
             if alt == base:
                 continue
             z_double = z_single + _delta_partition_single(base_mut, pos, alt, ratios, width)
-            q_double = z_double / z_ref
+            q_double = (z_double + eff_floor) / (z_ref + eff_floor)
             if q_double <= 0:
                 continue
             moves_toward_wt = (
@@ -1580,7 +1719,9 @@ def find_second_site_rescue(
 
     def _ratio_map_for_seq(seq_or_q: str | float) -> dict[str, float]:
         if ctx["multi_tf"] and isinstance(seq_or_q, str):
-            q_map = multi_tf_affinity(reference, seq_or_q, dict(ctx["unique_specs"]), epsilon)["ratios"]
+            q_map = multi_tf_affinity(
+                reference, seq_or_q, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+            )["ratios"]
             return {g: q_map[_motif_spec_label(b["protein"])] for g, b in bindings.items()}
         val = q_single if isinstance(seq_or_q, str) else float(seq_or_q)
         return {g: val for g in bindings}
@@ -1644,6 +1785,7 @@ def multi_locus_benchmark(
     target: str | list[str] | tuple[str, ...] | None = None,
     duration: float = 40.0,
     circuit: str | dict | Path | None = None,
+    background_floor: float | None = None,
     motif_model_dir: Path | None = None,
     output: Path | None = None,
 ) -> dict:
@@ -1655,6 +1797,7 @@ def multi_locus_benchmark(
     for row in rows:
         by_locus.setdefault(row.locus, []).append(row)
 
+    eff_floor = _resolve_background_floor(background_floor, DEFAULT_EPSILON)
     ctx = _resolve_context(circuit, protein, target, signal, None, None)
     results = []
     for locus in loci:
@@ -1664,7 +1807,7 @@ def multi_locus_benchmark(
         reference = locus_rows[0].reference
         scan = scan_enhancer(
             reference, signal=ctx["signal"], protein=protein, target=target,
-            duration=duration, circuit=circuit, motif_model_dir=motif_model_dir,
+            duration=duration, circuit=circuit, background_floor=eff_floor, motif_model_dir=motif_model_dir,
         )
         measured = []
         seen_seq: set[str] = set()
@@ -1674,7 +1817,7 @@ def multi_locus_benchmark(
             seen_seq.add(row.sequence)
             comp = compare_variants(
                 reference, row.sequence, protein=protein, signal=ctx["signal"],
-                target=target, duration=duration, circuit=circuit,
+                target=target, duration=duration, circuit=circuit, background_floor=eff_floor,
             )
             alpha_vals = list(row.alpha)
             measured.append({
@@ -1702,7 +1845,7 @@ def multi_locus_benchmark(
         rescue = (
             find_second_site_rescue(
                 reference, scan["cryptic_switches"][0], protein, DEFAULT_EPSILON,
-                signal=ctx["signal"], target=target, duration=duration, circuit=circuit,
+                background_floor=eff_floor, signal=ctx["signal"], target=target, duration=duration, circuit=circuit,
             )
             if scan["cryptic_switches"]
             else None
@@ -1728,6 +1871,7 @@ def multi_locus_benchmark(
         "protein": ctx["primary_label"],
         "target": ctx["target"],
         "signal": ctx["signal"],
+        "background_floor": eff_floor,
         "loci_tested": len(results),
         "total_cryptic_bifurcations": sum(r["category_counts"]["cryptic_bifurcation"] for r in results),
         "total_measured_variants": sum(r["measured_variants_tested"] for r in results),
@@ -1810,6 +1954,7 @@ def bridge_to_construction(
     *,
     protein: str | dict | Path | None = None,
     epsilon: float = DEFAULT_EPSILON,
+    background_floor: float | None = None,
     signal: float | None = None,
     target: str | list[str] | tuple[str, ...] | None = None,
     circuit: str | dict | Path | None = None,
@@ -1825,6 +1970,7 @@ def bridge_to_construction(
     import activity as lif
     import construction as cx
 
+    eff_floor = _resolve_background_floor(background_floor, epsilon)
     if isinstance(mapping, Path) or (isinstance(mapping, str) and Path(mapping).is_file()):
         mapping_obj = load_json_object(read_regular_file(Path(mapping), maximum_bytes=64 * 1024), "CX3D mapping JSON")
     else:
@@ -1832,12 +1978,12 @@ def bridge_to_construction(
 
     comparison = compare_variants(
         reference, variant, protein=protein, epsilon=epsilon,
-        signal=signal, target=target, duration=grn_duration,
+        background_floor=eff_floor, signal=signal, target=target, duration=grn_duration,
         circuit=circuit, roles=roles, mechanisms=mechanisms,
     )
     rev_state = compare_variants(
         reference, reference, protein=protein, epsilon=epsilon,
-        signal=signal, target=target, duration=grn_duration,
+        background_floor=eff_floor, signal=signal, target=target, duration=grn_duration,
         circuit=circuit, roles=roles, mechanisms=mechanisms,
     )["variant_end_state"]
 
@@ -1996,6 +2142,7 @@ def demo(
     signal: float | None = None,
     protein: str | dict | Path | None = None,
     circuit: str | dict | Path | None = None,
+    background_floor: float | None = None,
     motif_model_dir: Path | None = None,
     with_construction: bool = False,
 ) -> dict:
@@ -2007,6 +2154,7 @@ def demo(
     if reference is None:
         raise ValueError(f"unknown GSE188264 locus: {locus}")
 
+    eff_floor = _resolve_background_floor(background_floor, DEFAULT_EPSILON)
     ctx = _resolve_context(circuit, protein, target, signal, None, None)
     model = ctx["model"]
     genes = ctx["genes"]
@@ -2018,7 +2166,7 @@ def demo(
     output.mkdir()
     scan = scan_enhancer(
         reference, signal=eff_signal, protein=protein, epsilon=DEFAULT_EPSILON,
-        target=target, circuit=circuit, motif_model_dir=motif_model_dir,
+        background_floor=eff_floor, target=target, circuit=circuit, motif_model_dir=motif_model_dir,
     )
     if not scan["cryptic_switches"] and not scan["edits"]:
         raise RuntimeError(f"no edits generated for locus {locus}")
@@ -2029,7 +2177,9 @@ def demo(
     else:
         featured = max(scan["edits"], key=lambda e: (abs(e["target_delta"]), -abs(e["reporter_delta_end"]), e["id"]))
     variant = featured["variant"]
-    multi_var = multi_tf_affinity(reference, variant, dict(ctx["unique_specs"]), DEFAULT_EPSILON)
+    multi_var = multi_tf_affinity(
+        reference, variant, dict(ctx["unique_specs"]), DEFAULT_EPSILON, background_floor=eff_floor
+    )
     q_by_tf = multi_var["ratios"]
     ratio_map = {g: q_by_tf[_motif_spec_label(b["protein"])] for g, b in bindings.items()}
     wt_ratios = dict.fromkeys(bindings, 1.0)
@@ -2037,7 +2187,7 @@ def demo(
     motif_list = [spec for _, spec in ctx["unique_specs"]]
     receipt = compile_circuit_bundle(
         reference, variant, protein=ctx["primary_protein"], epsilon=DEFAULT_EPSILON,
-        output=output / "compiled", motif_specs=motif_list, circuit=ctx["circuit_arg"],
+        background_floor=eff_floor, output=output / "compiled", motif_specs=motif_list, circuit=ctx["circuit_arg"],
     )
     compiled = verify_circuit_bundle(output / "compiled", receipt)
 
@@ -2101,7 +2251,7 @@ def demo(
     if with_construction:
         construction_report = bridge_to_construction(
             reference, variant, output / "construction", protein=protein,
-            epsilon=DEFAULT_EPSILON, signal=eff_signal, target=target, circuit=circuit,
+            epsilon=DEFAULT_EPSILON, background_floor=eff_floor, signal=eff_signal, target=target, circuit=circuit,
         )
         checks.append({
             "name": "cx3d_construction_and_lif_bridge",
@@ -2111,7 +2261,7 @@ def demo(
 
     second_site = find_second_site_rescue(
         reference, featured, protein, DEFAULT_EPSILON,
-        signal=eff_signal, target=target, circuit=circuit,
+        background_floor=eff_floor, signal=eff_signal, target=target, circuit=circuit,
     )
     report = {
         "format": "epigenesis.neural-circuit-experiment/v1",
@@ -2119,6 +2269,7 @@ def demo(
         "locus": locus,
         "target": eff_target,
         "protein": ctx["primary_label"],
+        "background_floor": eff_floor,
         "scope": "computational sequence-to-circuit model; biological embryo phenotype is not established",
         "compiled": compiled,
         "featured_variant": {k: v for k, v in featured.items() if k != "variant"},
@@ -2151,6 +2302,7 @@ def _add_common_circuit_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
     subparser.add_argument("--target", help="regulated target gene name in the chosen circuit (or 'Both'/'All')")
     subparser.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
+    subparser.add_argument("--background-floor", type=float, help=f"non-specific partition floor Z_ns >= 0 (default {DEFAULT_BACKGROUND_FLOOR:g})")
 
 
 def main() -> int:
@@ -2204,8 +2356,8 @@ def main() -> int:
         if args.command == "demo":
             report = demo(
                 args.output, locus=args.locus, target=args.target, signal=args.signal,
-                protein=args.protein, circuit=args.circuit, motif_model_dir=args.motif_model_dir,
-                with_construction=args.with_construction,
+                protein=args.protein, circuit=args.circuit, background_floor=args.background_floor,
+                motif_model_dir=args.motif_model_dir, with_construction=args.with_construction,
             )
             print(json.dumps({
                 "output": str(args.output), "circuit": report["circuit"], "locus": report["locus"],
@@ -2222,7 +2374,7 @@ def main() -> int:
             seq = "".join(line.strip() for line in raw.splitlines() if not line.startswith(">")).upper()
             res = scan_enhancer(
                 seq, signal=args.signal, protein=args.protein, target=args.target,
-                circuit=args.circuit, motif_model_dir=args.motif_model_dir,
+                circuit=args.circuit, background_floor=args.background_floor, motif_model_dir=args.motif_model_dir,
             )
             args.output.mkdir()
             (args.output / "scan.json").write_text(json.dumps(res, indent=2, allow_nan=False) + "\n")
@@ -2237,8 +2389,8 @@ def main() -> int:
             comp = compare_variants(
                 _read_dna_arg(args.reference), _read_dna_arg(args.variant),
                 protein=args.protein, signal=args.signal, target=args.target,
-                circuit=args.circuit, motif_model_dir=args.motif_model_dir,
-                compile_dir=args.output / "compiled",
+                circuit=args.circuit, background_floor=args.background_floor,
+                motif_model_dir=args.motif_model_dir, compile_dir=args.output / "compiled",
             )
             (args.output / "compare.json").write_text(json.dumps(comp, indent=2, allow_nan=False) + "\n")
             print(json.dumps({k: v for k, v in comp.items() if not k.endswith("_assay")}, indent=2))
@@ -2246,14 +2398,16 @@ def main() -> int:
         if args.command == "benchmark":
             bench = multi_locus_benchmark(
                 protein=args.protein, signal=args.signal, target=args.target,
-                circuit=args.circuit, motif_model_dir=args.motif_model_dir, output=args.output,
+                circuit=args.circuit, background_floor=args.background_floor,
+                motif_model_dir=args.motif_model_dir, output=args.output,
             )
             print(json.dumps({k: v for k, v in bench.items() if k != "loci"}, indent=2))
             return 0
         res = bridge_to_construction(
             _read_dna_arg(args.reference), _read_dna_arg(args.variant), args.output,
             protein=args.protein, signal=args.signal, target=args.target,
-            circuit=args.circuit, mapping=args.mapping, dev_duration=args.duration,
+            circuit=args.circuit, background_floor=args.background_floor,
+            mapping=args.mapping, dev_duration=args.duration,
         )
         print(json.dumps({k: v for k, v in res.items() if k != "runs"}, indent=2))
         return 0 if res["all_checks_passed"] else 1

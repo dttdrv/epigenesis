@@ -365,6 +365,37 @@ class NeuralCircuitTests(unittest.TestCase):
             self.assertTrue(res["all_checks_passed"], res)
             self.assertTrue(res["checks"]["allele_rescue_matches_reference_exactly"])
 
+    def test_background_floor_damping_and_contract_tampering(self):
+        # 1) Default background_floor is 2e-4 when epsilon > 0, and 0.0 when epsilon == 0.0
+        self.assertEqual(self.cir.DEFAULT_BACKGROUND_FLOOR, 2e-4)
+        self.assertEqual(self.cir._resolve_background_floor(None, 0.0), 0.0)
+        self.assertEqual(self.cir._resolve_background_floor(None, 1e-4), 2e-4)
+        with self.assertRaises(ValueError):
+            self.cir._resolve_background_floor(-0.1, 1e-4)
+
+        # 2) Weak baseline Z_ref << Z_ns damps spurious ratio spikes on featureless DNA
+        weak_ref = "ACGT" * 8
+        weak_mut = weak_ref[:12] + "GGCCACCCA" + weak_ref[21:]
+        q_unfloored = self.cir.affinity_ratio(weak_ref, weak_mut, "GLI2", background_floor=0.0)
+        q_floored = self.cir.affinity_ratio(weak_ref, weak_mut, "GLI2")
+        self.assertGreater(q_unfloored, 5.0 * q_floored)
+
+        # 3) brainc bundle records background_floor and refuses tampering of background_floor in contract.json
+        p_pax = self.cir.load_motif_profile("MA0069.1")["consensus"]
+        ref = "ACTG" * 4 + p_pax + "TGCA" * 4
+        var = "ACTG" * 4 + p_pax[:4] + "A" + p_pax[5:] + "TGCA" * 4
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "floor_bundle"
+            receipt = self.cir.compile_circuit_bundle(ref, var, protein="MA0069.1", output=out, background_floor=5e-4)
+            verified = self.cir.verify_circuit_bundle(out, receipt)
+            self.assertAlmostEqual(verified["background_floor"], 5e-4, places=12)
+            cpath = out / "contract.json"
+            cdata = json.loads(cpath.read_text())
+            cdata["background_floor"] = 0.0
+            cpath.write_text(json.dumps(cdata))
+            with self.assertRaises(ValueError):
+                self.cir.verify_circuit_bundle(out, receipt)
+
 
 if __name__ == "__main__":
     unittest.main()
