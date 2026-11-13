@@ -171,6 +171,44 @@ def predict_rows(model: dict, coefficients: np.ndarray, rows: list[reg.Row] | li
     return pred
 
 
+def explain_rows(
+    model: dict,
+    coefficients: np.ndarray,
+    rows: list[reg.Row] | list[dict],
+    matrices: list[np.ndarray] | None = None,
+    *,
+    top_n: int = 5,
+) -> list[list[dict]]:
+    """Return top JASPAR motif contributors (by mean temporal effect magnitude) per edit row."""
+    if model.get("format") != MODEL_FORMAT or model.get("times_hours") != reg.TIMES:
+        raise ValueError("unsupported motif-temporal model format")
+    if matrices is None:
+        manifest, matrices, manifest_sha = _load_jaspar()
+        if manifest_sha != model.get("motif_manifest_sha256") or manifest["motif_ids"] != model.get("motif_ids"):
+            raise ValueError("motif manifest mismatch")
+    n_k5 = len(features.vocabulary(5))
+    m_coefs = coefficients[n_k5:, :]
+    _, md = extract_features(rows, matrices, model["motif_scale"])
+    motif_ids = model["motif_ids"]
+    mean_c = m_coefs.mean(axis=1)
+    h72_c = m_coefs[:, -1]
+    out = []
+    for idx in range(len(rows)):
+        contribs = md[idx] * mean_c
+        nz = [j for j in range(len(motif_ids)) if contribs[j] != 0.0]
+        nz.sort(key=lambda j: (-abs(float(contribs[j])), motif_ids[j]))
+        out.append([
+            {
+                "id": motif_ids[j],
+                "delta": float(md[idx, j]),
+                "effect": float(contribs[j]),
+                "h72_effect": float(md[idx, j] * h72_c[j]),
+            }
+            for j in nz[:top_n]
+        ])
+    return out
+
+
 def _fit_kmer_baseline(rows: list[reg.Row], k: int, penalties: tuple[float, ...], scale: float,
                        val_rows: list[reg.Row], sel_rows: list[reg.Row], sel_scale: float) -> tuple[dict, float]:
     sufficient = reg.moments(sel_rows, k, sel_scale)

@@ -27,9 +27,19 @@ uv tool install --editable studio --with-editable .
 epigenesis-studio
 ```
 
-Start with **Simulate** to change the GLI binding site, or **Enhancer Circuit** to scan arbitrary enhancers for cryptic fate switches. **Scan** and **Edits** score sequences with either the Siraj Huber-linear checkpoint or the **Kreimer 0–72h** neural-induction predictor; **Receipts** replays saved results. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
+Start with **Simulate** to change the GLI binding site, or **Enhancer Circuit** to scan arbitrary enhancers for cryptic fate switches, compare custom indels/MNVs, and wire downstream targets (`Nkx2.2`, `Olig2`, `Both`). **Scan** and **Edits** score sequences with either the Siraj Huber-linear checkpoint or the **Kreimer 0–72h** neural-induction predictor (showing top contributing JASPAR motifs per edit); **Receipts** replays saved results. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
 
-The offline reports below use only the standard library and bundled data; they need no installation, GPU or network. Choose an output directory that does not yet exist.
+For a single command-line entry point across Studio, circuit scans/comparisons, predictors, and checks, install the root package (`pip install .`, exposing `epigenesis`) or run [`epigenesis_cli.py`](epigenesis_cli.py) directly with standard-library Python 3.11+:
+
+```sh
+python3.11 epigenesis_cli.py circuit --benchmark
+python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta
+python3.11 epigenesis_cli.py evidence
+python3.11 epigenesis_cli.py patterning
+python3.11 epigenesis_cli.py check --full
+```
+
+Or run each experiment script directly with an explicit `--output` directory (no installation, GPU, or network required for core reports):
 
 ```sh
 python3.11 examples/neural-evidence/evidence.py demo --output /tmp/neural-evidence
@@ -102,6 +112,7 @@ These identities are recorded in [expected.json](examples/minimal-development/ex
 |---|---|---|
 | [Coding consequences](examples/coding-consequences/README.md) | Reconstructs *Sox2* edits from genomic sequence, applies the declared coding annotation and checks the resulting peptides against independent reference sequences | Gong et al. (2020) |
 | [Neural patterning](examples/neural-patterning/README.md) | Connects an *Nkx2.2* enhancer substitution and measured GLI binding profiles to a four-gene model; tests signal history, rescue and phenocopy under an explicit affinity-transfer assumption | Peterson et al. (2012); Cohen et al. (2014) |
+| [Neural circuit](examples/neural-circuit/README.md) | Scans full-length human enhancers via Boltzmann GLI partition physics into the four-gene neural-tube ODE (`Nkx2.2`, `Olig2`, `Both`), compares SNV/MNV/indel alleles, tests second-site rescue, and optionally bridges steady states into CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020) |
 | [Neural construction](examples/neural-construction/README.md) | Grows cells, neurites and contacts from one founder and a shared artificial DNA recipe; tests signal transmission and contact lesions on the developed network | Zubler et al. (2011, 2013) |
 | [Neural evidence](examples/neural-evidence/README.md) | Reconstructs 109 published CHE-1 depletion observations, traces them to workbook cells and intended DNA edits, and compares competing explanations | Traets et al. (2021) |
 | [Neural fate](examples/neural-fate/README.md) | An artificial DNA parameter recipe driving published regulatory dynamics | Balaskas et al. (2012) |

@@ -121,6 +121,33 @@ class NeuralRegulationMotifTests(unittest.TestCase):
         for i, row in enumerate(kr_pred):
             self.assertLess(np.max(np.abs(np.array(row["temporal"]) - mt_pred[i])), 1e-12)
 
+    def test_explain_rows_top_motifs_and_edge_cases(self):
+        rows = [r for r in self._synthetic_rows() if r.split == "train"]
+        model, coef = self.mt.fit(rows, 1.0)
+        # Normal GLI perturbation yields sorted non-empty top motifs capped at top_n
+        exps = self.mt.explain_rows(
+            model, coef,
+            [
+                {"reference": rows[0].reference, "sequence": rows[0].sequence},
+                {"reference": rows[0].reference, "sequence": rows[0].reference},
+            ],
+            top_n=3,
+        )
+        self.assertEqual(len(exps), 2)
+        self.assertTrue(1 <= len(exps[0]) <= 3)
+        self.assertEqual(exps[1], [])
+        mags = [abs(m["effect"]) for m in exps[0]]
+        self.assertEqual(mags, sorted(mags, reverse=True))
+
+        # Edge cases: 5-bp minimum length and unequal-length indels maintain antisymmetry
+        pair_short = {"reference": "ACGTA", "sequence": "ACGTT"}
+        pair_ins = {"reference": "ACTG" * 4, "sequence": "ACTG" * 2 + "GACCACCCA" + "ACTG" * 2}
+        pair_ins_rev = {"reference": pair_ins["sequence"], "sequence": pair_ins["reference"]}
+        p_short = self.mt.predict_rows(model, coef, [pair_short])
+        p_ins = self.mt.predict_rows(model, coef, [pair_ins, pair_ins_rev])
+        self.assertTrue(np.isfinite(p_short).all())
+        self.assertLess(np.max(np.abs(p_ins[0] + p_ins[1])), 1e-12)
+
 
 if __name__ == "__main__":
     unittest.main()

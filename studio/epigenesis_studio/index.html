@@ -287,6 +287,11 @@ dialog p { color: var(--text2); line-height: 1.55; }
 .circ-card { padding: 12px 14px; border-radius: 12px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; }
 .circ-card b { display: block; font-size: 12.5px; color: var(--text2); margin-bottom: 4px; }
 .circ-card .val { font: 600 18px/1.2 var(--mono); }
+.motif-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.motif-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 8px; background: var(--tint); font: 11.5px var(--mono); color: var(--text2); }
+.motif-tag b.up { color: var(--pos-text); }
+.motif-tag b.down { color: var(--neg-text); }
+.circ-select { height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); color: var(--text); font: 12.5px var(--mono); }
 </style>
 </head>
 <body>
@@ -381,14 +386,18 @@ dialog p { color: var(--text2); line-height: 1.55; }
         <div class="grow"><h2 data-k="circ.input"></h2><p class="sub" data-k="circ.input.help"></p></div>
         <div class="tools">
           <div class="seg" id="circProtSeg" role="group"><button type="button" data-prot="GLI2" aria-pressed="true">GLI2</button><button type="button" data-prot="GLI3" aria-pressed="false">GLI3</button></div>
+          <div class="seg" id="circTargetSeg" role="group"><button type="button" data-target="Nkx2.2" aria-pressed="true">Nkx2.2</button><button type="button" data-target="Olig2" aria-pressed="false">Olig2</button><button type="button" data-target="Both" aria-pressed="false" data-k="circ.target.both"></button></div>
           <div class="seg" id="circPresetSeg" role="group"><button type="button" data-preset="const" aria-pressed="true" data-k="sim.p.const"></button><button type="button" data-preset="primed" aria-pressed="false" data-k="sim.p.primed"></button><button type="button" data-preset="low" aria-pressed="false" data-k="sim.p.low"></button></div>
         </div>
       </div>
       <label class="field-label" for="circSeq" data-k="scan.label"></label>
       <textarea id="circSeq" rows="4" spellcheck="false" data-ph="circ.ph"></textarea>
+      <label class="field-label" for="circVarSeq" style="margin-top:10px" data-k="circ.varLabel"></label>
+      <textarea id="circVarSeq" rows="2" spellcheck="false" data-ph="circ.varPh"></textarea>
       <div class="actions">
         <button id="circRun" class="btn primary" type="button" data-k="circ.go"></button>
         <button id="circExample" class="btn" type="button" data-k="circ.example"></button>
+        <select id="circLocusSelect" class="circ-select" hidden data-label="circ.lociLabel"></select>
         <span class="grow"></span>
         <span id="circInfo" class="meta"></span>
       </div>
@@ -585,7 +594,7 @@ const dirOf = e => e < 0 ? 'down' : e > 0 ? 'up' : 'none';
 const ARROW = { up: '↑ ', down: '↓ ', none: '' };
 const TOL_DIGITS = 3;
 let model = null, scan = null, pairs = null, ver = null, dirFilter = '', currentModel = 'siraj';
-const circ = { protein: 'GLI2', preset: 'const', cat: 'all', result: null, dots: [], hover: null };
+const circ = { protein: 'GLI2', target: 'Nkx2.2', preset: 'const', cat: 'all', presets: [], result: null, dots: [], hover: null };
 const CIRC_PRESETS = { const: [[40, 0.2]], primed: [[10, 0.9], [30, 0.2]], low: [[40, 0.05]] };
 
 class Fail extends Error { constructor(key, params = {}) { super(key || params.msg); this.key = key; this.params = params; } }
@@ -750,6 +759,7 @@ const T = { en: {/*en*/
   'err.circ_multi_record': 'The FASTA has {n} records. Scan one enhancer at a time.',
   'err.circ_len': 'Enhancer sequence needs {min} to {max} bases.',
   'err.circ_protein': 'Choose GLI2 or GLI3.',
+  'err.circ_target': 'Choose Nkx2.2, Olig2 or Both.',
   'err.circ_epsilon': 'Epsilon must be between 0 and 1.',
   'err.circ_phases': 'Give 1 to {max} phases, each with a positive duration and a signal from 0 to 1.',
   'err.circ_time': 'The total duration is at most {max} model units.',
@@ -758,35 +768,40 @@ const T = { en: {/*en*/
   'model.siraj': 'Siraj SK-N-SH',
   'model.kreimer': 'Kreimer 0–72h',
   'detail.temporal': '0–72h profile',
+  'detail.topMotifs': 'Top JASPAR motif drivers',
   'nav.circuit': 'Enhancer Circuit',
   'circ.title': 'Variant-to-circuit enhancer scan',
   'circ.lead': 'Scan every single-base substitution across a whole enhancer via a Boltzmann GLI binding partition sum coupled to the four-gene neural-tube circuit, and compare against passive reporter models.',
   'circ.unavailable': 'The circuit backend (examples/neural-circuit) was not found. Install Studio from a repository checkout to enable it.',
   'circ.input': 'Enhancer & Shh signaling',
-  'circ.input.help': 'Paste a human/mouse enhancer (9–500 bases) or load the bundled Kreimer/Siraj human chr15 enhancer, then pick GLI protein and Shh signal regime.',
+  'circ.input.help': 'Paste a human/mouse enhancer (9–500 bases) or load a curated human GSE188264 enhancer, then pick GLI protein, target gene wiring, and Shh signal regime.',
+  'circ.target.both': 'Both',
   'circ.ph': 'Paste DNA enhancer sequence (9 to 500 bases) or FASTA record',
+  'circ.varLabel': 'Optional variant / indel sequence (leave blank to scan SNVs automatically)',
+  'circ.varPh': 'Optional alternate haplotype, MNV, insertion, or deletion (9 to 500 bases)',
+  'circ.lociLabel': 'Curated human enhancers',
   'circ.go': 'Scan enhancer circuit',
-  'circ.example': 'Load chr15 enhancer',
-  'circ.exampleNote': 'Loaded real human chr15:90936956-90937127 enhancer (171 bp).',
+  'circ.example': 'Load curated enhancer',
+  'circ.exampleNote': 'Loaded human enhancer {locus} ({n} bp).',
   'circ.running': 'Scanning variants and compiling brainc modules…',
   'circ.done': '{n} substitutions ({u} unique ODE solves) in {s} s',
   'circ.t.cryptic': 'Cryptic bifurcations',
   'circ.t.crypticSub': 'out of {n} variants (wt fate {f})',
   'circ.t.featured': 'Strongest cryptic switch',
-  'circ.t.featuredSub': 'Nkx2.2 Δ {d} ({amp}× vs reporter)',
+  'circ.t.featuredSub': '{g} Δ {d} ({amp}× vs reporter)',
   'circ.t.p3': 'Spatial p3 domain',
   'circ.t.p3Sub': '{w} → {m} points (of 21 Shh sites)',
   'circ.t.glir': 'GliR pulse-chase Nkx2.2',
   'circ.t.glirSub': 'activation-only would stay {a}',
   'circ.scatter.title': 'Passive reporter vs circuit bifurcation',
-  'circ.scatter.help': 'Each dot is a single-base edit. Orange dots are cryptic bifurcations: silent on a passive reporter (|Δ| < 0.02) yet flipping Nkx2.2 neural-tube fate inside the feedback circuit. Click a dot to inspect.',
+  'circ.scatter.help': 'Each dot is a single-base edit. Orange dots are cryptic bifurcations: silent on a passive reporter (|Δ| < 0.02) yet flipping neural-tube fate inside the feedback circuit.',
   'circ.traj.title': 'Featured variant Nkx2.2 & Olig2 trajectory',
   'circ.traj.featuredSub': 'Variant {id} (q = {q}, {cat}) · reversion diff {rev}',
   'circ.table.title': 'Ranked enhancer substitutions',
   'circ.cat.cryptic': 'Cryptic only',
   'circ.col.q': 'q (GLI)',
   'circ.col.rep': '|Δ Reporter|',
-  'circ.col.nkx': 'Δ Nkx2.2',
+  'circ.col.nkx': 'Δ Target',
   'circ.col.kreimer': 'Kreimer 72h',
   'circ.col.cat': 'Mechanism class',
   'circ.cat.cryptic_bifurcation': 'Cryptic bifurcation',
@@ -796,7 +811,13 @@ const T = { en: {/*en*/
   'circ.ctl.rev': 'Exact DNA reversion',
   'circ.ctl.revSub': 'max ODE drift {d} (q = 1)',
   'circ.ctl.contract': 'Compiled brainc contract',
-  'circ.ctl.contractSub': 'SHA-256 verified'
+  'circ.ctl.contractSub': 'SHA-256 verified',
+  'circ.ctl.rescue': 'Second-site epistatic check',
+  'circ.ctl.rescueHit': 'Rescues to {f} (q = {q})',
+  'circ.ctl.rescueMiss': 'Closest {f} only (q = {q})',
+  'circ.ctl.rescueNone': 'No single-site rescue elsewhere',
+  'circ.ctl.customVar': 'Custom haplotype ({kind})',
+  'circ.ctl.customVarSub': '{w} → {m} · q={q}, {cat}'
 /*end*/}, bg: {/*bg*/
   'brand.sub': 'Оценка на ДНК редакции',
   'nav.scan': 'Сканиране', 'nav.pairs': 'Редакции', 'nav.verify': 'Проверка',
@@ -956,6 +977,7 @@ const T = { en: {/*en*/
   'err.circ_multi_record': 'FASTA съдържа {n} записа. Сканирайте по един енхансър.',
   'err.circ_len': 'Енхансърът трябва да е от {min} до {max} бази.',
   'err.circ_protein': 'Изберете GLI2 или GLI3.',
+  'err.circ_target': 'Изберете Nkx2.2, Olig2 или Двата.',
   'err.circ_epsilon': 'Epsilon трябва да е между 0 и 1.',
   'err.circ_phases': 'Задайте от 1 до {max} фази, всяка с положителна продължителност и сигнал от 0 до 1.',
   'err.circ_time': 'Общата продължителност е най-много {max} единици на модела.',
@@ -964,35 +986,40 @@ const T = { en: {/*en*/
   'model.siraj': 'Siraj SK-N-SH',
   'model.kreimer': 'Kreimer 0–72 ч.',
   'detail.temporal': 'Профил 0–72 ч.',
+  'detail.topMotifs': 'Водещи JASPAR мотиви',
   'nav.circuit': 'Енхансърен контур',
   'circ.title': 'Сканиране на енхансър към контур',
   'circ.lead': 'Сканирайте всяка единична замяна в цял енхансър чрез сумата на Болцман за свързване на GLI, свързана с четиригенния контур на невралната тръба, и сравнете с пасивни репортери.',
   'circ.unavailable': 'Не е намерена базата за енхансърен контур (examples/neural-circuit). Инсталирайте Studio от хранилището.',
   'circ.input': 'Енхансър и Shh сигнал',
-  'circ.input.help': 'Поставете енхансър (9–500 бази) или заредете човешкия енхансър chr15 и изберете GLI протеин и сигнален режим.',
+  'circ.input.help': 'Поставете енхансър (9–500 бази) или заредете подбран човешки енхансър от GSE188264 и изберете GLI протеин, прицелен ген и сигнален режим.',
+  'circ.target.both': 'Двата',
   'circ.ph': 'Поставете ДНК енхансър (от 9 до 500 бази) или FASTA запис',
+  'circ.varLabel': 'Незадължителен вариант / индел последователност (оставете празно за автоматично SNV сканиране)',
+  'circ.varPh': 'Незадължителен алтернативен хаплотип, MNV, вмъкване или делеция (9–500 бази)',
+  'circ.lociLabel': 'Подбрани човешки енхансъри',
   'circ.go': 'Сканирай контура',
-  'circ.example': 'Зареди енхансър chr15',
-  'circ.exampleNote': 'Зареден реален човешки енхансър chr15:90936956-90937127 (171 bp).',
+  'circ.example': 'Зареди енхансър',
+  'circ.exampleNote': 'Зареден човешки енхансър {locus} ({n} bp).',
   'circ.running': 'Сканиране на варианти и компилиране на brainc модули…',
   'circ.done': '{n} замени ({u} уникални ODE решения) за {s} с',
   'circ.t.cryptic': 'Скрити бифуркации',
   'circ.t.crypticSub': 'от {n} варианта (референтна съдба {f})',
   'circ.t.featured': 'Най-силен скрит превключвател',
-  'circ.t.featuredSub': 'Nkx2.2 Δ {d} ({amp}× спрямо репортера)',
+  'circ.t.featuredSub': '{g} Δ {d} ({amp}× спрямо репортера)',
   'circ.t.p3': 'Пространствен домейн p3',
   'circ.t.p3Sub': '{w} → {m} точки (от 21 Shh позиции)',
   'circ.t.glir': 'Импулс-проследяване GliR Nkx2.2',
   'circ.t.glirSub': 'само активация би останала {a}',
   'circ.scatter.title': 'Пасивен репортер спрямо контурна бифуркация',
-  'circ.scatter.help': 'Всяка точка е единична замяна. Оранжевите точки са скрити бифуркации: тихи в пасивен репортер (|Δ| < 0.02), но преобръщащи съдбата Nkx2.2 в контура с обратна връзка.',
+  'circ.scatter.help': 'Всяка точка е единична замяна. Оранжевите точки са скрити бифуркации: тихи в пасивен репортер (|Δ| < 0.02), но преобръщащи съдбата в контура с обратна връзка.',
   'circ.traj.title': 'Траектория на Nkx2.2 и Olig2 за избрания вариант',
   'circ.traj.featuredSub': 'Вариант {id} (q = {q}, {cat}) · разлика при връщане {rev}',
   'circ.table.title': 'Подредени замени в енхансъра',
   'circ.cat.cryptic': 'Само скрити',
   'circ.col.q': 'q (GLI)',
   'circ.col.rep': '|Δ Репортер|',
-  'circ.col.nkx': 'Δ Nkx2.2',
+  'circ.col.nkx': 'Δ Цел',
   'circ.col.kreimer': 'Kreimer 72ч',
   'circ.col.cat': 'Механизъм',
   'circ.cat.cryptic_bifurcation': 'Скрита бифуркация',
@@ -1002,7 +1029,13 @@ const T = { en: {/*en*/
   'circ.ctl.rev': 'Точно връщане на ДНК',
   'circ.ctl.revSub': 'макс. ODE отклонение {d} (q = 1)',
   'circ.ctl.contract': 'Компилиран brainc договор',
-  'circ.ctl.contractSub': 'SHA-256 проверен'
+  'circ.ctl.contractSub': 'SHA-256 проверен',
+  'circ.ctl.rescue': 'Проверка за втора компенсаторна мутация',
+  'circ.ctl.rescueHit': 'Възстановява {f} (q = {q})',
+  'circ.ctl.rescueMiss': 'Най-близо {f} (q = {q})',
+  'circ.ctl.rescueNone': 'Няма единично спасяване другаде',
+  'circ.ctl.customVar': 'Потребителски хаплотип ({kind})',
+  'circ.ctl.customVarSub': '{w} → {m} · q={q}, {cat}'
 /*end*/} };
 
 let lang = /^bg/i.test(navigator.language) ? 'bg' : 'en';
@@ -1406,6 +1439,12 @@ function renderDetail() {
     }));
     partsCol.append(el('span', { class: 'd-label', style: 'margin-top:12px' }, t('detail.temporal')), strip);
   }
+  if (Array.isArray(row.top_motifs) && row.top_motifs.length) {
+    const tags = el('div', { class: 'motif-tags' }, ...row.top_motifs.map(m =>
+      el('span', { class: 'motif-tag' }, m.id, el('b', { class: dirOf(m.effect) }, fmt(m.effect)))
+    ));
+    partsCol.append(el('span', { class: 'd-label', style: 'margin-top:12px' }, t('detail.topMotifs')), tags);
+  }
   box.replaceChildren(
     el('div', {}, el('span', { class: 'd-label' }, t('detail.effect')), el('div', { class: 'd-big' }, `${was}${pos + 1}→${now}`),
       el('div', { class: 'd-num ' + d }, fmt(e), el('span', {}, ARROW[d] + t('dir.' + d)))),
@@ -1618,6 +1657,10 @@ document.querySelectorAll('#circProtSeg button').forEach(b => b.onclick = () => 
   circ.protein = b.dataset.prot;
   document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
 });
+document.querySelectorAll('#circTargetSeg button').forEach(b => b.onclick = () => {
+  circ.target = b.dataset.target;
+  document.querySelectorAll('#circTargetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
 document.querySelectorAll('#circPresetSeg button').forEach(b => b.onclick = () => {
   circ.preset = b.dataset.preset;
   document.querySelectorAll('#circPresetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -1627,18 +1670,36 @@ document.querySelectorAll('#circCatSeg button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#circCatSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   if (circ.result) renderCircRows();
 });
+function loadCuratedLocus(preset) {
+  $('#circSeq').value = `>${preset.locus}\n${preset.sequence}`;
+  $('#circVarSeq').value = '';
+  say($('#circInfo'), 'circ.exampleNote', { locus: preset.locus, n: preset.length });
+}
+$('#circLocusSelect').onchange = () => {
+  const chosen = circ.presets.find(p => p.locus === $('#circLocusSelect').value);
+  if (chosen) loadCuratedLocus(chosen);
+};
 $('#circExample').onclick = () => guarded($('#circExample'), $('#circErr'), async () => {
   const ex = await api('/api/circuit-example');
-  $('#circSeq').value = `>${ex.locus}\n${ex.sequence}`;
+  circ.presets = Array.isArray(ex.presets) ? ex.presets : [{ locus: ex.locus, sequence: ex.sequence, length: ex.length }];
+  const sel = $('#circLocusSelect');
+  sel.replaceChildren(...circ.presets.map(p => el('option', { value: p.locus }, `${p.locus} (${p.length} bp)`)));
+  sel.value = ex.locus;
+  sel.hidden = circ.presets.length <= 1;
+  loadCuratedLocus({ locus: ex.locus, sequence: ex.sequence, length: ex.length });
   circ.protein = ex.protein || 'GLI2';
+  circ.target = ex.target || 'Nkx2.2';
   document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.prot === circ.protein)));
-  say($('#circInfo'), 'circ.exampleNote');
+  document.querySelectorAll('#circTargetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.target === circ.target)));
 });
 $('#circRun').onclick = () => guarded($('#circRun'), $('#circErr'), async () => {
   say($('#circInfo'), 'circ.running');
   try {
     const t0 = performance.now();
-    const receipt = await api('/api/score', { mode: 'circuit', sequence: $('#circSeq').value, protein: circ.protein, phases: CIRC_PRESETS[circ.preset] });
+    const payload = { mode: 'circuit', sequence: $('#circSeq').value, protein: circ.protein, target: circ.target, phases: CIRC_PRESETS[circ.preset] };
+    const varRaw = $('#circVarSeq').value.trim();
+    if (varRaw) payload.variant_sequence = varRaw;
+    const receipt = await api('/api/score', payload);
     circ.result = { receipt, seconds: (performance.now() - t0) / 1000 };
     renderCirc();
     say($('#circInfo'), 'circ.done', { n: receipt.result.edits.length, u: receipt.result.unique_affinity_solves, s: circ.result.seconds.toFixed(1) });
@@ -1649,37 +1710,55 @@ function renderCirc() {
   $('#circOut').hidden = !circ.result;
   if (!circ.result) return;
   const r = circ.result.receipt.result, f = r.featured, sp = r.spatial, pc = r.pulse_chase;
+  const tg = r.target === 'Olig2' ? 'Olig2' : 'Nkx2.2';
+  const fd = f.target_delta ?? f.nkx2_2_delta;
   const tile = (key, value, sub, cls = '') => el('div', { class: 'stat' }, el('span', { class: 'k' }, t(key)), el('b', { class: cls }, value), el('span', { class: 'sub' }, sub));
   const amp = Math.round(f.amplification_ratio);
   $('#circStats').replaceChildren(
     tile('circ.t.cryptic', String(r.category_counts.cryptic_bifurcation), t('circ.t.crypticSub', { n: r.edits.length, f: r.wt_fate }), r.category_counts.cryptic_bifurcation ? 'up' : ''),
-    tile('circ.t.featured', f.id, t('circ.t.featuredSub', { d: fmt(f.nkx2_2_delta), amp: amp >= 1000 ? '>1000' : String(amp) }), f.nkx2_2_delta < 0 ? 'down' : 'up'),
+    tile('circ.t.featured', f.id, t('circ.t.featuredSub', { g: tg, d: fmt(fd), amp: amp >= 1000 ? '>1000' : String(amp) }), fd < 0 ? 'down' : 'up'),
     tile('circ.t.p3', `${sp.p3_wt_points} → ${sp.p3_mut_points}`, t('circ.t.p3Sub', { w: sp.p3_wt_points, m: sp.p3_mut_points })),
     tile('circ.t.glir', pc.mut_competitive_nkx.toFixed(3), t('circ.t.glirSub', { a: pc.mut_activation_only_nkx.toFixed(3) }), pc.mut_competitive_nkx > 0.5 ? 'up' : '')
   );
   $('#circFeaturedSub').textContent = t('circ.traj.featuredSub', {
-    id: f.id, q: f.affinity_ratio.toPrecision(3), cat: t('circ.cat.' + f.category),
+    id: r.custom_variant ? `${r.custom_variant.edit_kind} (${r.custom_variant.variant_length} bp)` : f.id,
+    q: (r.custom_variant ? r.custom_variant.affinity_ratio : f.affinity_ratio).toPrecision(3),
+    cat: t('circ.cat.' + (r.custom_variant ? r.custom_variant.category : f.category)),
     rev: r.controls.reversion_max_difference.toExponential(0).replace('e+0', '')
   });
-  $('#circControls').replaceChildren(
+  const cards = [
     el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.rev')), el('div', { class: 'val' }, r.controls.reversion_max_difference === 0 ? 'Exact' : r.controls.reversion_max_difference.toExponential(1)), el('div', { class: 'meta' }, t('circ.ctl.revSub', { d: r.controls.reversion_max_difference.toExponential(0).replace('e+0', '') }))),
     el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.contract')), el('div', { class: 'val' }, r.compiled.variant_contract_sha256.slice(0, 12) + '…'), el('div', { class: 'meta' }, t('circ.ctl.contractSub')))
-  );
+  ];
+  const ss = r.second_site_rescue;
+  if (ss) {
+    cards.push(el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.rescue')), el('div', { class: 'val ' + (ss.fate_rescued ? 'up' : '') }, ss.id), el('div', { class: 'meta' }, t(ss.fate_rescued ? 'circ.ctl.rescueHit' : 'circ.ctl.rescueMiss', { f: ss.double_fate, q: ss.affinity_ratio.toPrecision(3) }))));
+  } else {
+    cards.push(el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.rescue')), el('div', { class: 'val' }, '–'), el('div', { class: 'meta' }, t('circ.ctl.rescueNone'))));
+  }
+  if (r.custom_variant) {
+    const cv = r.custom_variant;
+    cards.push(el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.customVar', { kind: cv.edit_kind })), el('div', { class: 'val ' + dirOf(cv.target_delta) }, fmt(cv.target_delta)), el('div', { class: 'meta' }, t('circ.ctl.customVarSub', { w: cv.wt_fate, m: cv.mut_fate, q: cv.affinity_ratio.toPrecision(3), cat: t('circ.cat.' + cv.category) }))));
+  }
+  $('#circControls').replaceChildren(...cards);
   renderCircRows(); drawCircScatter(); drawCircTraj();
 }
 
 function renderCircRows() {
   const r = circ.result.receipt.result;
   const shown = (circ.cat === 'all' ? r.edits : r.edits.filter(e => e.category === circ.cat)).slice(0, 120);
-  $('#circRows').replaceChildren(...shown.map((e, i) => el('tr', {},
-    el('td', { class: 'num rank' }, String(i + 1)),
-    el('td', { class: 'mono' }, `${e.ref}${e.pos + 1}→${e.alt}`),
-    el('td', { class: 'num mono' }, e.affinity_ratio.toPrecision(3)),
-    el('td', { class: 'num mono' }, Math.abs(e.reporter_delta_end).toFixed(4)),
-    el('td', { class: 'num mono ' + dirOf(e.nkx2_2_delta) }, fmt(e.nkx2_2_delta)),
-    el('td', { class: 'num mono ' + dirOf(e.kreimer_72h) }, fmt(e.kreimer_72h)),
-    el('td', {}, el('span', { class: 'cat-pill ' + e.category }, t('circ.cat.' + e.category)))
-  )));
+  $('#circRows').replaceChildren(...shown.map((e, i) => {
+    const td = e.target_delta ?? e.nkx2_2_delta;
+    return el('tr', {},
+      el('td', { class: 'num rank' }, String(i + 1)),
+      el('td', { class: 'mono' }, `${e.ref}${e.pos + 1}→${e.alt}`),
+      el('td', { class: 'num mono' }, e.affinity_ratio.toPrecision(3)),
+      el('td', { class: 'num mono' }, Math.abs(e.reporter_delta_end).toFixed(4)),
+      el('td', { class: 'num mono ' + dirOf(td) }, fmt(td)),
+      el('td', { class: 'num mono ' + dirOf(e.kreimer_72h) }, fmt(e.kreimer_72h)),
+      el('td', {}, el('span', { class: 'cat-pill ' + e.category }, t('circ.cat.' + e.category)))
+    );
+  }));
 }
 
 function drawCircScatter() {
@@ -1690,7 +1769,7 @@ function drawCircScatter() {
   cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
   const pad = { l: 42, r: 16, t: 14, b: 28 }, xmax = Math.max(...r.edits.map(e => Math.abs(e.reporter_delta_end)), 0.05);
-  const ymax = Math.max(...r.edits.map(e => Math.abs(e.nkx2_2_delta)), 0.1);
+  const ymax = Math.max(...r.edits.map(e => Math.abs(e.target_delta ?? e.nkx2_2_delta)), 0.1);
   const x = v => pad.l + (v / xmax) * (W - pad.l - pad.r);
   const y = v => H - pad.b - (v / ymax) * (H - pad.t - pad.b);
   const axis = css('--axis'), t3 = css('--text3'), col = { cryptic_bifurcation: css('--pos'), concordant_switch: css('--ok'), canalized_buffered: css('--neg'), neutral: css('--text3') };
@@ -1701,7 +1780,7 @@ function drawCircScatter() {
   ctx.textAlign = 'right'; ctx.fillText(ymax.toFixed(2), pad.l - 6, pad.t + 6); ctx.fillText('0', pad.l - 6, H - pad.b);
   circ.dots = [];
   for (const e of r.edits) {
-    const px = x(Math.abs(e.reporter_delta_end)), py = y(Math.abs(e.nkx2_2_delta)), feat = e.id === r.featured.id;
+    const px = x(Math.abs(e.reporter_delta_end)), py = y(Math.abs(e.target_delta ?? e.nkx2_2_delta)), feat = e.id === r.featured.id;
     circ.dots.push({ px, py, e });
     ctx.globalAlpha = e.category === 'neutral' ? 0.35 : 0.85;
     ctx.fillStyle = col[e.category] || t3;
@@ -1730,14 +1809,15 @@ $('#circScatter').onmousemove = ev => {
   for (const d of circ.dots) { const dist = Math.hypot(d.px - x, d.py - y); if (dist < bd) { bd = dist; best = d; } }
   if (!best) { tip.hidden = true; return; }
   const r = $('#circScatterWrap').getBoundingClientRect();
-  tip.hidden = false; tip.textContent = `${best.e.id}  q=${best.e.affinity_ratio.toPrecision(2)}  ΔNkx=${fmt(best.e.nkx2_2_delta)}`;
+  const td = best.e.target_delta ?? best.e.nkx2_2_delta;
+  tip.hidden = false; tip.textContent = `${best.e.id}  q=${best.e.affinity_ratio.toPrecision(2)}  Δ=${fmt(td)}`;
   tip.style.left = (ev.clientX - r.left) + 'px'; tip.style.top = (ev.clientY - r.top) + 'px';
 };
 $('#circScatter').onmouseleave = () => { $('#circTip').hidden = true; };
 $('#circCsv').onclick = () => {
   const r = circ.result.receipt.result;
-  const head = ['id', 'pos', 'ref', 'alt', 'affinity_ratio', 'reporter_delta_end', 'nkx2_2_delta', 'olig2_delta', 'wt_fate', 'mut_fate', 'amplification_ratio', 'siraj_score', 'kreimer_mean', 'kreimer_72h', 'category'];
-  save('epigenesis-circuit.csv', toCsv(head, r.edits.map(e => [e.id, e.pos + 1, e.ref, e.alt, e.affinity_ratio, e.reporter_delta_end, e.nkx2_2_delta, e.olig2_delta, e.wt_fate, e.mut_fate, e.amplification_ratio, e.siraj_score, e.kreimer_mean, e.kreimer_72h, e.category])), 'text/csv');
+  const head = ['id', 'pos', 'ref', 'alt', 'affinity_ratio', 'reporter_delta_end', 'nkx2_2_delta', 'olig2_delta', 'target_delta', 'wt_fate', 'mut_fate', 'amplification_ratio', 'siraj_score', 'kreimer_mean', 'kreimer_72h', 'category'];
+  save('epigenesis-circuit.csv', toCsv(head, r.edits.map(e => [e.id, e.pos + 1, e.ref, e.alt, e.affinity_ratio, e.reporter_delta_end, e.nkx2_2_delta, e.olig2_delta, e.target_delta ?? e.nkx2_2_delta, e.wt_fate, e.mut_fate, e.amplification_ratio, e.siraj_score, e.kreimer_mean, e.kreimer_72h, e.category])), 'text/csv');
 };
 $('#circReceipt').onclick = () => saveReceipt(circ.result.receipt);
 

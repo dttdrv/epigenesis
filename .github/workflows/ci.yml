@@ -86,6 +86,8 @@ jobs:
           python epigenesis.py predict --kreimer --input studio/epigenesis_studio/example-edits.json --output kreimer-launcher.json --budget 3
           python studio/epigenesis_studio/kreimer.py --input studio/epigenesis_studio/example-edits.json --output kreimer-direct.json --budget 3
           diff kreimer-launcher.json kreimer-direct.json
+          python epigenesis.py scan --help >/dev/null
+          python epigenesis.py circuit --benchmark --output "$RUNNER_TEMP/circuit-benchmark"
       - name: Archived measurement calculation
         run: |
           python -m unittest discover -s examples/neural-measurement -p 'test_*.py' -v

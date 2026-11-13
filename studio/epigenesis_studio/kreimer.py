@@ -73,6 +73,9 @@ def predict(rows):
     siraj_predict.validate(rows, manifest['k'])
     w_coefs = coefs[:n_k5, :]
     m_coefs = coefs[n_k5:, :]
+    motif_ids = manifest['motif_ids']
+    motif_mean_coefs = m_coefs.mean(axis=1)
+    motif_h72_coefs = m_coefs[:, -1]
     out = []
     for start in range(0, len(rows), manifest['batch']):
         batch = rows[start : start + manifest['batch']]
@@ -86,13 +89,26 @@ def predict(rows):
         total_mat = word_mat + motif_mat
         if not np.isfinite(total_mat).all():
             raise ValueError('nonfinite Kreimer predictions')
-        for row, wm, mm, tm in zip(batch, word_mat, motif_mat, total_mat, strict=True):
+        for idx, (row, wm, mm, tm) in enumerate(zip(batch, word_mat, motif_mat, total_mat, strict=True)):
+            contribs = delta[idx] * motif_mean_coefs
+            nonzero = [j for j in range(len(motif_ids)) if contribs[j] != 0.0]
+            nonzero.sort(key=lambda j: (-abs(float(contribs[j])), motif_ids[j]))
+            top_motifs = [
+                dict(
+                    id=motif_ids[j],
+                    delta=float(delta[idx, j]),
+                    effect=float(contribs[j]),
+                    h72_effect=float(delta[idx, j] * motif_h72_coefs[j]),
+                )
+                for j in nonzero[:5]
+            ]
             out.append(dict(
                 id=row['id'],
                 effect=float(tm.mean()),
                 word_effect=float(wm.mean()),
                 motif_effect=float(mm.mean()),
                 temporal=[float(v) for v in tm],
+                top_motifs=top_motifs,
             ))
     return out
 

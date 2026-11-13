@@ -19,8 +19,9 @@ Simulate needs the repository checkout (the install below is editable, so it fin
 
 The Enhancer Circuit tab connects arbitrary enhancers (9 to 500 bases) to the four-gene neural-tube ODE via [`examples/neural-circuit`](../examples/neural-circuit/README.md):
 
-1. Computes a strand-symmetric Boltzmann partition ratio (`q = Z_variant / Z_reference`) over sliding 9-mer Hallikas GLI2/GLI3 binding profiles for every single-base substitution (with Laplace pseudocount `epsilon`, default `1e-4`), then classifies each edit as a cryptic bifurcation (`|Δreporter| < 0.02` with a fate flip), concordant switch, canalized buffered, or neutral.
-2. Compiles the top cryptic switch (and exact sequence reversion) into `brainc` Development Modules, compares endogenous vs passive-reporter trajectories, checks the 21-point spatial Shh gradient P3 domain and pulse-chase competitive GliR derepression control, and displays Kreimer 0–72h and Siraj scores beside the circuit shift.
+1. Offers five curated GSE188264 human enhancer presets alongside custom FASTA/ACGT input, lets you wire the GLI ratio to **Nkx2.2**, **Olig2**, or **Both**, and optionally compare an arbitrary **custom variant sequence** (SNV, MNV, insertion, or deletion).
+2. Computes a strand-symmetric Boltzmann partition ratio (`q = Z_variant / Z_reference`) over sliding 9-mer Hallikas GLI2/GLI3 binding profiles for every single-base substitution (with Laplace pseudocount `epsilon`, default `1e-4`), then classifies each edit as a cryptic bifurcation (`|Δreporter| < 0.02` with a fate flip), concordant switch, canalized buffered, or neutral.
+3. Compiles the featured or custom variant pair (and exact sequence reversion) into `brainc` v2 Development Modules, searches for ODE-verified **second-site rescue** substitutions, compares endogenous vs passive-reporter trajectories, checks the 21-point spatial Shh gradient P3 domain and pulse-chase competitive GliR derepression control, and displays Kreimer 0–72h and Siraj scores beside the circuit shift.
 
 Requires the repository checkout; unavailable when installed standalone without `examples/`.
 
@@ -29,7 +30,7 @@ Requires the repository checkout; unavailable when installed standalone without 
 Two sequence-based predictor checkpoints are available in **Scan** and **Edits** via a model toggle:
 
 - **Siraj Huber-linear (`epigenesis-siraj-huber-linear-v1`)**: scores SK-N-SH 24-hour log2-skew reporter effect (see [the predictor README](../examples/neural-predictor/README.md)). On 16,986 internal-tuning edits its family-weighted error is 3.02% below a 5-mer baseline, while on five external neural reporter studies correlation is 0.0490 and MSE is 9.52% above predicting no effect.
-- **Kreimer 0–72h Neural Induction (`epigenesis-kreimer-motif-temporal-v1`, 1.7)**: outputs a 7-timepoint trajectory (`0, 3, 6, 12, 24, 48, 72` hours, plus its temporal mean) using 5-mer counts and 532 compressed JASPAR 2024 motifs fitted on Kreimer et al. (2022) GSE188264 train+validation families (`test MSE 0.252079` across 118 held-out families vs k5 `0.285185` and dinucleotide `0.319358`, see [`examples/neural-regulation`](../examples/neural-regulation/README.md)). Retrospective and conditional on MPRAnalyze preprocessing; not validated for endogenous loci or clinical use.
+- **Kreimer 0–72h Neural Induction (`epigenesis-kreimer-motif-temporal-v1`, 1.7)**: outputs a 7-timepoint trajectory (`0, 3, 6, 12, 24, 48, 72` hours, plus its temporal mean and top contributing JASPAR 2024 motifs per edit) using 5-mer counts and 532 compressed JASPAR 2024 motifs fitted on Kreimer et al. (2022) GSE188264 train+validation families (`test MSE 0.252079` across 118 held-out families vs k5 `0.285185` and dinucleotide `0.319358`, see [`examples/neural-regulation`](../examples/neural-regulation/README.md)). Retrospective and conditional on MPRAnalyze preprocessing; not validated for endogenous loci or clinical use.
 
 Studio uses the compiler's canonical JSON for receipts. Simulate and Enhancer Circuit compile their pairs into Development Modules; predictor Scan/Edits modes seal their outputs into receipts without passing through the Development Module pipeline.
 

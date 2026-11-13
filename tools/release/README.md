@@ -25,9 +25,12 @@ no install, GPU or network.
 python3 epigenesis.py evidence     # 109 published CHE-1 measurements traced to DNA edits
 python3 epigenesis.py patterning   # Nkx2.2 enhancer edit in a developmental model
 python3 epigenesis.py circuit      # chr15 enhancer Boltzmann GLI scan -> cryptic fate switches
+python3 epigenesis.py circuit --benchmark      # 5-locus GSE188264 benchmark & second-site rescue
+python3 epigenesis.py scan --fasta locus.fa    # scan any FASTA enhancer for cryptic switches
+python3 epigenesis.py construction # 480-bp recipe -> CX3D morphogenesis + LIF assay (needs JDK)
 ```
 
-Each writes a report under `./epigenesis-out/` and prints the HTML file to open.
+Each writes a report under `./epigenesis-out/` and prints the output file or HTML page to open.
 
 Score DNA edits with either the Siraj Huber-linear model (default) or the Kreimer 0–72h H1 neural-induction predictor (`--kreimer`):
 

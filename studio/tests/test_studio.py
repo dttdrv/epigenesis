@@ -180,7 +180,21 @@ class Http(unittest.TestCase):
         if circuit.available():
             status, ex_body = self.call('/api/circuit-example')
             self.assertEqual(status, 200)
-            self.assertEqual(json.loads(ex_body)['locus'], 'chr15:90936956-90937127')
+            ex_json = json.loads(ex_body)
+            self.assertEqual(ex_json['locus'], 'chr15:90936956-90937127')
+            self.assertGreaterEqual(len(ex_json['presets']), 5)
+            short_ref = ex_json['sequence'][:45]
+            short_var = short_ref[:15] + 'TTT' + short_ref[15:]
+            status, cbody = self.call(
+                '/api/score',
+                dict(mode='circuit', sequence=short_ref, variant_sequence=short_var,
+                     protein='GLI2', target='Olig2', phases=[[20.0, 0.2]]),
+            )
+            self.assertEqual(status, 200)
+            creceipt = json.loads(cbody)
+            self.assertEqual(creceipt['result']['target'], 'Olig2')
+            self.assertEqual(creceipt['result']['custom_variant']['edit_kind'], 'insertion')
+            self.assertTrue(json.loads(self.call('/api/verify', creceipt)[1])['ok'])
 
     def test_guards(self):
         self.assertEqual(self.call('/api/model', headers={'Host': 'evil.example'})[0], 403)
@@ -330,12 +344,18 @@ class Kreimer(unittest.TestCase):
         self.assertEqual([p['id'] for p in scanned], [p['id'] for p in expected])
         self.assertLess(max(abs(a['effect']-b['effect']) for a, b in zip(scanned, expected)), 1e-12)
         self.assertLess(max(abs(x-y) for a, b in zip(scanned, expected) for x, y in zip(a['temporal'], b['temporal'])), 1e-12)
+        for a, b in zip(scanned, expected):
+            self.assertEqual([m['id'] for m in a['top_motifs']], [m['id'] for m in b['top_motifs']])
 
     def test_kreimer_pairs_panel_and_receipt_replay(self):
         receipt = server.score(dict(mode='pairs', rows=EXAMPLE[:8], budget=2, model='kreimer'))
         self.assertEqual(receipt['model'], kreimer.MANIFEST['format'])
         self.assertEqual(len(receipt['result']['selection']), 2)
         self.assertTrue(all(len(p['temporal']) == 7 for p in receipt['result']['predictions']))
+        self.assertTrue(all('top_motifs' in p and len(p['top_motifs']) <= 5 for p in receipt['result']['predictions']))
+        first_motifs = receipt['result']['predictions'][0]['top_motifs']
+        if first_motifs:
+            self.assertEqual(set(first_motifs[0]), {'id', 'delta', 'effect', 'h72_effect'})
         self.assertTrue(server.verify(receipt)['ok'])
         copy = lambda: json.loads(json.dumps(receipt))
         def sealed(edit):
@@ -355,9 +375,15 @@ class Circuit(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         ex = circuit.example_enhancer()
+        cls.ex = ex
         cls.request = dict(mode='circuit', sequence=ex['sequence'], protein='GLI2', phases=[[40.0, 0.2]])
         cls.receipt = server.score(cls.request)
         cls.result = cls.receipt['result']
+
+    def test_example_enhancer_provides_curated_presets(self):
+        self.assertGreaterEqual(len(self.ex['presets']), 5)
+        self.assertEqual(self.ex['presets'][0]['locus'], 'chr15:90936956-90937127')
+        self.assertIn('chr18:56475717-56475888', {p['locus'] for p in self.ex['presets']})
 
     def test_chr15_scan_finds_cryptic_bifurcations_and_reverts_exactly(self):
         self.assertEqual(self.result['length'], 171)
@@ -372,6 +398,39 @@ class Circuit(unittest.TestCase):
         self.assertLess(self.result['spatial']['p3_mut_points'], self.result['spatial']['p3_wt_points'])
         self.assertGreater(self.result['pulse_chase']['mut_competitive_nkx'],
                            self.result['pulse_chase']['mut_activation_only_nkx'])
+
+    def test_circuit_supports_targets_and_second_site_rescue(self):
+        chr18 = next(p for p in self.ex['presets'] if p['locus'] == 'chr18:56475717-56475888')
+        r18 = server.score(dict(mode='circuit', sequence=chr18['sequence'], protein='GLI2', target='Nkx2.2', phases=[[40.0, 0.2]]))
+        self.assertTrue(r18['result']['second_site_rescue']['fate_rescued'])
+        self.assertTrue(server.verify(r18)['ok'])
+
+        for target in ('Olig2', 'Both'):
+            with self.subTest(target=target):
+                rec = server.score(dict(mode='circuit', sequence=chr18['sequence'][:45], protein='GLI2', target=target, phases=[[20.0, 0.2]]))
+                self.assertEqual(rec['result']['target'], target)
+                self.assertTrue(server.verify(rec)['ok'])
+                if target == 'Olig2':
+                    self.assertEqual(rec['result']['featured']['target_delta'], rec['result']['featured']['olig2_delta'])
+
+    def test_circuit_custom_indel_variant_and_receipt_replay(self):
+        base = self.ex['sequence']
+        ins = base[:58] + 'GACCACCCA' + base[58:]
+        rec = server.score(dict(mode='circuit', sequence=base, variant_sequence=ins, protein='GLI2', phases=[[40.0, 0.2]]))
+        cv = rec['result']['custom_variant']
+        self.assertEqual(cv['edit_kind'], 'insertion')
+        self.assertEqual(rec['result']['compiled']['reference_length'], len(base))
+        self.assertEqual(rec['result']['compiled']['variant_length'], len(ins))
+        self.assertTrue(server.verify(rec)['ok'])
+
+        copy = lambda: json.loads(json.dumps(rec))
+        def sealed(edit):
+            changed = copy()
+            edit(changed)
+            changed['receipt_sha256'] = server.canonical.digest({k: v for k, v in changed.items() if k != 'receipt_sha256'})
+            return [c['ok'] for c in server.verify(changed)['checks']]
+        self.assertEqual(sealed(lambda r: r['request'].update(variant_sequence=base)), [True, True, False])
+        self.assertEqual(sealed(lambda r: r['result']['custom_variant'].update(target_delta=0.5)), [True, True, False])
 
     def test_circuit_receipt_replays_and_catches_tampering(self):
         self.assertTrue(server.verify(self.receipt)['ok'])
@@ -391,6 +450,7 @@ class Circuit(unittest.TestCase):
             'circ_len': dict(sequence='ACGT'),
             'circ_multi_record': dict(sequence='>a\nGACCACCCAG\n>b\nGACCACCCAG'),
             'circ_protein': dict(protein='GLI1'),
+            'circ_target': dict(target='Pax6'),
             'circ_epsilon': dict(epsilon=1.5),
             'circ_phases': dict(phases=[[0.0, 0.2]]),
             'circ_time': dict(phases=[[circuit.MAX_TIME + 1.0, 0.2]]),

@@ -1336,6 +1336,8 @@ def wheel() -> None:
                 "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
             ):
                 assert required_module in names, required_module
+            assert "epigenesis_cli.py" in names
+            assert "epigenesis = epigenesis_cli:main" in entry_points_text
             assert "brainc = brainc.cli:main" in entry_points_text
             assert (
                 "brainc-validate-genbank = brainc.validator_insdc:main"
@@ -1357,6 +1359,10 @@ def wheel() -> None:
         subprocess.run([sys.executable, "-m", "pip", "install", "--no-index", "--no-deps", "--target", str(installed),
                         str(wheel_path)], check=True, capture_output=True, text=True)
         environment = dict(os.environ); environment["PYTHONPATH"] = str(installed)
+        cli_help = subprocess.run([sys.executable, "-m", "epigenesis_cli", "--help"], check=True,
+                                  capture_output=True, text=True, cwd=root, env=environment)
+        for subcommand in ("studio", "circuit", "scan", "predict", "check"):
+            assert subcommand in cli_help.stdout, (subcommand, cli_help.stdout)
         result = subprocess.run([sys.executable, "-m", "brainc", "--help"], check=True,
                                 capture_output=True, text=True, cwd=root, env=environment)
         for command in (
@@ -1899,6 +1905,8 @@ def sdist() -> None:
                 "examples/neural-binding/data/nkx2-2-p156l-selection.json",
                 "tests/test_neural_binding.py",
                 "tests/test_neural_binding_benchmark.py",
+                "tests/test_epigenesis_cli.py",
+                "epigenesis_cli.py",
                 "pyproject.toml",
                 "tests/verify.py",
                 "tests/data/J02482.1.fasta",
