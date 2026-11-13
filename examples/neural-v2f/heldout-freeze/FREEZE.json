@@ -1,0 +1,11 @@
+{
+  "format": "epigenesis.neural-v2f-heldout-freeze/v1",
+  "sealed_before_outcomes_scored": true,
+  "biological_acceptance": false,
+  "files": {
+    "PLAN.md": "75ad95ba7f5e418d26ecb90ceb2afcd3e2eb52fd18cf4ff4eed886c56594e9ba",
+    "predict.py": "acef11433c3bd86cd75c1bf9ee877e5dbb77c6aee1a2f3464ccaad03be9fc0cc",
+    "score.py": "db2dae79409fd97352cfaa91ae699049b1f3f5c8ee4e17d52dc537623dcdcf41",
+    "predictions.json": "298c430045403824fd316d5f081d4f5fff9acd48b16b8c61095a7819f21e1541"
+  }
+}

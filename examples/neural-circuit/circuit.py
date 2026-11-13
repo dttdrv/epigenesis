@@ -390,6 +390,94 @@ def _delta_partition_single(reference: str, pos: int, alt_base: str, ratios: dic
     return delta
 
 
+_BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
+_IDX_TO_BASE = ("A", "C", "G", "T")
+
+
+def _precompute_window_weights(sequence: str, ratios: dict[str, list[float]], width: int) -> dict:
+    """Precompute per-window forward/reverse weights and base ratios for fast O(width) SNV deltas."""
+    n = len(sequence)
+    if n < width:
+        raise ValueError(f"sequence length {n} < motif width {width}")
+    seq_idx = [_BASE_TO_IDX[ch] for ch in sequence]
+    r_mat = (ratios["A"], ratios["C"], ratios["G"], ratios["T"])
+    all_pos = all(v > 0.0 for row in r_mat for v in row)
+    n_win = n - width + 1
+    wf = [0.0] * n_win
+    wr = [0.0] * n_win
+    total = 0.0
+    peak_weight = -1.0
+    r0, r1, r2, r3 = r_mat
+    for start in range(n_win):
+        fw = 1.0
+        rw = 1.0
+        for k in range(width):
+            bi = seq_idx[start + k]
+            fw *= r_mat[bi][k]
+            rw *= r_mat[3 - bi][width - 1 - k]
+        wf[start] = fw
+        wr[start] = rw
+        total += fw + rw
+        if fw > peak_weight:
+            peak_weight = fw
+        if rw > peak_weight:
+            peak_weight = rw
+    # Precompute relative multiplicative changes (r_alt / r_ref - 1.0) indexed by [ref][alt][k]
+    rel_diff = None
+    if all_pos:
+        rel_diff = [
+            [
+                [r_mat[alt][k] / r_mat[ref][k] - 1.0 for k in range(width)]
+                for alt in range(4)
+            ]
+            for ref in range(4)
+        ]
+    return {
+        "seq": sequence,
+        "seq_idx": seq_idx,
+        "r_mat": r_mat,
+        "rel_diff": rel_diff,
+        "width": width,
+        "n_win": n_win,
+        "wf": wf,
+        "wr": wr,
+        "total": total,
+        "peak_weight": peak_weight,
+        "all_pos": all_pos,
+    }
+
+
+def _fast_delta_partition_single(pre: dict, pos: int, alt_idx: int) -> float:
+    """Exact local partition-sum delta Z(alt) - Z(ref) using precomputed window weights."""
+    seq_idx = pre["seq_idx"]
+    ref_idx = seq_idx[pos]
+    if alt_idx == ref_idx:
+        return 0.0
+    rel_diff = pre["rel_diff"]
+    if rel_diff is None:
+        r_mat = pre["r_mat"]
+        ratios = {"A": r_mat[0], "C": r_mat[1], "G": r_mat[2], "T": r_mat[3]}
+        return _delta_partition_single(pre["seq"], pos, _IDX_TO_BASE[alt_idx], ratios, pre["width"])
+    width = pre["width"]
+    wf = pre["wf"]
+    wr = pre["wr"]
+    lo = pos - width + 1
+    if lo < 0:
+        lo = 0
+    hi = pre["n_win"] - 1
+    if pos < hi:
+        hi = pos
+    fwd_diff = rel_diff[ref_idx][alt_idx]
+    rev_diff = rel_diff[3 - ref_idx][3 - alt_idx]
+    wm1 = width - 1
+    delta = 0.0
+    for start in range(lo, hi + 1):
+        k = pos - start
+        delta += wf[start] * fwd_diff[k] + wr[start] * rev_diff[wm1 - k]
+    return delta
+
+
+
 def _num(value) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
 

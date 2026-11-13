@@ -166,11 +166,16 @@ class NeuralV2FRadarTests(unittest.TestCase):
                 self.chr15, signal_min=0.06, signal_max=0.85, signal_steps=9, include_sequence_models=True
             )
             self.assertTrue(scan_seq["sequence_models_attached"])
+            self.assertEqual(scan_seq["sequence_gate_model"], "kreimer_0_72h")
+            self.assertIn("0.049", scan_seq["siraj_informational_note"])
             self.assertGreaterEqual(scan_seq["doubly_silent_count"], 1)
             c62 = next(e for e in scan_seq["cryptic_switches"] if e["id"] == "62:A>C")
             self.assertTrue(c62["doubly_silent"])
-            self.assertLess(abs(c62["siraj_score"]), 0.15)
+            self.assertIsNotNone(c62["siraj_score"])
             self.assertLess(abs(c62["kreimer_mpra_mean"]), 0.15)
+            # Confirm Siraj is informational only: find any edit with |siraj_score| >= 0.15 and |kreimer_mpra_mean| < 0.15 if present
+            for e in scan_seq["edits"]:
+                self.assertEqual(e["sequence_silent"], abs(e["kreimer_mpra_mean"]) < 0.15)
 
     def test_benchmark_radar_two_loci(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -212,6 +217,66 @@ class NeuralV2FRadarTests(unittest.TestCase):
                 n_shuffles=0, background_floor=0.0, seed=17,
             )
             self.assertGreaterEqual(null_unfloored["motif_pwm_scramble"]["scrambled_cryptic_count"], min_unfloored)
+
+    def test_default_shuffles_fast_solver_and_null_parity(self):
+        self.assertGreaterEqual(self.radar.DEFAULT_SHUFFLES, 1000)
+        ctx = self.cir._resolve_context(None, "GLI2", "Nkx2.2", 0.455, None, None)
+        bound = sorted(ctx["bindings"])
+        for sig in (0.06, 0.25, 0.70):
+            for ratio in (0.1, 1.0, 4.0):
+                rmap = {g: ratio for g in bound}
+                ex = self.cir.simulate_circuit(
+                    [(40.0, sig)], ratios=rmap, target=ctx["target"], dt=self.radar.SCAN_DT,
+                    initial=(0.0,) * len(ctx["genes"]), circuit=ctx["circuit_arg"],
+                    roles=ctx["roles"], mechanisms=ctx["mechanisms"],
+                )[-1][1:]
+                fast = self.radar._fast_end_state(
+                    ctx["model"], ctx["genes"], rmap, sig, 40.0, self.radar.SCAN_DT,
+                    (0.0,) * len(ctx["genes"]), ctx["roles"], ctx["mechanisms"],
+                )
+                for a, b in zip(ex, fast):
+                    self.assertLess(abs(a - b), 1e-6)
+
+        scan = self.radar.scan_enhancer_regime(
+            self.chr15, signal_min=0.06, signal_max=0.85, signal_steps=9, include_sequence_models=False, ctx=ctx
+        )
+        wt_base = {
+            "wt_profile": scan["wt_profile"],
+            "wt_transitions": scan["wt_transitions"],
+            "wt_primary_critical": scan["wt_critical_signal"],
+            "wt_preferred_fate": scan["wt_preferred_fate"],
+        }
+        tf_profiles = [(lbl, self.cir.load_motif_profile(spec, self.cir.DEFAULT_EPSILON)) for lbl, spec in ctx["unique_specs"]]
+        gene_lbls = [self.cir._motif_spec_label(ctx["bindings"][g]["protein"]) for g in bound]
+        decoy = self.radar.dinucleotide_shuffle(self.chr15, seed=17)
+        exact = self.radar.scan_enhancer_regime(
+            decoy, signal_min=0.06, signal_max=0.85, signal_steps=9, include_sequence_models=False, ctx=ctx
+        )
+        fast_null = self.radar._scan_decoy_null_stats(
+            decoy, ctx=ctx, signal_grid=scan["signal_grid"], wt_base=wt_base, tf_profiles=tf_profiles,
+            bound_genes=bound, gene_lbls=gene_lbls, eff_floor=self.cir.DEFAULT_BACKGROUND_FLOOR,
+            duration=40.0, reporter_threshold=self.radar.DEFAULT_REPORTER_SILENT,
+        )
+        self.assertEqual(fast_null["cryptic_count"], exact["category_counts"]["cryptic_bifurcation"])
+        self.assertEqual(fast_null["point_silent_switches"], exact["point_silent_switches"])
+
+    def test_heldout_freeze_integrity_and_results_recorded(self):
+        freeze_dir = ROOT / "examples/neural-v2f/heldout-freeze"
+        sys.path.insert(0, str(freeze_dir))
+        try:
+            import score as heldout_score
+        finally:
+            if str(freeze_dir) in sys.path:
+                sys.path.remove(str(freeze_dir))
+        freeze = heldout_score.verify_freeze()
+        self.assertTrue(freeze["sealed_before_outcomes_scored"])
+        self.assertFalse(freeze["biological_acceptance"])
+        res = json.loads((freeze_dir / "results.json").read_text(encoding="utf-8"))
+        self.assertFalse(res["biological_acceptance"])
+        self.assertTrue(res["freeze_verified"])
+        self.assertEqual(res["frozen_digests"], freeze["files"])
+        self.assertEqual(res["unseen_test_loci"], 118)
+        self.assertEqual(res["measured_test_variants_scored"], 1885)
 
 
 if __name__ == "__main__":

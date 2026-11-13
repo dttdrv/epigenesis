@@ -39,7 +39,7 @@ DEFAULT_SIGNAL_MAX = 0.85
 DEFAULT_SIGNAL_STEPS = 9
 DEFAULT_REPORTER_SILENT = 0.02
 DEFAULT_SEQUENCE_SILENT = 0.15
-DEFAULT_SHUFFLES = 10
+DEFAULT_SHUFFLES = 1000
 DEFAULT_TOP_K = 10
 BISECTION_STEPS = 12
 SCAN_DT = 0.25
@@ -150,6 +150,125 @@ def scramble_motif_pwm(protein: str | dict, seed: int = 0) -> dict:
     }
 
 
+def _fast_end_state(
+    model: dict,
+    genes: list[str],
+    ratio_map: dict[str, float],
+    signal: float,
+    duration: float,
+    dt: float,
+    initial: tuple[float, ...],
+    roles: dict[str, str] | None,
+    mechanisms: dict[str, str] | None,
+) -> tuple[float, ...]:
+    """Tight-loop adaptive RK4 matching circuit.simulate_circuit with early fixed-point convergence exit."""
+    n = len(genes)
+    prod_raw = model["production"]
+    decay_raw = model["decay"]
+    prod_vec = prod_raw if isinstance(prod_raw, list) else [float(prod_raw)] * n
+    decay_vec = decay_raw if isinstance(decay_raw, list) else [float(decay_raw)] * n
+    k_list = model.get("tf_binding", model.get("gli_binding"))
+    coop_raw = model.get("cooperativity", model.get("sites_per_repressor", 2))
+    is_mat_coop = isinstance(coop_raw, list)
+    basal_list = model["basal"]
+    input_list = model["input"]
+    rep_mat = model["repression"]
+
+    terms = []
+    for i in range(n):
+        g = genes[i]
+        raw_q = ratio_map.get(g, 1.0)
+        role = roles.get(g, "activator") if roles else "activator"
+        mech = mechanisms.get(g, "competitive") if mechanisms else "competitive"
+        q_act = raw_q if role == "activator" else (1.0 / raw_q)
+        k = k_list[i]
+        on_val = basal_list[i] * (1.0 + k) * (1.0 + q_act * input_list[i] * signal)
+        off_base = 1.0 + (q_act if mech == "competitive" else 1.0) * k
+        edges = tuple(
+            (j, float(w), float(coop_raw[i][j] if is_mat_coop else coop_raw))
+            for j, w in enumerate(rep_mat[i])
+            if w
+        )
+        terms.append((float(prod_vec[i]), float(decay_vec[i]), float(on_val), float(off_base), edges))
+
+    def _rhs(y: list[float]) -> list[float]:
+        out = [0.0] * n
+        for i in range(n):
+            v = y[i]
+            if not math.isfinite(v) or not 0.0 <= v <= 1.0:
+                raise ArithmeticError("state out of range")
+            pr, dc, on_val, off_base, edges = terms[i]
+            rep_prod = 1.0
+            for j, w, h in edges:
+                base = 1.0 + w * y[j]
+                if h == 2.0:
+                    rep_prod *= base * base
+                elif h == 1.0:
+                    rep_prod *= base
+                else:
+                    rep_prod *= base ** h
+            denom = on_val + off_base * rep_prod
+            out[i] = pr * (on_val / denom if denom > 0.0 else 0.0) - dc * v
+        return out
+
+    def _rk4_step(y: list[float], h: float, a: list[float] | None = None) -> list[float]:
+        if a is None:
+            a = _rhs(y)
+        h2 = 0.5 * h
+        b = _rhs([y[i] + h2 * a[i] for i in range(n)])
+        c = _rhs([y[i] + h2 * b[i] for i in range(n)])
+        d = _rhs([y[i] + h * c[i] for i in range(n)])
+        h6 = h / 6.0
+        res = [y[i] + h6 * (a[i] + 2.0 * b[i] + 2.0 * c[i] + d[i]) for i in range(n)]
+        for v in res:
+            if not math.isfinite(v) or not 0.0 <= v <= 1.0:
+                raise ArithmeticError("state out of range")
+        return res
+
+    tol = nc.LOCAL_ERROR_TOLERANCE
+    max_steps = nc.pat.MAX_STEPS
+    y = [float(v) for v in initial]
+    t = 0.0
+    h = min(duration, max(dt, 0.5))
+    h_max = min(duration, 2.0)
+    attempts = 0
+    rhs_y = _rhs(y)
+    while t < duration:
+        rem = duration - t
+        if h > rem:
+            h = rem
+        if t + h <= t or attempts >= max_steps:
+            raise ValueError("adaptive integration exceeds budget")
+        attempts += 1
+        try:
+            coarse = _rk4_step(y, h, rhs_y)
+            half = _rk4_step(y, 0.5 * h, rhs_y)
+            fine = _rk4_step(half, 0.5 * h)
+            err = 0.0
+            for i in range(n):
+                d = abs(fine[i] - coarse[i])
+                if d > err:
+                    err = d
+            err /= 15.0
+        except ArithmeticError:
+            h *= 0.5
+            continue
+        if err <= tol:
+            max_delta = 0.0
+            for i in range(n):
+                d = abs(fine[i] - y[i])
+                if d > max_delta:
+                    max_delta = d
+            y = fine
+            t = duration if h == rem else t + h
+            rhs_y = _rhs(y)
+            if t >= 6.0 and max_delta < 1e-8 and max(abs(r) for r in rhs_y) < 1e-7:
+                return tuple(y)
+        factor = 2.0 if err == 0.0 else min(2.0, max(0.2, 0.9 * (tol / err) ** 0.2))
+        h = min(h_max, h * factor)
+    return tuple(y)
+
+
 def _solve_at_signal(
     ctx: dict,
     ratio_map: dict[str, float],
@@ -177,16 +296,22 @@ def _solve_at_signal(
         if hit is not None:
             return hit
 
-    end_state = nc.simulate_circuit(
-        [(duration, float(signal))],
-        ratios=ratio_map,
-        target=eff_target,
-        dt=dt,
-        initial=(0.0,) * len(genes) if init_t is None else init_t,
-        circuit=ctx["circuit_arg"],
-        roles=ctx["roles"],
-        mechanisms=ctx["mechanisms"],
-    )[-1][1:]
+    init_state = (0.0,) * len(genes) if init_t is None else init_t
+    if len(genes) <= 8:
+        end_state = _fast_end_state(
+            model, genes, ratio_map, float(signal), duration, dt, init_state, ctx["roles"], ctx["mechanisms"]
+        )
+    else:
+        end_state = nc.simulate_circuit(
+            [(duration, float(signal))],
+            ratios=ratio_map,
+            target=eff_target,
+            dt=dt,
+            initial=init_state,
+            circuit=ctx["circuit_arg"],
+            roles=ctx["roles"],
+            mechanisms=ctx["mechanisms"],
+        )[-1][1:]
     fate = nc.fate_label(end_state, genes, fates=model.get("fates"))
     rep = nc.occupancy_ratios(
         model, end_state, float(signal), ratio_map, roles=ctx["roles"], mechanisms=ctx["mechanisms"]
@@ -551,23 +676,31 @@ def scan_enhancer_regime(
     for lbl, spec in ctx["unique_specs"]:
         prof = nc.load_motif_profile(spec, epsilon)
         wt_part = nc.boltzmann_affinity(reference, spec, epsilon)
-        tf_tables[lbl] = {"width": prof["width"], "ratios": prof["ratios"], "wt_part": wt_part, "z_wt": wt_part["partition_sum"]}
+        pre = nc._precompute_window_weights(reference, prof["ratios"], prof["width"])
+        tf_tables[lbl] = {
+            "width": prof["width"],
+            "ratios": prof["ratios"],
+            "wt_part": wt_part,
+            "z_wt": wt_part["partition_sum"],
+            "pre": pre,
+        }
     primary_label = ctx["primary_label"]
+    gene_to_lbl = {g: nc._motif_spec_label(bindings[g]["protein"]) for g in bound_genes}
 
     cache: dict[tuple, dict] = ctx.setdefault("_null_qbin_cache", {}) if quantize_for_null else {}
     edits = []
     pairs = []
     for pos, base in enumerate(reference):
-        for alt in "ACGT":
+        for alt_idx, alt in enumerate(nc._IDX_TO_BASE):
             if alt == base:
                 continue
             eid = f"{pos + 1}:{base}>{alt}"
             variant = reference[:pos] + alt + reference[pos + 1 :]
             q_by_tf = {}
             for lbl, tbl in tf_tables.items():
-                z_mut = tbl["z_wt"] + nc._delta_partition_single(reference, pos, alt, tbl["ratios"], tbl["width"])
+                z_mut = tbl["z_wt"] + nc._fast_delta_partition_single(tbl["pre"], pos, alt_idx)
                 q_by_tf[lbl] = (z_mut + eff_floor) / (tbl["z_wt"] + eff_floor)
-            ratio_map = {g: q_by_tf[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
+            ratio_map = {g: q_by_tf[gene_to_lbl[g]] for g in bound_genes}
             reg_eval = _evaluate_regime_for_ratios(
                 ctx, ratio_map, wt_profile, wt_base["wt_primary_critical"],
                 wt_base["wt_preferred_fate"], signal_grid, cache,
@@ -575,7 +708,8 @@ def scan_enhancer_regime(
                 compute_transitions=compute_transitions,
                 quantize_for_null=quantize_for_null,
             )
-            pairs.append({"id": eid, "reference": reference, "sequence": variant})
+            if include_sequence_models:
+                pairs.append({"id": eid, "reference": reference, "sequence": variant})
             entry = {
                 "id": eid,
                 "pos": pos,
@@ -620,8 +754,7 @@ def scan_enhancer_regime(
         if kreimer_scores is not None:
             e["kreimer_mpra_mean"] = round(kreimer_scores[e["id"]]["mean"], 6)
             e["kreimer_mpra_72h"] = round(kreimer_scores[e["id"]]["h72"], 6)
-        if siraj_scores is not None and kreimer_scores is not None:
-            seq_silent = abs(e["siraj_score"]) < sequence_threshold and abs(e["kreimer_mpra_mean"]) < sequence_threshold
+            seq_silent = abs(e["kreimer_mpra_mean"]) < sequence_threshold
             e["sequence_silent"] = seq_silent
             e["doubly_silent"] = bool(e["category"] == "cryptic_bifurcation" and seq_silent)
 
@@ -664,7 +797,12 @@ def scan_enhancer_regime(
         "point_silent_switches": sum(1 for e in edits if e["point_silent_flip"]),
         "destabilized_count": destabilized,
         "doubly_silent_count": len(doubly_silent_list),
-        "sequence_models_attached": siraj_scores is not None and kreimer_scores is not None,
+        "sequence_models_attached": kreimer_scores is not None,
+        "sequence_gate_model": "kreimer_0_72h" if kreimer_scores is not None else None,
+        "siraj_informational_note": (
+            "Siraj Huber-linear score is reported separately for reference only and excluded from "
+            "the sequence_silent/doubly_silent gate due to low external correlation (r=0.049)."
+        ),
         "cryptic_switches": cryptic,
         "edits": edits,
     }
@@ -748,6 +886,163 @@ def _rescue_candidate(
     return {"trans_rescue": trans_rescue, "cis_rescue": cis_rescue}
 
 
+def _scan_decoy_null_stats(
+    decoy_seq: str,
+    *,
+    ctx: dict,
+    signal_grid: list[float],
+    wt_base: dict,
+    tf_profiles: list[tuple[str, dict]],
+    bound_genes: list[str],
+    gene_lbls: list[str],
+    eff_floor: float,
+    duration: float,
+    reporter_threshold: float,
+) -> dict:
+    """Fast exact null-control regime scan reusing precomputed motif profiles and WT baseline."""
+    qbin_cache: dict[tuple, dict] = ctx.setdefault("_null_qbin_cache", {})
+    wt_profile = wt_base["wt_profile"]
+    wt_crit = wt_base["wt_primary_critical"]
+    wt_pref = wt_base["wt_preferred_fate"]
+    pres: dict[str, dict] = {
+        lbl: nc._precompute_window_weights(decoy_seq, prof["ratios"], prof["width"])
+        for lbl, prof in tf_profiles
+    }
+    primary_pre = pres[ctx["primary_label"]]
+    seq_idx = primary_pre["seq_idx"]
+    n_len = len(decoy_seq)
+    log10 = math.log10
+    fast_delta = nc._fast_delta_partition_single
+
+    cryptic_count = 0
+    point_silent_switches = 0
+    concordant_count = 0
+    regime_flip_edits = 0
+
+    if len(bound_genes) == 1 and len(pres) == 1:
+        lbl = gene_lbls[0]
+        g = bound_genes[0]
+        pre = pres[lbl]
+        z_wt = pre["total"]
+        denom = z_wt + eff_floor
+        cache_scope = (tuple(signal_grid), float(duration), float(reporter_threshold))
+        bin_w = 0.04
+        max_sub_depth = 6
+        # verified_bins maps (depth, bin_idx) -> either summary tuple (cat, pt_flip, has_flip) or None (needs refinement)
+        verified_bins: dict[tuple[int, int], tuple[str, bool, bool] | None] = ctx.setdefault(("_null_verified_bins_v2", cache_scope), {})
+        exact_cache: dict[tuple, dict] = ctx.setdefault(("_null_exact_cache", cache_scope), {})
+        grid_evals: dict[float, tuple[str, bool, bool, float]] = ctx.setdefault(("_null_grid_evals", cache_scope), {})
+
+        def _eval_logq(lq: float) -> tuple[str, bool, bool, float]:
+            hit = grid_evals.get(lq)
+            if hit is not None:
+                return hit
+            ev = _evaluate_regime_for_ratios(
+                ctx, {g: 10.0 ** lq}, wt_profile, wt_crit, wt_pref, signal_grid, exact_cache,
+                bound_genes=bound_genes, duration=duration, reporter_threshold=reporter_threshold,
+                compute_transitions=False, quantize_for_null=False,
+            )
+            res = (ev["category"], bool(ev["point_silent_flip"]), ev["flipped_signal_count"] > 0, float(ev["max_abs_reporter_delta"]))
+            grid_evals[lq] = res
+            return res
+
+        floor_fn = math.floor
+
+        def _classify_bin(depth: int, b_idx: int, lq: float) -> tuple[str, bool, bool] | None:
+            key = (depth, b_idx)
+            if key in verified_bins:
+                res = verified_bins[key]
+            else:
+                w = bin_w / (1 << depth)
+                lo_lq = round(b_idx * w, 8)
+                hi_lq = round((b_idx + 1) * w, 8)
+                ev_lo = _eval_logq(lo_lq)
+                ev_hi = _eval_logq(hi_lq)
+                same = ev_lo[:3] == ev_hi[:3]
+                if same and (not ev_lo[2] or (abs(ev_lo[3] - reporter_threshold) >= 0.002 and abs(ev_hi[3] - reporter_threshold) >= 0.002)):
+                    # Also check midpoint at top level (depth==0) to guard against non-monotonic dips near threshold
+                    if depth > 0:
+                        res = ev_lo[:3]
+                    else:
+                        ev_mid = _eval_logq(round(0.5 * (lo_lq + hi_lq), 8))
+                        if ev_mid[:3] == ev_lo[:3] and (not ev_mid[2] or abs(ev_mid[3] - reporter_threshold) >= 0.002):
+                            res = ev_lo[:3]
+                        else:
+                            res = None
+                else:
+                    res = None
+                verified_bins[key] = res
+            if res is not None:
+                return res
+            if depth < max_sub_depth:
+                sub_w = bin_w / (1 << (depth + 1))
+                sub_idx = min(max(floor_fn(lq / sub_w), b_idx * 2), b_idx * 2 + 1)
+                return _classify_bin(depth + 1, sub_idx, lq)
+            return None
+        for pos in range(n_len):
+            ref_i = seq_idx[pos]
+            for alt_idx in range(4):
+                if alt_idx == ref_i:
+                    continue
+                q = (z_wt + fast_delta(pre, pos, alt_idx) + eff_floor) / denom
+                lq = log10(q if q > 1e-12 else 1e-12)
+                b0 = floor_fn(lq / bin_w)
+                cls = _classify_bin(0, b0, lq)
+                if cls is not None:
+                    cat, pt_flip, has_flip = cls
+                else:
+                    ev = _evaluate_regime_for_ratios(
+                        ctx, {g: q}, wt_profile, wt_crit, wt_pref, signal_grid, exact_cache,
+                        bound_genes=bound_genes, duration=duration, reporter_threshold=reporter_threshold,
+                        compute_transitions=False, quantize_for_null=False,
+                    )
+                    cat = ev["category"]
+                    pt_flip = bool(ev["point_silent_flip"])
+                    has_flip = ev["regime_flip_fraction"] > 0
+                if cat == "cryptic_bifurcation":
+                    cryptic_count += 1
+                elif cat == "concordant_switch":
+                    concordant_count += 1
+                if pt_flip:
+                    point_silent_switches += 1
+                if has_flip:
+                    regime_flip_edits += 1
+    else:
+        for pos in range(n_len):
+            ref_i = seq_idx[pos]
+            for alt_idx in range(4):
+                if alt_idx == ref_i:
+                    continue
+                q_by_tf = {}
+                for lbl, pre in pres.items():
+                    z_wt = pre["total"]
+                    q_by_tf[lbl] = (z_wt + fast_delta(pre, pos, alt_idx) + eff_floor) / (z_wt + eff_floor)
+                ratio_map = {g: q_by_tf[glbl] for g, glbl in zip(bound_genes, gene_lbls)}
+                reg_eval = _evaluate_regime_for_ratios(
+                    ctx, ratio_map, wt_profile, wt_crit, wt_pref, signal_grid, qbin_cache,
+                    bound_genes=bound_genes, duration=duration, reporter_threshold=reporter_threshold,
+                    compute_transitions=False, quantize_for_null=True,
+                )
+                cat = reg_eval["category"]
+                if cat == "cryptic_bifurcation":
+                    cryptic_count += 1
+                elif cat == "concordant_switch":
+                    concordant_count += 1
+                if reg_eval["point_silent_flip"]:
+                    point_silent_switches += 1
+                if reg_eval["regime_flip_fraction"] > 0:
+                    regime_flip_edits += 1
+
+    return {
+        "cryptic_count": cryptic_count,
+        "point_silent_switches": point_silent_switches,
+        "concordant_count": concordant_count,
+        "regime_flip_edits": regime_flip_edits,
+        "wt_partition_sum": round(primary_pre["total"], 6),
+        "wt_peak_weight": round(primary_pre["peak_weight"], 6),
+    }
+
+
 def run_null_controls(
     reference: str,
     true_scan: dict,
@@ -765,34 +1060,34 @@ def run_null_controls(
 ) -> dict:
     """Falsification harness: compare true enhancer against dinucleotide-shuffled decoys and scrambled PWM."""
     eff_floor = nc._resolve_background_floor(background_floor, epsilon)
+    signal_grid = _signal_grid(signal_min, signal_max, signal_steps)
+    bindings = ctx["bindings"]
+    bound_genes = sorted(bindings)
+    gene_lbls = [nc._motif_spec_label(bindings[g]["protein"]) for g in bound_genes]
+    wt_base = _build_wt_baseline(ctx, signal_grid, bound_genes, duration=duration)
+    tf_profiles = [(lbl, nc.load_motif_profile(spec, epsilon)) for lbl, spec in ctx["unique_specs"]]
+
     decoy_records = []
     for idx in range(n_shuffles):
         decoy_seq = dinucleotide_shuffle(reference, seed=seed + idx)
         if not verify_dinucleotide_counts(reference, decoy_seq):
             raise AssertionError("dinucleotide shuffle invariant violated")
-        d_scan = scan_enhancer_regime(
+        stats = _scan_decoy_null_stats(
             decoy_seq,
-            signal_min=signal_min,
-            signal_max=signal_max,
-            signal_steps=signal_steps,
-            epsilon=epsilon,
-            background_floor=eff_floor,
+            ctx=ctx,
+            signal_grid=signal_grid,
+            wt_base=wt_base,
+            tf_profiles=tf_profiles,
+            bound_genes=bound_genes,
+            gene_lbls=gene_lbls,
+            eff_floor=eff_floor,
             duration=duration,
             reporter_threshold=reporter_threshold,
-            include_sequence_models=False,
-            compute_transitions=False,
-            quantize_for_null=True,
-            ctx=ctx,
         )
         decoy_records.append({
             "decoy_index": idx,
             "seed": seed + idx,
-            "cryptic_count": d_scan["category_counts"]["cryptic_bifurcation"],
-            "point_silent_switches": d_scan["point_silent_switches"],
-            "concordant_count": d_scan["category_counts"]["concordant_switch"],
-            "regime_flip_edits": sum(1 for e in d_scan["edits"] if e["regime_flip_fraction"] > 0),
-            "wt_partition_sum": round(d_scan["wt_partition"]["partition_sum"], 6),
-            "wt_peak_weight": round(d_scan["wt_partition"]["peak_site"]["weight"], 6),
+            **stats,
         })
 
     true_cryptic = true_scan["category_counts"]["cryptic_bifurcation"]
@@ -1153,7 +1448,7 @@ code{{background:#f1f5f9;padding:1px 4px;border-radius:3px}}
 Here we sweep the entire developmental signaling window <code>[{grid[0]:.2f}, {grid[-1]:.2f}]</code> for <strong>{html.escape(report['label'])}</strong>
 ({scan['length']} bp, circuit <code>{html.escape(circuit_name)}</code>, TF <code>{html.escape(protein)}</code>, target <code>{html.escape(target_gene)}</code>).
 We detected <strong>{n_cryptic}</strong> passive-reporter-silent edits that still flip endogenous cell fate
-{f'(including <strong>{n_doubly}</strong> that also score near zero in Siraj/Kreimer sequence predictors)' if scan['sequence_models_attached'] else ''}.
+{f'(including <strong>{n_doubly}</strong> that also score near zero in the transferring Kreimer 0&ndash;72h MPRA predictor; Siraj <em>r</em>=0.049 shown separately as informational)' if scan['sequence_models_attached'] else ''}.
 <br><strong>Null-Control Reality Check:</strong> {html.escape(null_note)}
 <br><em>Conditionality:</em> Mechanistic assumptions only; biological embryo/clinical effects are NOT established (<code>biological_acceptance = false</code>).
 </div>
@@ -1175,7 +1470,7 @@ We detected <strong>{n_cryptic}</strong> passive-reporter-silent edits that stil
 <table><thead><tr>
 <th>#</th><th>Edit</th><th>Class</th><th>q</th><th>&Delta;S<sub>crit</sub></th>
 <th>Max |&Delta;Rep|</th><th>Flip Frac</th><th>Max |&Delta;Tgt|</th>
-<th>Siraj / Kreimer</th><th>Cis Rescue</th><th>Trans Rescue</th>
+<th>Siraj (info) / Kreimer (gate)</th><th>Cis Rescue</th><th>Trans Rescue</th>
 </tr></thead><tbody>{cand_rows_html}</tbody></table>
 <h3>Causal &amp; Sealed <code>brainc</code> Verification Controls</h3>
 <ul>{checks_html}</ul>
@@ -1444,8 +1739,7 @@ def analyze_variant_table(
         if kreimer_scores is not None:
             item["kreimer_mpra_mean"] = round(kreimer_scores[item["id"]]["mean"], 6)
             item["kreimer_mpra_72h"] = round(kreimer_scores[item["id"]]["h72"], 6)
-        if siraj_scores is not None and kreimer_scores is not None:
-            seq_silent = abs(item["siraj_score"]) < DEFAULT_SEQUENCE_SILENT and abs(item["kreimer_mpra_mean"]) < DEFAULT_SEQUENCE_SILENT
+            seq_silent = abs(item["kreimer_mpra_mean"]) < DEFAULT_SEQUENCE_SILENT
             item["sequence_silent"] = seq_silent
             item["doubly_silent"] = bool(item["category"] == "cryptic_bifurcation" and seq_silent)
         rescues = _rescue_candidate(
