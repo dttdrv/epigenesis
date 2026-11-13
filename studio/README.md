@@ -1,6 +1,6 @@
 # Epigenesis Studio
 
-A local desktop application for working with DNA changes. Its main workflow changes a regulatory DNA site and shows how a published neural-development model responds over time. Two further modes use the frozen edit predictor: they scan a sequence for the effect of every single-base change, and they score a table of edits and pick an experimental panel. Every result can be exported as a receipt that anyone with the same installation can replay. The interface is in English and Bulgarian (the switch is in the sidebar).
+A local desktop application for working with DNA changes. Its workflows simulate a regulatory DNA binding site in a published four-gene neural-development model, scan an entire arbitrary enhancer sequence through Boltzmann GLI partition physics to expose cryptic cell-fate bifurcations, score edits with either the frozen Siraj Huber-linear checkpoint or the experimental Kreimer 0–72h neural-induction temporal predictor, and export receipts that anyone with the same installation can replay. The interface is in English and Bulgarian (the switch is in the sidebar).
 
 ## Simulate a DNA change
 
@@ -15,11 +15,23 @@ The page shows the conditions, the binding table, the trajectories (move the poi
 
 Simulate needs the repository checkout (the install below is editable, so it finds `examples/neural-patterning`). Without it the mode is disabled and the other modes still work.
 
+## Enhancer Circuit mode (1.7)
+
+The Enhancer Circuit tab connects arbitrary enhancers (9 to 500 bases) to the four-gene neural-tube ODE via [`examples/neural-circuit`](../examples/neural-circuit/README.md):
+
+1. Computes a strand-symmetric Boltzmann partition ratio (`q = Z_variant / Z_reference`) over sliding 9-mer Hallikas GLI2/GLI3 binding profiles for every single-base substitution (with Laplace pseudocount `epsilon`, default `1e-4`), then classifies each edit as a cryptic bifurcation (`|Δreporter| < 0.02` with a fate flip), concordant switch, canalized buffered, or neutral.
+2. Compiles the top cryptic switch (and exact sequence reversion) into `brainc` Development Modules, compares endogenous vs passive-reporter trajectories, checks the 21-point spatial Shh gradient P3 domain and pulse-chase competitive GliR derepression control, and displays Kreimer 0–72h and Siraj scores beside the circuit shift.
+
+Requires the repository checkout; unavailable when installed standalone without `examples/`.
+
 ## Predictor modes
 
-The predictor is the frozen Huber-linear checkpoint `epigenesis-siraj-huber-linear-v1` (see [the predictor README](../examples/neural-predictor/README.md)). It scores the SK-N-SH 24-hour log2-skew reporter effect of an edit in the Siraj et al. (2026) assay. On 16,986 internal-tuning edits its family-weighted error is 3.02% below a 5-mer baseline. On five external neural reporter studies its correlation is 0.0490 and its mean squared error is 9.52% above predicting no effect, and thirteen frozen tests found no reliable gain over simple baselines. Scores rank edits for that assay. They are not probabilities, and nothing here validates transfer to other assays, cell types or endogenous expression.
+Two sequence-based predictor checkpoints are available in **Scan** and **Edits** via a model toggle:
 
-Studio uses the compiler's canonical JSON for receipts. Only Simulate compiles its input, and the predictor modes do not pass through the Development Module pipeline.
+- **Siraj Huber-linear (`epigenesis-siraj-huber-linear-v1`)**: scores SK-N-SH 24-hour log2-skew reporter effect (see [the predictor README](../examples/neural-predictor/README.md)). On 16,986 internal-tuning edits its family-weighted error is 3.02% below a 5-mer baseline, while on five external neural reporter studies correlation is 0.0490 and MSE is 9.52% above predicting no effect.
+- **Kreimer 0–72h Neural Induction (`epigenesis-kreimer-motif-temporal-v1`, 1.7)**: outputs a 7-timepoint trajectory (`0, 3, 6, 12, 24, 48, 72` hours, plus its temporal mean) using 5-mer counts and 532 compressed JASPAR 2024 motifs fitted on Kreimer et al. (2022) GSE188264 train+validation families (`test MSE 0.252079` across 118 held-out families vs k5 `0.285185` and dinucleotide `0.319358`, see [`examples/neural-regulation`](../examples/neural-regulation/README.md)). Retrospective and conditional on MPRAnalyze preprocessing; not validated for endogenous loci or clinical use.
+
+Studio uses the compiler's canonical JSON for receipts. Simulate and Enhancer Circuit compile their pairs into Development Modules; predictor Scan/Edits modes seal their outputs into receipts without passing through the Development Module pipeline.
 
 ## Install
 
@@ -48,11 +60,12 @@ The server listens on 127.0.0.1 only and rejects requests whose Host header is n
 | Mode | Input | Output |
 |---|---|---|
 | Simulate | A site substitution, a GLI protein, a signal protocol and an optional starting state | Trajectories for reference, variant and reversion, controls, assumptions, CSV, receipt |
-| Scan | One FASTA record or plain sequence of 5 to 1,000 bases (ACGT only; several records are refused) | Heatmap of all 3 changes at every position, ranked table, CSV, receipt |
-| Edits | Up to 5,000 reference and edited pairs (CSV or JSON, columns `id`, `reference`, `sequence`, optional `family`; each sequence 5 to 2,000 bases, insertions and deletions allowed) | Scores, a panel of the requested size with one edit per family, CSV, receipt |
+| Enhancer Circuit | A FASTA or ACGT enhancer of 9 to 500 bases, GLI2/GLI3, pseudocount, signal phases | Cryptic bifurcation scatter, trajectory & spatial P3/GliR controls, brainc receipt |
+| Scan | One FASTA record or plain sequence of 5 to 1,000 bases (ACGT only; several records are refused); Siraj or Kreimer 0–72h | Heatmap of all 3 changes at every position, temporal 0–72h profile (Kreimer), CSV, receipt |
+| Edits | Up to 5,000 reference and edited pairs (CSV or JSON, columns `id`, `reference`, `sequence`, optional `family`; each sequence 5 to 2,000 bases, insertions and deletions allowed); Siraj or Kreimer 0–72h | Scores, 7-hour curves (Kreimer), panel of the requested size with one edit per family, CSV, receipt |
 | Verify | A receipt file | Three checks: digest, identity of model and endpoint, replay of every stored result |
 
-A single-substitution score depends only on the 18 bases either side of the change, so a scan scores each variant in a window of that size, with results identical to scoring whole sequences (tested to 1e-12). Edits mode scores the supplied pair, including insertions, deletions and multiple substitutions.
+A single-substitution score in both Siraj and Kreimer modes depends only on the 18 bases either side of the change, so a scan scores each variant in a window of that size, with results identical to scoring whole sequences (tested to 1e-12). Edits mode scores the supplied pair, including insertions, deletions and multiple substitutions.
 
 ## Receipts
 
@@ -64,7 +77,7 @@ A receipt (`epigenesis-studio-receipt-v1`) holds the model name, its identity ha
 $(uv tool dir)/epigenesis-studio/bin/python -m unittest discover -s studio/tests -v
 ```
 
-The tests skip with a message when NumPy or the package is missing, and the simulation tests skip without the repository checkout. They cover scan equals whole-sequence scoring, the panel against the frozen model run, each receipt check on its own, input limits and refusals, the HTTP guards, the simulation against the backend's own command line and its published binding ratio, and that the English and Bulgarian interface texts have the same keys.
+The tests skip with a message when NumPy or the package is missing, and the Simulate / Enhancer Circuit tests skip without the repository checkout. They cover scan equals whole-sequence scoring (Siraj & Kreimer), the panel against the frozen model run and Kreimer checkpoint, cryptic bifurcations and brainc bundle verification in Enhancer Circuit, each receipt check on its own, input limits and refusals, the HTTP guards, the simulation against the backend's own command line and its published binding ratio, and that the English and Bulgarian interface texts have the same keys.
 
 ## Licenses
 

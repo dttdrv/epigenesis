@@ -24,24 +24,29 @@ no install, GPU or network.
 ```sh
 python3 epigenesis.py evidence     # 109 published CHE-1 measurements traced to DNA edits
 python3 epigenesis.py patterning   # Nkx2.2 enhancer edit in a developmental model
+python3 epigenesis.py circuit      # chr15 enhancer Boltzmann GLI scan -> cryptic fate switches
 ```
 
 Each writes a report under `./epigenesis-out/` and prints the HTML file to open.
 
-Score DNA edits with the same Huber-linear model used by Studio:
+Score DNA edits with either the Siraj Huber-linear model (default) or the Kreimer 0–72h H1 neural-induction predictor (`--kreimer`):
 
 ```sh
 python3 -m pip install numpy
 python3 epigenesis.py predict \
   --input studio/epigenesis_studio/example-edits.json \
   --output predictions.json --budget 3
+python3 epigenesis.py predict --kreimer \
+  --input studio/epigenesis_studio/example-edits.json \
+  --output predictions-kreimer.json --budget 3
 ```
 
 Replace the example with a JSON array of `id`, `reference`, `sequence` and
 optional `family`. Sequences need at least five uppercase ACGT bases; they can
 have different lengths. A panel budget requires explicit families. The
 [predictor guide](../../examples/neural-predictor/README.md) documents the
-endpoint, input contract and evidence.
+Siraj endpoint and archived models, while [neural regulation](../../examples/neural-regulation/README.md)
+documents the Kreimer 0–72h GSE188264 assay.
 
 The archived 270-base Salomon models require an explicit `--activity` or
 `--attention` flag. Their separate `--families` file selects ten experiments;

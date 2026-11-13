@@ -269,6 +269,24 @@ dialog p { color: var(--text2); line-height: 1.55; }
 .assume li::before { content: counter(a); flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--tint); color: var(--text2); font-size: 12px; font-weight: 650; }
 .scope { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--tint); font-size: 13px; color: var(--text2); }
 .read .tm::before { display: none; }
+.circ-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.circ-grid .panel { margin-bottom: 0; }
+.circ-wrap { position: relative; }
+#circTip { position: absolute; pointer-events: none; background: var(--ink); color: var(--ink-text); padding: 5px 9px; border-radius: 8px; font: 12px var(--mono); white-space: nowrap; transform: translate(10px, -34px); z-index: 2; }
+.cat-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 550; background: var(--tint); color: var(--text2); white-space: nowrap; }
+.cat-pill.cryptic_bifurcation { background: var(--pos-bg); color: var(--pos-text); }
+.cat-pill.concordant_switch { background: var(--ok-bg); color: var(--ok); }
+.cat-pill.canalized_buffered { background: var(--neg-bg); color: var(--neg-text); }
+.temp-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.temp-col { display: flex; flex-direction: column; align-items: center; gap: 3px; font: 11px var(--mono); color: var(--text3); }
+.temp-bar-box { position: relative; width: 100%; height: 42px; background: var(--tint); border-radius: 5px; overflow: hidden; }
+.temp-bar-box::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line2); }
+.temp-bar-box b { position: absolute; left: 3px; right: 3px; border-radius: 3px; }
+.temp-col .tv { font-size: 10.5px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.circ-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.circ-card { padding: 12px 14px; border-radius: 12px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; }
+.circ-card b { display: block; font-size: 12.5px; color: var(--text2); margin-bottom: 4px; }
+.circ-card .val { font: 600 18px/1.2 var(--mono); }
 </style>
 </head>
 <body>
@@ -281,6 +299,7 @@ dialog p { color: var(--text2); line-height: 1.55; }
     <nav role="tablist">
       <span class="nav-cap" role="presentation" data-k="nav.g.sim"></span>
       <button role="tab" id="tab-sim" aria-selected="true" aria-controls="sim"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3 0 3-10 6-10s3 10 6 10 3-10 6-10"/><path d="M3 21h18" opacity=".5"/></svg><span data-k="nav.sim"></span></button>
+      <button role="tab" id="tab-circuit" aria-selected="false" aria-controls="circuit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="16" cy="17" r="2.5"/><path d="M8.2 16.5L15.8 7.5M8.5 18h5M17.5 8.5L16.4 14.5" opacity=".75"/></svg><span data-k="nav.circuit"></span></button>
       <span class="nav-cap" role="presentation" data-k="nav.g.pred"></span>
       <button role="tab" id="tab-scan" aria-selected="false" aria-controls="scan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span data-k="nav.scan"></span></button>
       <button role="tab" id="tab-pairs" aria-selected="false" aria-controls="pairs"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg><span data-k="nav.pairs"></span></button>
@@ -354,10 +373,62 @@ dialog p { color: var(--text2); line-height: 1.55; }
     </div>
   </section>
 
+  <section id="circuit" role="tabpanel" aria-labelledby="tab-circuit" hidden>
+    <div class="page"><h1 data-k="circ.title"></h1><p data-k="circ.lead"></p></div>
+    <p id="circOff" class="alert" hidden data-k="circ.unavailable"></p>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="grow"><h2 data-k="circ.input"></h2><p class="sub" data-k="circ.input.help"></p></div>
+        <div class="tools">
+          <div class="seg" id="circProtSeg" role="group"><button type="button" data-prot="GLI2" aria-pressed="true">GLI2</button><button type="button" data-prot="GLI3" aria-pressed="false">GLI3</button></div>
+          <div class="seg" id="circPresetSeg" role="group"><button type="button" data-preset="const" aria-pressed="true" data-k="sim.p.const"></button><button type="button" data-preset="primed" aria-pressed="false" data-k="sim.p.primed"></button><button type="button" data-preset="low" aria-pressed="false" data-k="sim.p.low"></button></div>
+        </div>
+      </div>
+      <label class="field-label" for="circSeq" data-k="scan.label"></label>
+      <textarea id="circSeq" rows="4" spellcheck="false" data-ph="circ.ph"></textarea>
+      <div class="actions">
+        <button id="circRun" class="btn primary" type="button" data-k="circ.go"></button>
+        <button id="circExample" class="btn" type="button" data-k="circ.example"></button>
+        <span class="grow"></span>
+        <span id="circInfo" class="meta"></span>
+      </div>
+      <p id="circErr" class="alert" role="alert" hidden></p>
+    </div>
+
+    <div id="circOut" hidden>
+      <div class="stats" id="circStats"></div>
+      <div class="circ-grid">
+        <div class="panel">
+          <div class="panel-head"><div class="grow"><h2 data-k="circ.scatter.title"></h2><p class="sub" data-k="circ.scatter.help"></p></div></div>
+          <div class="circ-wrap" id="circScatterWrap"><canvas id="circScatter" role="img" data-label="circ.scatter.title"></canvas><div id="circTip" hidden></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="grow"><h2 data-k="circ.traj.title"></h2><p class="sub" id="circFeaturedSub"></p></div></div>
+          <div class="chart"><canvas id="circTraj" role="img" data-label="circ.traj.title"></canvas></div>
+          <div class="circ-meta-grid" id="circControls"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="grow" data-k="circ.table.title"></h2>
+          <div class="tools">
+            <div class="seg" id="circCatSeg" role="group"><button type="button" data-cat="all" aria-pressed="true" data-k="dir.all"></button><button type="button" data-cat="cryptic_bifurcation" aria-pressed="false" data-k="circ.cat.cryptic"></button></div>
+            <button id="circCsv" class="btn" type="button" data-k="csv"></button>
+            <button id="circReceipt" class="btn" type="button" data-k="receipt.dl"></button>
+          </div>
+        </div>
+        <table><thead><tr><th class="num">#</th><th data-k="col.change"></th><th class="num" data-k="circ.col.q"></th><th class="num" data-k="circ.col.rep"></th><th class="num" data-k="circ.col.nkx"></th><th class="num" data-k="circ.col.kreimer"></th><th data-k="circ.col.cat"></th></tr></thead><tbody id="circRows"></tbody></table>
+      </div>
+    </div>
+  </section>
+
   <section id="scan" role="tabpanel" aria-labelledby="tab-scan" hidden>
     <div class="page"><h1 data-k="scan.title"></h1><p data-k="scan.lead"></p></div>
     <div class="panel">
-      <label class="field-label" for="seq" data-k="scan.label"></label>
+      <div class="panel-head">
+        <div class="grow"><label class="field-label" for="seq" data-k="scan.label"></label></div>
+        <div class="tools"><div class="seg-wrap"><span data-k="model.label"></span><div class="seg" id="scanModelSeg" role="group"><button type="button" data-model="siraj" aria-pressed="true" data-k="model.siraj"></button><button type="button" data-model="kreimer" aria-pressed="false" data-k="model.kreimer"></button></div></div></div>
+      </div>
       <textarea id="seq" rows="4" spellcheck="false" data-ph="scan.ph"></textarea>
       <div class="actions">
         <button id="scanBtn" class="btn primary" type="button" data-k="scan.go"></button>
@@ -408,6 +479,10 @@ dialog p { color: var(--text2); line-height: 1.55; }
           <textarea id="edits" rows="8" spellcheck="false" data-ph="pairs.ph"></textarea>
         </div>
         <div class="options">
+          <div>
+            <span class="field-label" data-k="model.label"></span>
+            <div class="seg" id="pairsModelSeg" role="group"><button type="button" data-model="siraj" aria-pressed="true" data-k="model.siraj"></button><button type="button" data-model="kreimer" aria-pressed="false" data-k="model.kreimer"></button></div>
+          </div>
           <div>
             <label class="field-label" for="budget" data-k="pairs.budget"></label>
             <input id="budget" type="number" min="1" step="1" data-ph="pairs.budgetNone">
@@ -509,7 +584,9 @@ const css = name => getComputedStyle(document.documentElement).getPropertyValue(
 const dirOf = e => e < 0 ? 'down' : e > 0 ? 'up' : 'none';
 const ARROW = { up: '↑ ', down: '↓ ', none: '' };
 const TOL_DIGITS = 3;
-let model = null, scan = null, pairs = null, ver = null, dirFilter = '';
+let model = null, scan = null, pairs = null, ver = null, dirFilter = '', currentModel = 'siraj';
+const circ = { protein: 'GLI2', preset: 'const', cat: 'all', result: null, dots: [], hover: null };
+const CIRC_PRESETS = { const: [[40, 0.2]], primed: [[10, 0.9], [30, 0.2]], low: [[40, 0.05]] };
 
 class Fail extends Error { constructor(key, params = {}) { super(key || params.msg); this.key = key; this.params = params; } }
 
@@ -667,7 +744,59 @@ const T = { en: {/*en*/
   'err.sim_protein': 'Choose GLI2 or GLI3.',
   'err.sim_phases': 'Give 1 to {max} phases, each with a positive duration and a signal from 0 to 1.',
   'err.sim_time': 'The total duration is at most {max} model units.',
-  'err.sim_initial': 'The starting state needs all four genes, each from 0 to 1.'
+  'err.sim_initial': 'The starting state needs all four genes, each from 0 to 1.',
+  'err.bad_model': 'Choose either Siraj or Kreimer.',
+  'err.circ_unavailable': 'The circuit backend (examples/neural-circuit) was not found.',
+  'err.circ_multi_record': 'The FASTA has {n} records. Scan one enhancer at a time.',
+  'err.circ_len': 'Enhancer sequence needs {min} to {max} bases.',
+  'err.circ_protein': 'Choose GLI2 or GLI3.',
+  'err.circ_epsilon': 'Epsilon must be between 0 and 1.',
+  'err.circ_phases': 'Give 1 to {max} phases, each with a positive duration and a signal from 0 to 1.',
+  'err.circ_time': 'The total duration is at most {max} model units.',
+  'err.circ_initial': 'The starting state needs all four genes, each from 0 to 1.',
+  'model.label': 'Model',
+  'model.siraj': 'Siraj SK-N-SH',
+  'model.kreimer': 'Kreimer 0–72h',
+  'detail.temporal': '0–72h profile',
+  'nav.circuit': 'Enhancer Circuit',
+  'circ.title': 'Variant-to-circuit enhancer scan',
+  'circ.lead': 'Scan every single-base substitution across a whole enhancer via a Boltzmann GLI binding partition sum coupled to the four-gene neural-tube circuit, and compare against passive reporter models.',
+  'circ.unavailable': 'The circuit backend (examples/neural-circuit) was not found. Install Studio from a repository checkout to enable it.',
+  'circ.input': 'Enhancer & Shh signaling',
+  'circ.input.help': 'Paste a human/mouse enhancer (9–500 bases) or load the bundled Kreimer/Siraj human chr15 enhancer, then pick GLI protein and Shh signal regime.',
+  'circ.ph': 'Paste DNA enhancer sequence (9 to 500 bases) or FASTA record',
+  'circ.go': 'Scan enhancer circuit',
+  'circ.example': 'Load chr15 enhancer',
+  'circ.exampleNote': 'Loaded real human chr15:90936956-90937127 enhancer (171 bp).',
+  'circ.running': 'Scanning variants and compiling brainc modules…',
+  'circ.done': '{n} substitutions ({u} unique ODE solves) in {s} s',
+  'circ.t.cryptic': 'Cryptic bifurcations',
+  'circ.t.crypticSub': 'out of {n} variants (wt fate {f})',
+  'circ.t.featured': 'Strongest cryptic switch',
+  'circ.t.featuredSub': 'Nkx2.2 Δ {d} ({amp}× vs reporter)',
+  'circ.t.p3': 'Spatial p3 domain',
+  'circ.t.p3Sub': '{w} → {m} points (of 21 Shh sites)',
+  'circ.t.glir': 'GliR pulse-chase Nkx2.2',
+  'circ.t.glirSub': 'activation-only would stay {a}',
+  'circ.scatter.title': 'Passive reporter vs circuit bifurcation',
+  'circ.scatter.help': 'Each dot is a single-base edit. Orange dots are cryptic bifurcations: silent on a passive reporter (|Δ| < 0.02) yet flipping Nkx2.2 neural-tube fate inside the feedback circuit. Click a dot to inspect.',
+  'circ.traj.title': 'Featured variant Nkx2.2 & Olig2 trajectory',
+  'circ.traj.featuredSub': 'Variant {id} (q = {q}, {cat}) · reversion diff {rev}',
+  'circ.table.title': 'Ranked enhancer substitutions',
+  'circ.cat.cryptic': 'Cryptic only',
+  'circ.col.q': 'q (GLI)',
+  'circ.col.rep': '|Δ Reporter|',
+  'circ.col.nkx': 'Δ Nkx2.2',
+  'circ.col.kreimer': 'Kreimer 72h',
+  'circ.col.cat': 'Mechanism class',
+  'circ.cat.cryptic_bifurcation': 'Cryptic bifurcation',
+  'circ.cat.concordant_switch': 'Concordant switch',
+  'circ.cat.canalized_buffered': 'Canalized / buffered',
+  'circ.cat.neutral': 'Neutral',
+  'circ.ctl.rev': 'Exact DNA reversion',
+  'circ.ctl.revSub': 'max ODE drift {d} (q = 1)',
+  'circ.ctl.contract': 'Compiled brainc contract',
+  'circ.ctl.contractSub': 'SHA-256 verified'
 /*end*/}, bg: {/*bg*/
   'brand.sub': 'Оценка на ДНК редакции',
   'nav.scan': 'Сканиране', 'nav.pairs': 'Редакции', 'nav.verify': 'Проверка',
@@ -821,7 +950,59 @@ const T = { en: {/*en*/
   'err.sim_protein': 'Изберете GLI2 или GLI3.',
   'err.sim_phases': 'Задайте от 1 до {max} фази, всяка с положителна продължителност и сигнал от 0 до 1.',
   'err.sim_time': 'Общата продължителност е най-много {max} единици на модела.',
-  'err.sim_initial': 'Началното състояние трябва да съдържа и четирите гена, всеки от 0 до 1.'
+  'err.sim_initial': 'Началното състояние трябва да съдържа и четирите гена, всеки от 0 до 1.',
+  'err.bad_model': 'Изберете Siraj или Kreimer.',
+  'err.circ_unavailable': 'Не е намерена базата за енхансърен контур (examples/neural-circuit).',
+  'err.circ_multi_record': 'FASTA съдържа {n} записа. Сканирайте по един енхансър.',
+  'err.circ_len': 'Енхансърът трябва да е от {min} до {max} бази.',
+  'err.circ_protein': 'Изберете GLI2 или GLI3.',
+  'err.circ_epsilon': 'Epsilon трябва да е между 0 и 1.',
+  'err.circ_phases': 'Задайте от 1 до {max} фази, всяка с положителна продължителност и сигнал от 0 до 1.',
+  'err.circ_time': 'Общата продължителност е най-много {max} единици на модела.',
+  'err.circ_initial': 'Началното състояние трябва да съдържа и четирите гена, всеки от 0 до 1.',
+  'model.label': 'Модел',
+  'model.siraj': 'Siraj SK-N-SH',
+  'model.kreimer': 'Kreimer 0–72 ч.',
+  'detail.temporal': 'Профил 0–72 ч.',
+  'nav.circuit': 'Енхансърен контур',
+  'circ.title': 'Сканиране на енхансър към контур',
+  'circ.lead': 'Сканирайте всяка единична замяна в цял енхансър чрез сумата на Болцман за свързване на GLI, свързана с четиригенния контур на невралната тръба, и сравнете с пасивни репортери.',
+  'circ.unavailable': 'Не е намерена базата за енхансърен контур (examples/neural-circuit). Инсталирайте Studio от хранилището.',
+  'circ.input': 'Енхансър и Shh сигнал',
+  'circ.input.help': 'Поставете енхансър (9–500 бази) или заредете човешкия енхансър chr15 и изберете GLI протеин и сигнален режим.',
+  'circ.ph': 'Поставете ДНК енхансър (от 9 до 500 бази) или FASTA запис',
+  'circ.go': 'Сканирай контура',
+  'circ.example': 'Зареди енхансър chr15',
+  'circ.exampleNote': 'Зареден реален човешки енхансър chr15:90936956-90937127 (171 bp).',
+  'circ.running': 'Сканиране на варианти и компилиране на brainc модули…',
+  'circ.done': '{n} замени ({u} уникални ODE решения) за {s} с',
+  'circ.t.cryptic': 'Скрити бифуркации',
+  'circ.t.crypticSub': 'от {n} варианта (референтна съдба {f})',
+  'circ.t.featured': 'Най-силен скрит превключвател',
+  'circ.t.featuredSub': 'Nkx2.2 Δ {d} ({amp}× спрямо репортера)',
+  'circ.t.p3': 'Пространствен домейн p3',
+  'circ.t.p3Sub': '{w} → {m} точки (от 21 Shh позиции)',
+  'circ.t.glir': 'Импулс-проследяване GliR Nkx2.2',
+  'circ.t.glirSub': 'само активация би останала {a}',
+  'circ.scatter.title': 'Пасивен репортер спрямо контурна бифуркация',
+  'circ.scatter.help': 'Всяка точка е единична замяна. Оранжевите точки са скрити бифуркации: тихи в пасивен репортер (|Δ| < 0.02), но преобръщащи съдбата Nkx2.2 в контура с обратна връзка.',
+  'circ.traj.title': 'Траектория на Nkx2.2 и Olig2 за избрания вариант',
+  'circ.traj.featuredSub': 'Вариант {id} (q = {q}, {cat}) · разлика при връщане {rev}',
+  'circ.table.title': 'Подредени замени в енхансъра',
+  'circ.cat.cryptic': 'Само скрити',
+  'circ.col.q': 'q (GLI)',
+  'circ.col.rep': '|Δ Репортер|',
+  'circ.col.nkx': 'Δ Nkx2.2',
+  'circ.col.kreimer': 'Kreimer 72ч',
+  'circ.col.cat': 'Механизъм',
+  'circ.cat.cryptic_bifurcation': 'Скрита бифуркация',
+  'circ.cat.concordant_switch': 'Съгласуван превключвател',
+  'circ.cat.canalized_buffered': 'Канализиран / буфериран',
+  'circ.cat.neutral': 'Неутрален',
+  'circ.ctl.rev': 'Точно връщане на ДНК',
+  'circ.ctl.revSub': 'макс. ODE отклонение {d} (q = 1)',
+  'circ.ctl.contract': 'Компилиран brainc договор',
+  'circ.ctl.contractSub': 'SHA-256 проверен'
 /*end*/} };
 
 let lang = /^bg/i.test(navigator.language) ? 'bg' : 'en';
@@ -888,6 +1069,7 @@ function applyLang() {
   renderOpen();
   if (siteTable) { renderSite(); renderPhases(); }
   renderSim();
+  if (circ.result) renderCirc();
   if (scan) renderScan(scan);
   if (pairs) renderPairs();
   renderVerify();
@@ -898,10 +1080,11 @@ document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => {
 });
 
 // tabs
-const tabs = ['sim', 'scan', 'pairs', 'verify'];
+const tabs = ['sim', 'circuit', 'scan', 'pairs', 'verify'];
 function show(name) {
   for (const id of tabs) { $('#' + id).hidden = id !== name; $('#tab-' + id).setAttribute('aria-selected', String(id === name)); }
   if (name === 'sim' && sim.result) drawSim();
+  if (name === 'circuit' && circ.result) { drawCircScatter(); drawCircTraj(); }
   if (name === 'scan' && scan) drawScan();
   if (name === 'pairs' && pairs) drawStrip();
 }
@@ -1197,6 +1380,12 @@ function context(pos, alt, withAlt) {
   return [(pos > 10 ? '…' : '') + a, ref[pos], alt, b + (pos + 11 < ref.length ? '…' : '')];
 }
 
+function setModelChoice(next) {
+  currentModel = next === 'kreimer' ? 'kreimer' : 'siraj';
+  document.querySelectorAll('#scanModelSeg button, #pairsModelSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.model === currentModel)));
+}
+document.querySelectorAll('#scanModelSeg button, #pairsModelSeg button').forEach(b => b.onclick = () => setModelChoice(b.dataset.model));
+
 function renderDetail() {
   const box = $('#detail');
   if (!scan.sel) { box.className = 'detail'; box.style.display = 'block'; box.replaceChildren(el('p', { class: 'empty' }, t('detail.empty'))); return; }
@@ -1204,13 +1393,26 @@ function renderDetail() {
   const { pos, alt } = scan.sel, e = scan.grid[alt][pos], d = dirOf(e), row = scan.rows.find(r => r.pos === pos && r.alt === BASES[alt]);
   const [before, was, now, after] = context(pos, BASES[alt]);
   const part = (key, v) => el('div', { class: 'part' }, el('span', {}, t(key)), bar(v, scan.scale), el('b', { class: dirOf(v) }, fmt(v)));
+  const partsCol = el('div', {}, el('span', { class: 'd-label' }, t('detail.parts')), part('detail.words', row.word_effect), part('detail.motifs', row.motif_effect));
+  if (Array.isArray(row.temporal)) {
+    const times = scan.receipt.result.times_hours || [0, 2, 4, 8, 16, 24, 72];
+    const tmax = Math.max(...row.temporal.map(Math.abs), scan.scale * 0.5, 1e-6);
+    const strip = el('div', { class: 'temp-strip' }, ...row.temporal.map((val, idx) => {
+      const b = el('b'), pct = Math.min(48, Math.abs(val) / tmax * 48);
+      b.style.background = val < 0 ? 'var(--neg)' : 'var(--pos)';
+      if (val >= 0) { b.style.bottom = '50%'; b.style.height = pct + '%'; }
+      else { b.style.top = '50%'; b.style.height = pct + '%'; }
+      return el('div', { class: 'temp-col' }, el('div', { class: 'temp-bar-box' }, b), el('span', { class: 'tv' }, fmt(val)), el('span', {}, times[idx] + 'h'));
+    }));
+    partsCol.append(el('span', { class: 'd-label', style: 'margin-top:12px' }, t('detail.temporal')), strip);
+  }
   box.replaceChildren(
     el('div', {}, el('span', { class: 'd-label' }, t('detail.effect')), el('div', { class: 'd-big' }, `${was}${pos + 1}→${now}`),
       el('div', { class: 'd-num ' + d }, fmt(e), el('span', {}, ARROW[d] + t('dir.' + d)))),
     el('div', {}, el('span', { class: 'd-label' }, t('detail.context')),
       el('div', { class: 'seq-row' }, el('span', { class: 'seq-name' }, t('detail.ref')), el('span', { class: 'seq' }, before, el('mark', {}, was), after)),
       el('div', { class: 'seq-row' }, el('span', { class: 'seq-name' }, t('detail.edit')), el('span', { class: 'seq' }, before, el('mark', { class: d }, now), after))),
-    el('div', {}, el('span', { class: 'd-label' }, t('detail.parts')), part('detail.words', row.word_effect), part('detail.motifs', row.motif_effect)));
+    partsCol);
 }
 
 function select(pos, alt) {
@@ -1252,7 +1454,9 @@ const countBases = text => text.split('\n').filter(l => !l.startsWith('>')).join
 $('#seq').oninput = () => { const n = countBases($('#seq').value); n ? say($('#seqInfo'), 'scan.count', { n }) : plain($('#seqInfo'), ''); };
 $('#scanBtn').onclick = () => guarded($('#scanBtn'), $('#scanErr'), async () => {
   const t0 = performance.now();
-  const receipt = await api('/api/score', { mode: 'scan', sequence: $('#seq').value });
+  const req = { mode: 'scan', sequence: $('#seq').value };
+  if (currentModel === 'kreimer') req.model = 'kreimer';
+  const receipt = await api('/api/score', req);
   renderScan(prepScan(receipt, (performance.now() - t0) / 1000));
 });
 $('#exampleSeq').onclick = async () => { $('#seq').value = (await api('/api/example'))[0].reference; say($('#seqInfo'), 'scan.exampleNote'); };
@@ -1271,8 +1475,12 @@ document.querySelectorAll('#dirSeg button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#dirSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   if (scan) renderScanRows();
 });
-$('#scanCsv').onclick = () => save('epigenesis-scan.csv', toCsv(['position', 'ref', 'alt', 'effect', 'word_effect', 'motif_effect', 'direction'],
-  [...scan.rows].sort((a, b) => a.pos - b.pos || a.alt.localeCompare(b.alt)).map(r => [r.pos + 1, r.ref, r.alt, r.effect, r.word_effect, r.motif_effect, csvDirection(r.effect)])), 'text/csv');
+$('#scanCsv').onclick = () => {
+  const times = scan.receipt.result.times_hours;
+  const head = ['position', 'ref', 'alt', 'effect', 'word_effect', 'motif_effect', 'direction', ...(times ? times.map(h => `t_${h}h`) : [])];
+  const sorted = [...scan.rows].sort((a, b) => a.pos - b.pos || a.alt.localeCompare(b.alt));
+  save('epigenesis-scan.csv', toCsv(head, sorted.map(r => [r.pos + 1, r.ref, r.alt, r.effect, r.word_effect, r.motif_effect, csvDirection(r.effect), ...(r.temporal || [])])), 'text/csv');
+};
 $('#scanReceipt').onclick = () => saveReceipt(scan.receipt);
 
 // a static preview of the map, so the empty state shows what the result looks like
@@ -1385,6 +1593,7 @@ $('#strip').onclick = ev => { const d = dotAt(ev); if (d) { $('#filter').value =
 $('#pairsBtn').onclick = () => guarded($('#pairsBtn'), $('#pairsErr'), async () => {
   const rows = parseEdits($('#edits').value), b = $('#budget').value, request = { mode: 'pairs', rows };
   if (b !== '') request.budget = Number(b);
+  if (currentModel === 'kreimer') request.model = 'kreimer';
   const t0 = performance.now(), receipt = await api('/api/score', request);
   pairs = { receipt }; $('#filter').value = ''; renderPairs();
   say($('#pairsInfo'), 'pairs.done', { n: rows.length, s: ((performance.now() - t0) / 1000).toFixed(1) });
@@ -1396,12 +1605,144 @@ $('#examplePairs').onclick = async () => {
 $('#fileBtn').onclick = () => $('#file').click();
 $('#file').onchange = async e => { const f = e.target.files[0]; if (f) { $('#edits').value = await f.text(); plain($('#pairsInfo'), f.name); } e.target.value = ''; };
 $('#filter').oninput = () => pairs && drawPairs();
-$('#pairsCsv').onclick = () => save('epigenesis-scores.csv', toCsv(['rank', 'id', 'family', 'effect', 'word_effect', 'motif_effect', 'direction', 'panel_rank'],
-  pairs.rows.map(r => [r.rank, r.id, r.family, r.effect, r.word_effect, r.motif_effect, csvDirection(r.effect), pairs.chosen.get(r.id) ?? ''])), 'text/csv');
+$('#pairsCsv').onclick = () => {
+  const times = pairs.receipt.result.times_hours;
+  const head = ['rank', 'id', 'family', 'effect', 'word_effect', 'motif_effect', 'direction', 'panel_rank', ...(times ? times.map(h => `t_${h}h`) : [])];
+  save('epigenesis-scores.csv', toCsv(head,
+    pairs.rows.map(r => [r.rank, r.id, r.family, r.effect, r.word_effect, r.motif_effect, csvDirection(r.effect), pairs.chosen.get(r.id) ?? '', ...(r.temporal || [])])), 'text/csv');
+};
 $('#pairsReceipt').onclick = () => saveReceipt(pairs.receipt);
 
-window.addEventListener('resize', () => { scan && drawScan(); pairs && drawStrip(); sim.result && drawSim(); });
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { scan && drawScan(); pairs && drawStrip(); sim.result && drawSim(); });
+// enhancer circuit
+document.querySelectorAll('#circProtSeg button').forEach(b => b.onclick = () => {
+  circ.protein = b.dataset.prot;
+  document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+document.querySelectorAll('#circPresetSeg button').forEach(b => b.onclick = () => {
+  circ.preset = b.dataset.preset;
+  document.querySelectorAll('#circPresetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+document.querySelectorAll('#circCatSeg button').forEach(b => b.onclick = () => {
+  circ.cat = b.dataset.cat;
+  document.querySelectorAll('#circCatSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  if (circ.result) renderCircRows();
+});
+$('#circExample').onclick = () => guarded($('#circExample'), $('#circErr'), async () => {
+  const ex = await api('/api/circuit-example');
+  $('#circSeq').value = `>${ex.locus}\n${ex.sequence}`;
+  circ.protein = ex.protein || 'GLI2';
+  document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.prot === circ.protein)));
+  say($('#circInfo'), 'circ.exampleNote');
+});
+$('#circRun').onclick = () => guarded($('#circRun'), $('#circErr'), async () => {
+  say($('#circInfo'), 'circ.running');
+  try {
+    const t0 = performance.now();
+    const receipt = await api('/api/score', { mode: 'circuit', sequence: $('#circSeq').value, protein: circ.protein, phases: CIRC_PRESETS[circ.preset] });
+    circ.result = { receipt, seconds: (performance.now() - t0) / 1000 };
+    renderCirc();
+    say($('#circInfo'), 'circ.done', { n: receipt.result.edits.length, u: receipt.result.unique_affinity_solves, s: circ.result.seconds.toFixed(1) });
+  } catch (e) { plain($('#circInfo'), ''); throw e; }
+});
+
+function renderCirc() {
+  $('#circOut').hidden = !circ.result;
+  if (!circ.result) return;
+  const r = circ.result.receipt.result, f = r.featured, sp = r.spatial, pc = r.pulse_chase;
+  const tile = (key, value, sub, cls = '') => el('div', { class: 'stat' }, el('span', { class: 'k' }, t(key)), el('b', { class: cls }, value), el('span', { class: 'sub' }, sub));
+  const amp = Math.round(f.amplification_ratio);
+  $('#circStats').replaceChildren(
+    tile('circ.t.cryptic', String(r.category_counts.cryptic_bifurcation), t('circ.t.crypticSub', { n: r.edits.length, f: r.wt_fate }), r.category_counts.cryptic_bifurcation ? 'up' : ''),
+    tile('circ.t.featured', f.id, t('circ.t.featuredSub', { d: fmt(f.nkx2_2_delta), amp: amp >= 1000 ? '>1000' : String(amp) }), f.nkx2_2_delta < 0 ? 'down' : 'up'),
+    tile('circ.t.p3', `${sp.p3_wt_points} → ${sp.p3_mut_points}`, t('circ.t.p3Sub', { w: sp.p3_wt_points, m: sp.p3_mut_points })),
+    tile('circ.t.glir', pc.mut_competitive_nkx.toFixed(3), t('circ.t.glirSub', { a: pc.mut_activation_only_nkx.toFixed(3) }), pc.mut_competitive_nkx > 0.5 ? 'up' : '')
+  );
+  $('#circFeaturedSub').textContent = t('circ.traj.featuredSub', {
+    id: f.id, q: f.affinity_ratio.toPrecision(3), cat: t('circ.cat.' + f.category),
+    rev: r.controls.reversion_max_difference.toExponential(0).replace('e+0', '')
+  });
+  $('#circControls').replaceChildren(
+    el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.rev')), el('div', { class: 'val' }, r.controls.reversion_max_difference === 0 ? 'Exact' : r.controls.reversion_max_difference.toExponential(1)), el('div', { class: 'meta' }, t('circ.ctl.revSub', { d: r.controls.reversion_max_difference.toExponential(0).replace('e+0', '') }))),
+    el('div', { class: 'circ-card' }, el('b', {}, t('circ.ctl.contract')), el('div', { class: 'val' }, r.compiled.variant_contract_sha256.slice(0, 12) + '…'), el('div', { class: 'meta' }, t('circ.ctl.contractSub')))
+  );
+  renderCircRows(); drawCircScatter(); drawCircTraj();
+}
+
+function renderCircRows() {
+  const r = circ.result.receipt.result;
+  const shown = (circ.cat === 'all' ? r.edits : r.edits.filter(e => e.category === circ.cat)).slice(0, 120);
+  $('#circRows').replaceChildren(...shown.map((e, i) => el('tr', {},
+    el('td', { class: 'num rank' }, String(i + 1)),
+    el('td', { class: 'mono' }, `${e.ref}${e.pos + 1}→${e.alt}`),
+    el('td', { class: 'num mono' }, e.affinity_ratio.toPrecision(3)),
+    el('td', { class: 'num mono' }, Math.abs(e.reporter_delta_end).toFixed(4)),
+    el('td', { class: 'num mono ' + dirOf(e.nkx2_2_delta) }, fmt(e.nkx2_2_delta)),
+    el('td', { class: 'num mono ' + dirOf(e.kreimer_72h) }, fmt(e.kreimer_72h)),
+    el('td', {}, el('span', { class: 'cat-pill ' + e.category }, t('circ.cat.' + e.category)))
+  )));
+}
+
+function drawCircScatter() {
+  const wrap = $('#circScatterWrap');
+  if (!circ.result || !wrap.clientWidth) return;
+  const r = circ.result.receipt.result, W = wrap.clientWidth, H = 220, dpr = window.devicePixelRatio || 1;
+  const cv = $('#circScatter'), ctx = cv.getContext('2d');
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const pad = { l: 42, r: 16, t: 14, b: 28 }, xmax = Math.max(...r.edits.map(e => Math.abs(e.reporter_delta_end)), 0.05);
+  const ymax = Math.max(...r.edits.map(e => Math.abs(e.nkx2_2_delta)), 0.1);
+  const x = v => pad.l + (v / xmax) * (W - pad.l - pad.r);
+  const y = v => H - pad.b - (v / ymax) * (H - pad.t - pad.b);
+  const axis = css('--axis'), t3 = css('--text3'), col = { cryptic_bifurcation: css('--pos'), concordant_switch: css('--ok'), canalized_buffered: css('--neg'), neutral: css('--text3') };
+  ctx.strokeStyle = axis; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.stroke();
+  ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(x(Math.min(0.02, xmax)), pad.t); ctx.lineTo(x(Math.min(0.02, xmax)), H - pad.b); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = t3; ctx.font = '11px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center'; ctx.fillText('|Δ reporter|', (pad.l + W - pad.r) / 2, H - 10);
+  ctx.textAlign = 'right'; ctx.fillText(ymax.toFixed(2), pad.l - 6, pad.t + 6); ctx.fillText('0', pad.l - 6, H - pad.b);
+  circ.dots = [];
+  for (const e of r.edits) {
+    const px = x(Math.abs(e.reporter_delta_end)), py = y(Math.abs(e.nkx2_2_delta)), feat = e.id === r.featured.id;
+    circ.dots.push({ px, py, e });
+    ctx.globalAlpha = e.category === 'neutral' ? 0.35 : 0.85;
+    ctx.fillStyle = col[e.category] || t3;
+    ctx.beginPath(); ctx.arc(px, py, feat ? 6 : (e.category === 'cryptic_bifurcation' ? 4.5 : 3), 0, 6.2832); ctx.fill();
+    if (feat) { ctx.globalAlpha = 1; ctx.strokeStyle = css('--text'); ctx.lineWidth = 2; ctx.stroke(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCircTraj() {
+  const cv = $('#circTraj'), parent = cv.parentElement;
+  if (!circ.result || !parent.clientWidth) return;
+  const r = circ.result.receipt.result, nkxIdx = r.genes.indexOf('Nkx2.2'), oligIdx = r.genes.indexOf('Olig2');
+  const curves = [
+    { values: r.runs.reference.states.map(s => s[nkxIdx]), color: css('--text'), width: 2.2, dash: [] },
+    { values: r.runs.variant.states.map(s => s[nkxIdx]), color: css('--pos'), width: 2.4, dash: [] },
+    { values: r.runs.reference.states.map(s => s[oligIdx]), color: css('--text3'), width: 1.8, dash: [4, 4] },
+    { values: r.runs.variant.states.map(s => s[oligIdx]), color: css('--neg'), width: 1.8, dash: [4, 4] },
+  ];
+  drawChart(cv, { h: 170, time: r.time, curves, threshold: true, cursor: null, step: false, fill: false });
+}
+
+$('#circScatter').onmousemove = ev => {
+  const rect = $('#circScatter').getBoundingClientRect(), x = ev.clientX - rect.left, y = ev.clientY - rect.top, tip = $('#circTip');
+  let best = null, bd = 10;
+  for (const d of circ.dots) { const dist = Math.hypot(d.px - x, d.py - y); if (dist < bd) { bd = dist; best = d; } }
+  if (!best) { tip.hidden = true; return; }
+  const r = $('#circScatterWrap').getBoundingClientRect();
+  tip.hidden = false; tip.textContent = `${best.e.id}  q=${best.e.affinity_ratio.toPrecision(2)}  ΔNkx=${fmt(best.e.nkx2_2_delta)}`;
+  tip.style.left = (ev.clientX - r.left) + 'px'; tip.style.top = (ev.clientY - r.top) + 'px';
+};
+$('#circScatter').onmouseleave = () => { $('#circTip').hidden = true; };
+$('#circCsv').onclick = () => {
+  const r = circ.result.receipt.result;
+  const head = ['id', 'pos', 'ref', 'alt', 'affinity_ratio', 'reporter_delta_end', 'nkx2_2_delta', 'olig2_delta', 'wt_fate', 'mut_fate', 'amplification_ratio', 'siraj_score', 'kreimer_mean', 'kreimer_72h', 'category'];
+  save('epigenesis-circuit.csv', toCsv(head, r.edits.map(e => [e.id, e.pos + 1, e.ref, e.alt, e.affinity_ratio, e.reporter_delta_end, e.nkx2_2_delta, e.olig2_delta, e.wt_fate, e.mut_fate, e.amplification_ratio, e.siraj_score, e.kreimer_mean, e.kreimer_72h, e.category])), 'text/csv');
+};
+$('#circReceipt').onclick = () => saveReceipt(circ.result.receipt);
+
+window.addEventListener('resize', () => { scan && drawScan(); pairs && drawStrip(); sim.result && drawSim(); circ.result && (drawCircScatter(), drawCircTraj()); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { scan && drawScan(); pairs && drawStrip(); sim.result && drawSim(); circ.result && (drawCircScatter(), drawCircTraj()); });
 
 // verify
 const ICON = {
@@ -1494,6 +1835,7 @@ $('#about').onclick = e => { if (e.target === $('#about')) $('#about').close(); 
     siteTable = await api('/api/site'); sim.protein = siteTable.published.protein; pickSite(siteTable.published.site);
     sim.initial = Object.fromEntries(siteTable.genes.map(g => [g, 0])); buildInitial(); renderSite(); renderPhases();
   } else { $('#simOff').hidden = false; $('#simRun').disabled = true; }
+  if (!model.circuit) { $('#circOff').hidden = false; $('#circRun').disabled = true; }
   folder = await api('/api/files'); renderOpen();
   const pre = await api('/api/preload');
   if (pre) openDoc(pre); else if (folder.files.length) openDialog();

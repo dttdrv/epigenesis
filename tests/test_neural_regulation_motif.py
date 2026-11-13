@@ -95,6 +95,32 @@ class NeuralRegulationMotifTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.mt.load_prediction(out)
 
+    def test_bundled_studio_kreimer_checkpoint_matches_motif_temporal(self):
+        studio_root = ROOT / "studio"
+        if not (studio_root / "epigenesis_studio/model/kreimer_weights.npz").is_file():
+            self.skipTest("bundled Studio Kreimer checkpoint not present")
+        if str(studio_root) not in sys.path:
+            sys.path.insert(0, str(studio_root))
+        from epigenesis_studio import kreimer
+
+        manifest, coefs, _, _ = kreimer.load()
+        rows, _ = self.reg.load_data()
+        fitting = [r for r in rows if r.split != "test"]
+        scale = self.reg.training_scale(fitting)
+        self.assertAlmostEqual(manifest["asinh_scale"], scale, places=7)
+
+        fitted_model, fitted_coef = self.mt.fit(fitting, scale)
+        self.assertLess(np.max(np.abs(coefs - fitted_coef)), 1e-12)
+
+        sample = [
+            {"id": r.id, "reference": r.reference, "sequence": r.sequence}
+            for r in rows if r.split == "test"
+        ][:8]
+        mt_pred = self.mt.predict_rows(fitted_model, fitted_coef, sample)
+        kr_pred = kreimer.predict(sample)
+        for i, row in enumerate(kr_pred):
+            self.assertLess(np.max(np.abs(np.array(row["temporal"]) - mt_pred[i])), 1e-12)
+
 
 if __name__ == "__main__":
     unittest.main()

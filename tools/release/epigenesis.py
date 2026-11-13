@@ -27,14 +27,17 @@ def report(script, name, check=False):
 def predict(args):
     legacy = args.activity or args.attention
     if args.budget is not None and legacy:
-        p.error('--budget belongs to the default Huber-linear model')
+        p.error('--budget belongs to the default Huber-linear and Kreimer models')
     if args.families and not legacy:
-        p.error('the default model uses family fields in the input and --budget; --families requires --activity or --attention')
+        p.error('the default models use family fields in the input and --budget; --families requires --activity or --attention')
     if args.device is not None and not args.attention:
         p.error('--device requires --attention')
-    script = ROOT / 'studio/epigenesis_studio/model/predict.py'
-    if legacy:
+    if args.kreimer:
+        script = ROOT / 'studio/epigenesis_studio/kreimer.py'
+    elif legacy:
         script = EX / 'neural-predictor' / ('predictor.py' if args.attention else 'activity.py')
+    else:
+        script = ROOT / 'studio/epigenesis_studio/model/predict.py'
     cmd = [script, '--input', args.input, '--output', args.output]
     if args.budget is not None:
         cmd += ['--budget', args.budget]
@@ -53,11 +56,13 @@ p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDes
 sub = p.add_subparsers(dest='cmd')
 sub.add_parser('evidence', help='open a report of 109 published CHE-1 measurements traced to DNA edits')
 sub.add_parser('patterning', help='explore an Nkx2.2 enhancer edit in a developmental model')
-q = sub.add_parser('predict', help='score reporter DNA edits with the delivered Huber-linear model (needs numpy)')
+sub.add_parser('circuit', help='scan a chr15 enhancer through Boltzmann GLI affinity and the neural-tube ODE')
+q = sub.add_parser('predict', help='score reporter DNA edits with Huber-linear (default) or Kreimer 0-72h (needs numpy)')
 q.add_argument('--input', required=True, help='JSON list of {id, reference, sequence, optional family}; uppercase ACGT, at least 5 bases per sequence (see studio/epigenesis_studio/example-edits.json)')
 q.add_argument('--output', required=True, help='new JSON file to write')
-q.add_argument('--budget', type=int, help='panel size for Huber-linear; requires a family field on every edit')
+q.add_argument('--budget', type=int, help='panel size for Huber-linear or Kreimer; requires a family field on every edit')
 legacy = q.add_mutually_exclusive_group()
+legacy.add_argument('--kreimer', action='store_true', help='use the bundled Kreimer H1 neural-induction 0-72h motif-temporal model')
 legacy.add_argument('--activity', action='store_true', help='use the archived Salomon activity-transfer model (270-base inputs; needs torch)')
 legacy.add_argument('--attention', action='store_true', help='use the archived Salomon attention mixture (270-base inputs; needs torch)')
 q.add_argument('--families', help='legacy models only: JSON {edit id: family id}; selects ten experiments')
@@ -70,6 +75,8 @@ if args.cmd == 'evidence':
     report(EX / 'neural-evidence' / 'evidence.py', 'neural-evidence', check=True)
 elif args.cmd == 'patterning':
     report(EX / 'neural-patterning' / 'patterning.py', 'neural-patterning')
+elif args.cmd == 'circuit':
+    report(EX / 'neural-circuit' / 'circuit.py', 'neural-circuit')
 elif args.cmd == 'predict':
     sys.exit(predict(args))
 elif args.cmd == 'verify':

@@ -333,7 +333,7 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
     validation = validate_development_paths(directory / "source", directory / "development", source_inputs={"sequence": pair_path})
     if not validation["valid"]:
         raise ValueError(f"circuit bundle validation failed: {validation}")
-    _, artifacts = load_development_bundle_directory(directory / "development")
+    bundle, artifacts = load_development_bundle_directory(directory / "development")
     lines = read_regular_file(pair_path, maximum_bytes=64 * 1024).decode("ascii").splitlines()
     if len(lines) != 4 or lines[0] != ">reference" or lines[2] != ">variant":
         raise ValueError("invalid circuit pair.fasta layout")
@@ -346,7 +346,13 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
     recomputed_q = affinity_ratio(reference, variant, contract["protein"], contract["epsilon"])
     if not math.isclose(stored_q, recomputed_q, rel_tol=1e-12, abs_tol=1e-12):
         raise ValueError("compiled affinity ratio disagrees with partition sum")
-    return {"contract_sha256": expected_receipt, "affinity_ratio": stored_q, "length": len(reference)}
+    return {
+        "contract_sha256": expected_receipt,
+        "bundle_sha256": bundle["artifact_sha256"],
+        "development_sha256": artifacts["development_module"]["artifact_sha256"],
+        "affinity_ratio": stored_q,
+        "length": len(reference),
+    }
 
 
 def _optional_sequence_scores(pairs: list[dict], motif_model_dir: Path | None) -> tuple[dict | None, dict | None]:
