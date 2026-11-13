@@ -37,6 +37,7 @@ python3.11 epigenesis_cli.py circuit --list-circuits
 python3.11 epigenesis_cli.py circuit --circuit tri-lineage-switch --target All
 python3.11 epigenesis_cli.py circuit --benchmark
 python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta --protein MA0069.1
+python3.11 epigenesis_cli.py radar --locus chr15:90936956-90937127 --output /tmp/v2f-radar
 python3.11 epigenesis_cli.py predict --kreimer --input studio/epigenesis_studio/example-edits.json --output /tmp/kreimer.json
 python3.11 epigenesis_cli.py check --full
 ```
@@ -48,6 +49,7 @@ python3.11 examples/neural-evidence/evidence.py demo --output /tmp/neural-eviden
 python3.11 examples/neural-evidence/evidence.py verify --output /tmp/neural-evidence
 python3.11 examples/neural-patterning/patterning.py demo --output /tmp/neural-patterning
 python3.11 examples/neural-circuit/circuit.py demo --output /tmp/neural-circuit
+python3.11 examples/neural-v2f/radar.py demo --output /tmp/neural-v2f
 ```
 
 Open `index.html` in each output directory.
@@ -115,6 +117,7 @@ These identities are recorded in [expected.json](examples/minimal-development/ex
 | [Coding consequences](examples/coding-consequences/README.md) | Reconstructs *Sox2* edits from genomic sequence, applies the declared coding annotation and checks the resulting peptides against independent reference sequences | Gong et al. (2020) |
 | [Neural patterning](examples/neural-patterning/README.md) | Connects an *Nkx2.2* enhancer substitution and measured GLI binding profiles to a four-gene model; tests signal history, rescue and phenocopy under an explicit affinity-transfer assumption | Peterson et al. (2012); Cohen et al. (2014) |
 | [Neural circuit](examples/neural-circuit/README.md) | Scans arbitrary enhancers via Boltzmann TF partition physics (Hallikas `GLI2`/`GLI3`, `532` JASPAR 2024 motifs, or custom PWMs) into arbitrary $N$-gene ODEs (`neural-tube`, `mutual-toggle`, `tri-lineage-switch`, or custom JSON `CircuitSpec`s), compares SNV/MNV/indel alleles in sealed `brainc` v2/v3 modules, finds epistatic second-site rescues, and bridges steady states into CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020); JASPAR 2024 |
+| [V2F tipping-point & rescue radar](examples/neural-v2f/README.md) | Sweeps full morphogen regimes ($S \in [0, 1]$) with exact 12-step tipping-point bisection ($\Delta S_{\mathrm{crit}}$), flags passive-reporter-silent and optional doubly-silent switches, proposes dual cis-epistatic + trans-dose rescues, evaluates arbitrary SNV/MNV/indel variant tables, and falsifies claims against exact Altschul–Erickson dinucleotide shuffles, scrambled PWMs, and sealed `brainc` causal controls (`biological_acceptance = False`) | Altschul & Erickson (1985); Kreimer et al. (2022); JASPAR 2024 |
 | [Neural construction](examples/neural-construction/README.md) | Grows cells, neurites and contacts from one founder and a shared artificial DNA recipe; tests signal transmission and contact lesions on the developed network | Zubler et al. (2011, 2013) |
 | [Neural evidence](examples/neural-evidence/README.md) | Reconstructs 109 published CHE-1 depletion observations, traces them to workbook cells and intended DNA edits, and compares competing explanations | Traets et al. (2021) |
 | [Neural fate](examples/neural-fate/README.md) | An artificial DNA parameter recipe driving published regulatory dynamics | Balaskas et al. (2012) |
@@ -169,6 +172,7 @@ python3.11 tests/verify.py minimal-example
 python3.11 tests/verify.py universal-translation
 python3.11 tests/verify.py boundary
 python3.11 tests/verify.py neural-circuit
+python3.11 tests/verify.py neural-v2f
 python3.11 tests/verify.py neural-regulation-motif   # requires NumPy
 PIP_NO_INDEX=1 python3.11 tests/verify.py wheel
 PIP_NO_INDEX=1 python3.11 tests/verify.py sdist

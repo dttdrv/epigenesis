@@ -27,7 +27,7 @@ class EpigenesisCliTests(unittest.TestCase):
     def test_help_lists_all_unified_commands(self):
         res = self._run("--help")
         self.assertEqual(res.returncode, 0, res.stderr)
-        for cmd in ("studio", "circuit", "scan", "predict", "evidence", "patterning", "construction", "check"):
+        for cmd in ("studio", "circuit", "scan", "radar", "predict", "evidence", "patterning", "construction", "check"):
             self.assertIn(cmd, res.stdout)
 
     def test_missing_repo_fails_cleanly_when_isolated(self):
@@ -86,6 +86,8 @@ class EpigenesisCliTests(unittest.TestCase):
             dummy_out = Path(tmp) / "out.json"
             bad_cases = (
                 ("circuit", "--reference", "ACGTACGTACGT"),
+                ("radar", "--fasta", "a.fasta", "--variants", str(dummy_in)),
+                ("radar", "--benchmark", "--fasta", "a.fasta"),
                 ("predict", "--input", str(dummy_in), "--output", str(dummy_out), "--families", "f.json"),
                 ("predict", "--input", str(dummy_in), "--output", str(dummy_out), "--activity", "--budget", "3"),
                 ("predict", "--input", str(dummy_in), "--output", str(dummy_out), "--kreimer", "--device", "cpu"),
@@ -96,7 +98,7 @@ class EpigenesisCliTests(unittest.TestCase):
                     self.assertEqual(res.returncode, 2, res.stderr)
 
     def test_release_launcher_new_subcommand_help(self):
-        for subcmd in ("circuit", "scan", "construction"):
+        for subcmd in ("circuit", "scan", "radar", "construction"):
             with self.subTest(subcmd=subcmd):
                 res = subprocess.run(
                     [sys.executable, str(RELEASE_CLI), subcmd, "--help"],
@@ -195,6 +197,39 @@ class EpigenesisCliTests(unittest.TestCase):
             self.assertEqual(cust["circuit"], "cli-custom-2")
             self.assertEqual(cust["protein"], "CLI-PWM-5")
             self.assertEqual(cust["genes"], ["X", "Y"])
+
+    def test_radar_variants_and_fasta_cli(self):
+        ref = "ACTG" * 5 + "GACCACCCA" + "TGCA" * 5
+        with tempfile.TemporaryDirectory() as tmp:
+            troot = Path(tmp)
+            vjson = troot / "variants.json"
+            vjson.write_text(json.dumps([
+                {"id": "wt", "reference": ref, "sequence": ref},
+                {"id": "mut_del", "reference": ref, "sequence": "ACTG" * 5 + "GA" + "TGCA" * 5},
+            ]))
+            vout = troot / "vout"
+            res_v = self._run(
+                "radar", "--variants", str(vjson), "--steps", "7",
+                "--no-sequence-models", "--output", str(vout),
+            )
+            self.assertEqual(res_v.returncode, 0, res_v.stderr)
+            rep_v = json.loads((vout / "variants_report.json").read_text())
+            self.assertEqual(rep_v["variants_tested"], 2)
+            self.assertFalse(rep_v["biological_acceptance"])
+            self.assertTrue((vout / "wetlab_candidates.csv").is_file())
+
+            fasta = troot / "enh.fasta"
+            fasta.write_text(f">enh\n{ref}\n")
+            fout = troot / "fout"
+            res_f = self._run(
+                "radar", "--fasta", str(fasta), "--steps", "7", "--shuffles", "1",
+                "--no-sequence-models", "--output", str(fout),
+            )
+            self.assertEqual(res_f.returncode, 0, res_f.stderr)
+            rep_f = json.loads((fout / "radar_report.json").read_text())
+            self.assertGreaterEqual(rep_f["scan"]["category_counts"]["cryptic_bifurcation"], 0)
+            self.assertTrue(rep_f["causal_controls"]["all_passed"])
+            self.assertTrue((fout / "index.html").is_file())
 
 
 if __name__ == "__main__":

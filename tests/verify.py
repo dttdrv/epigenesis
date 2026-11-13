@@ -2374,6 +2374,14 @@ def neural_circuit() -> None:
     print("Boltzmann partition sum, cryptic bifurcation detection, and brainc compilation controls passed; organism phenotype is NOT ESTABLISHED.")
 
 
+def neural_v2f() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_v2f","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-V2F-SOFTWARE-PASSED")
+    print("Tipping-point sweep, cis/trans rescue search, dinucleotide null controls, and brainc verification passed; biological phenotype is NOT ESTABLISHED.")
+
+
 def neural_regulation_motif() -> None:
     result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_regulation_motif","-v"],cwd=ROOT)
     if result.returncode != 0:
@@ -2386,6 +2394,7 @@ COMMANDS = {
     "coding-consequences": coding_consequences,
     "neural-binding": neural_binding,
     "neural-circuit": neural_circuit,
+    "neural-v2f": neural_v2f,
     "boundary": boundary,
     "canonical": canonical,
     "contract-attacks": contract_attacks,

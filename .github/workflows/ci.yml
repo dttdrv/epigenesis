@@ -123,6 +123,7 @@ jobs:
           python tests/verify.py neural-fate-experiment
           python tests/verify.py neural-regulation
           python tests/verify.py neural-circuit
+          python tests/verify.py neural-v2f
           python tests/verify.py neural-construction
           python tests/verify.py coding-consequences
           python tests/verify.py neural-binding
