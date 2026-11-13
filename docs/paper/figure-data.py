@@ -40,8 +40,10 @@ print(f'  largest increase {best["id"]} {best["effect"]:+.4f}; largest decrease 
 first = EDITS[0]
 changed = next(i for i, (a, b) in enumerate(zip(first['reference'], first['sequence'])) if a != b)
 pair = server.run(server.normalize(dict(mode='pairs', rows=[{k: first[k] for k in ('id', 'reference', 'sequence')}], budget=None)))
+ref_base = first['reference'][changed]
+alt_base = first['sequence'][changed]
 print(f'  example edit {first["id"]} at position {changed+1}: Edits {pair["predictions"][0]["effect"]:+.6f}, '
-      f'Scan {effect[f"{changed+1}:{first["reference"][changed]}>{first["sequence"][changed]}"]:+.6f}')
+      f'Scan {effect[f"{changed+1}:{ref_base}>{alt_base}"]:+.6f}')
 
 # Edits panel and receipt
 BUDGET = 5

@@ -4,7 +4,7 @@ Epigenesis is a DNA compiler and simulation toolkit. It compiles a DNA source, r
 
 Experiments built on the compiler connect original measurements, reconstructed DNA edits, binding models and developmental dynamics. Every experiment records its inputs, assumptions, interventions and verification results, so a claim can be traced back to the source data. In the works reviewed in [Prior art](docs/reference/PRIOR_ART.md), no other system combines these boundaries; that is a scoped comparison of the cited corpus, not a benchmark against other simulators.
 
-**Status.** Version 1.7 combines the universal DNA translation compiler with Epigenesis Studio `0.2.0` and two new executable neural workflows: the **Variant-to-Circuit Enhancer Scanner** (`neural-circuit`) and the **Kreimer 0–72h H1 neural-induction motif-temporal predictor** (`motif_temporal`, retrospective held-out family MSE `0.252079` vs `k5` `0.285185` on GSE188264). Meanwhile, thirteen frozen cross-study sequence tests (Siraj SK-N-SH, 19–20 October 2026) found no reliable gain over simple baselines (mean correlation 0.049 on five external studies). [The technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)) and [1.7 release notes](docs/releases/RELEASE-1.7.md) state what is and is not established.
+**Status.** Version 1.7 combines the universal DNA translation compiler with Epigenesis Studio `0.2.0`, a single `epigenesis` CLI, and two executable neural workflows: the generalized **Variant-to-Circuit Enhancer Scanner** (`neural-circuit`, supporting arbitrary-length enhancers, Hallikas `GLI2`/`GLI3`, all `532` JASPAR 2024 motifs or custom PWMs, and arbitrary `N`-gene regulatory `CircuitSpec`s across `brainc` v2/v3 bundles) and the **Kreimer 0–72h H1 neural-induction motif-temporal predictor** (`motif_temporal`, retrospective held-out family MSE `0.252079` vs `k5` `0.285185` on GSE188264). Meanwhile, thirteen frozen cross-study sequence tests (Siraj SK-N-SH, 19–20 October 2026) found no reliable gain over simple baselines (mean correlation 0.049 on five external studies). [The technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)) and [1.7 release notes](docs/releases/RELEASE-1.7.md) state what is and is not established.
 
 ## Contents
 
@@ -14,7 +14,8 @@ Experiments built on the compiler connect original measurements, reconstructed D
 | [`docs/`](docs/README.md) | Index of references, release contracts and research records |
 | [`research/`](research/README.md) | Plans, hashes, scripts and results of the thirteen frozen tests, with a hash checker |
 | [`examples/`](examples/) | One folder per experiment, each with its own README |
-| [`studio/`](studio/README.md) | Epigenesis Studio: a desktop application (English and Bulgarian) for DNA-site simulation, full-enhancer cryptic bifurcation scans, Siraj & Kreimer 0–72h edit scoring, and receipt verification |
+| [`studio/`](studio/README.md) | Epigenesis Studio `0.2.0`: a desktop application (English and Bulgarian) for DNA-site simulation, full-enhancer cryptic bifurcation scans across custom circuits and motifs, Siraj & Kreimer 0–72h edit scoring, and receipt verification |
+| [`epigenesis_cli.py`](epigenesis_cli.py) | Standard-library unified CLI (`epigenesis`) across Studio, circuit scans/comparisons, predictors, and release gates |
 | `brainc/`, [`SPEC.md`](SPEC.md) | The DNA → Development Module compiler and its contract |
 | `tests/`, `studio/tests/` | Compiler, experiment and Studio tests; release gates in `tests/verify.py` |
 
@@ -27,15 +28,16 @@ uv tool install --editable studio --with-editable .
 epigenesis-studio
 ```
 
-Start with **Simulate** to change the GLI binding site, or **Enhancer Circuit** to scan arbitrary enhancers for cryptic fate switches, compare custom indels/MNVs, and wire downstream targets (`Nkx2.2`, `Olig2`, `Both`). **Scan** and **Edits** score sequences with either the Siraj Huber-linear checkpoint or the **Kreimer 0–72h** neural-induction predictor (showing top contributing JASPAR motifs per edit); **Receipts** replays saved results. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
+Start with **Simulate** to change the 9-bp GLI binding site, or **Enhancer Circuit** to scan arbitrary enhancers (`9–500` bp in Studio) for cryptic fate switches across built-in circuit presets (`neural-tube`, `mutual-toggle`, `tri-lineage-switch`), wire **GLI2**, **GLI3**, or any of the **532 JASPAR 2024 motifs** onto target genes (`Nkx2.2`, `Olig2`, `Both`, `All`), compare custom SNV/MNV/indel alleles, and search for epistatic second-site rescues. **Scan** and **Edits** score sequences with either the Siraj Huber-linear checkpoint or the **Kreimer 0–72h** neural-induction predictor (showing top contributing JASPAR motifs per edit); **Receipts** replays saved results. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
 
-For a single command-line entry point across Studio, circuit scans/comparisons, predictors, and checks, install the root package (`pip install .`, exposing `epigenesis`) or run [`epigenesis_cli.py`](epigenesis_cli.py) directly with standard-library Python 3.11+:
+For a single command-line entry point across Studio, generalized circuit scans/comparisons, predictors, and checks, install the root package (`pip install .`, exposing `epigenesis`) or run [`epigenesis_cli.py`](epigenesis_cli.py) directly with standard-library Python 3.11+:
 
 ```sh
+python3.11 epigenesis_cli.py circuit --list-circuits
+python3.11 epigenesis_cli.py circuit --circuit tri-lineage-switch --target All
 python3.11 epigenesis_cli.py circuit --benchmark
-python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta
-python3.11 epigenesis_cli.py evidence
-python3.11 epigenesis_cli.py patterning
+python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta --protein MA0069.1
+python3.11 epigenesis_cli.py predict --kreimer --input studio/epigenesis_studio/example-edits.json --output /tmp/kreimer.json
 python3.11 epigenesis_cli.py check --full
 ```
 
@@ -112,14 +114,14 @@ These identities are recorded in [expected.json](examples/minimal-development/ex
 |---|---|---|
 | [Coding consequences](examples/coding-consequences/README.md) | Reconstructs *Sox2* edits from genomic sequence, applies the declared coding annotation and checks the resulting peptides against independent reference sequences | Gong et al. (2020) |
 | [Neural patterning](examples/neural-patterning/README.md) | Connects an *Nkx2.2* enhancer substitution and measured GLI binding profiles to a four-gene model; tests signal history, rescue and phenocopy under an explicit affinity-transfer assumption | Peterson et al. (2012); Cohen et al. (2014) |
-| [Neural circuit](examples/neural-circuit/README.md) | Scans full-length human enhancers via Boltzmann GLI partition physics into the four-gene neural-tube ODE (`Nkx2.2`, `Olig2`, `Both`), compares SNV/MNV/indel alleles, tests second-site rescue, and optionally bridges steady states into CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020) |
+| [Neural circuit](examples/neural-circuit/README.md) | Scans arbitrary enhancers via Boltzmann TF partition physics (Hallikas `GLI2`/`GLI3`, `532` JASPAR 2024 motifs, or custom PWMs) into arbitrary $N$-gene ODEs (`neural-tube`, `mutual-toggle`, `tri-lineage-switch`, or custom JSON `CircuitSpec`s), compares SNV/MNV/indel alleles in sealed `brainc` v2/v3 modules, finds epistatic second-site rescues, and bridges steady states into CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020); JASPAR 2024 |
 | [Neural construction](examples/neural-construction/README.md) | Grows cells, neurites and contacts from one founder and a shared artificial DNA recipe; tests signal transmission and contact lesions on the developed network | Zubler et al. (2011, 2013) |
 | [Neural evidence](examples/neural-evidence/README.md) | Reconstructs 109 published CHE-1 depletion observations, traces them to workbook cells and intended DNA edits, and compares competing explanations | Traets et al. (2021) |
 | [Neural fate](examples/neural-fate/README.md) | An artificial DNA parameter recipe driving published regulatory dynamics | Balaskas et al. (2012) |
 | [Neural measurement](examples/neural-measurement/README.md), [forecast](examples/neural-forecast/README.md) | Replay of repeat-forecast comparisons on neuronal reporter assays (measurement: BIRD model) | Majoros et al. (2020) |
-| [Neural regulation](examples/neural-regulation/README.md) | H1 neural-induction reporter data and a failed predictive test | |
+| [Neural regulation](examples/neural-regulation/README.md) | H1 neural-induction 0–72h reporter data (Kreimer et al. 2022): frozen k-mer negative baseline (`regulation.py`) and motif-temporal predictor (`motif_temporal.py`, 5-mers + 532 JASPAR motifs, arbitrary lengths `5..16,384` bp into `brainc`) | Kreimer et al. (2022); JASPAR 2024 |
 | [Neural binding](examples/neural-binding/README.md) | Genomic *Nkx2-2* sequence, a designed substitution and a failed binding benchmark | Liu et al. (2025) |
-| [DNA-edit predictor](examples/neural-predictor/README.md) | Huber-linear scores for reference and edited DNA, with optional family-diverse panel selection; archived Salomon models are documented separately | Siraj et al. (2026); Salomon et al. (2026) |
+| [DNA-edit predictor](examples/neural-predictor/README.md) | Huber-linear and Kreimer 0–72h checkpoints for reference and edited DNA, with family-diverse panel selection and top-motif attributions; archived Salomon models are documented separately | Siraj et al. (2026); Kreimer et al. (2022); Salomon et al. (2026) |
 
 Each example documents its inputs, runtime, scientific scope and reproduction commands. Neural construction needs a JDK and `patch` (tested with Java 21).
 
@@ -135,9 +137,14 @@ The question is whether sequence alone predicts what an unseen DNA alteration do
 
 The records, with a script that verifies their hashes, are in [`research/`](research/README.md). Limits of the protocol, including that the hashes are local and that the tests were not corrected for multiplicity, are in Section 5 of the paper.
 
-### Delivered predictor
+### Delivered predictors
 
-The delivered model is the Huber-linear checkpoint. On 16,986 internal-tuning edits in 1,759 families, equal-family mean squared error falls from 0.29661 (k5) to 0.28767, a 3.02% reduction, and ten-edit signed utility rises from 0.857 to 1.483. Six of seven original requirements pass; the ten-edit gain lower bound against k5 is −0.150. These data were used throughout development. On five external neural reporter studies its correlation is 0.0490, and its mean squared error is 9.52% above predicting no effect. It is a research prototype for prioritizing edits in the Siraj assay, not a validated predictor. See [the predictor README](examples/neural-predictor/README.md). To use it interactively, install [Epigenesis Studio](studio/README.md) and run `epigenesis-studio`; Studio also runs the neural-patterning simulation on a chosen DNA site.
+Studio and `epigenesis predict` expose two deterministic CPU checkpoints:
+
+1. **Siraj Huber-linear (`epigenesis-siraj-huber-linear-v1`, default):** On 16,986 internal-tuning edits in 1,759 families, equal-family mean squared error falls from 0.29661 (k5) to 0.28767, a 3.02% reduction, and ten-edit signed utility rises from 0.857 to 1.483. Six of seven original requirements pass; the ten-edit gain lower bound against k5 is −0.150. These data were used throughout development. On five external neural reporter studies its correlation is 0.0490, and its mean squared error is 9.52% above predicting no effect. It is a research prototype for prioritizing edits in the Siraj assay, not a validated predictor.
+2. **Kreimer 0–72h motif-temporal (`epigenesis-kreimer-motif-temporal-v1`, `--kreimer`):** Combines canonical 5-mers and 532 JASPAR 2024 motifs across `[0, 3, 6, 12, 24, 48, 72]` hours on Kreimer et al. (2022) GSE188264. Hyperparameters were selected on train → validation families before refitting train+validation. Across `1,415` targeted edits in `118` held-out families, family-weighted MSE is `0.252079` vs `k5` (`0.285185`, 95% bootstrap gain `[0.007810, 0.061363]`), dinucleotide (`0.319358`), and zero-effect (`0.360870`), and temporal-contrast MSE beats time-averaging (`0.031285` vs `0.032108`, `[0.000220, 0.001528]`). Results remain retrospective and conditional on published MPRAnalyze preprocessing (`biological_development_accepted: false`).
+
+See [the predictor README](examples/neural-predictor/README.md) and [the 1.7 release notes](docs/releases/RELEASE-1.7.md). To use both interactively alongside the **Enhancer Circuit** bifurcation scanner, install [Epigenesis Studio](studio/README.md) and run `epigenesis studio` or `epigenesis-studio`.
 
 ## Measurement result
 
@@ -156,16 +163,19 @@ Two follow-ups use different targets. A [temporal experiment](docs/research/NEUR
 ## Verification
 
 ```sh
+python3.11 epigenesis_cli.py check --full
 python3.11 -m unittest discover -s tests -v
 python3.11 tests/verify.py minimal-example
 python3.11 tests/verify.py universal-translation
 python3.11 tests/verify.py boundary
+python3.11 tests/verify.py neural-circuit
+python3.11 tests/verify.py neural-regulation-motif   # requires NumPy
 PIP_NO_INDEX=1 python3.11 tests/verify.py wheel
 PIP_NO_INDEX=1 python3.11 tests/verify.py sdist
-python3 research/check_freeze.py
+python3.11 research/check_freeze.py
 ```
 
-The [CI workflow](.github/workflows/ci.yml) defines the complete release checks, including independent source replay, contract attacks, resource and path safety, real-DNA compilation and both offline demonstrations. Package checks need the declared build tooling. The predictor and its feature extractors need NumPy and, for some, PyTorch; each example README lists its requirements.
+The [CI workflow](.github/workflows/ci.yml) defines the complete release checks, including independent source replay, contract attacks, resource and path safety, real-DNA compilation, all release gates, and the Studio suite (`32` tests in `studio/tests/`). Package checks need the declared build tooling. The predictors and their feature extractors need NumPy and, for some archived models, PyTorch; each example README lists its requirements.
 
 ## Foundations and sources
 

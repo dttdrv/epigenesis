@@ -5,12 +5,12 @@
 
 \begin{document}
 
-\titleblock{Epigenesis: changing DNA and simulating\\the consequences for neural development}{Deyan Todorov}{Technical paper, draft 2 · 20 October 2026 · Bulgarian version: \href{epigenesis-technical-paper.bg.pdf}{epigenesis-technical-paper.bg.pdf}\\Code: \url{https://github.com/dttdrv/epigenesis} (Apache-2.0)}
+\titleblock{Epigenesis: changing DNA and simulating\\the consequences for neural development}{Deyan Todorov}{Technical paper, draft 3 · 13 November 2026 (Epigenesis 1.7.0) · Bulgarian version: \href{epigenesis-technical-paper.bg.pdf}{epigenesis-technical-paper.bg.pdf}\\Code: \url{https://github.com/dttdrv/epigenesis} (Apache-2.0)}
 
 \begin{abstractbox}{Abstract}
-Epigenesis is software for changing a piece of DNA and observing what follows in a simulated developmental system. It reads a DNA source under an explicit interpretation of what the DNA means, compiles it into a content-addressed Development Module, and replays every compilation with a separate validator. This paper describes the executable components and works through one example. The published substitution GACCACCCA to GAACACCCA weakens a GLI binding site in an \emph{Nkx2.2} enhancer. Its measured binding ratio, 0.042, enters a four-gene model of neural-tube patterning. Under a constant signal of 0.2 for 20 model units, the reference ends with Nkx2.2 at 0.94 and the variant at 0.008, and reverting the base restores the reference trajectory exactly. A second component is a Huber-linear predictor of the effect of an edit on reporter activity: given a sequence or a table of edits, it returns signed scores, ranks the edits and selects a panel with one edit per family. On 16,986 internal edits it lowers the family-weighted squared error by 3.02\% against a 5-mer baseline. This evidence is preliminary. Development reused these data, and on five external studies the correlation is 0.049 and the error is 9.52\% above that of predicting no effect. Epigenesis Studio is a local desktop application, in English and Bulgarian, that runs the simulation and the predictor and exports receipts that anyone with the same installation can replay.
+Epigenesis is software for changing a piece of DNA and observing what follows in a simulated developmental system. It reads a DNA source under an explicit interpretation of what the DNA means, compiles it into a content-addressed Development Module, and replays every compilation with a separate validator. This paper describes the compiler, its verification architecture, and two coupled neural workflows introduced through Version~1.7.0. First, a mechanistic pipeline connects a DNA site—and in 1.7, arbitrary-length human enhancers through strand-symmetric Boltzmann partition physics across Hallikas GLI2/GLI3, 532 JASPAR 2024 vertebrate motifs, or custom matrices—to arbitrary $N$-gene regulatory differential equations compiled in sealed \code{brainc} v2/v3 modules. In a 9-base \emph{Nkx2.2} GLI site, the substitution GACCACCCA to GAACACCCA shifts simulated Nkx2.2 from 0.940 to 0.0085 while passive promoter occupancy changes only from 0.940 to 0.928, and reverting the base restores the reference trajectory exactly. Scanning a full 171-base human enhancer (\code{chr15:90936956-90937127}) exposes 7 cryptic bifurcations among 513 substitutions (33 across five GSE188264 loci), epistatic second-site fate rescues on suboptimal enhancers, and 74 cryptic transitions in a multi-TF three-lineage circuit. Second, two CPU sequence predictors estimate variant effects on reporter assays: a Huber-linear model on SK-N-SH data (internal MSE 3.02\% below 5-mers, yet external cross-study correlation 0.049 and MSE 9.52\% above zero effect) and an orthogonal 0–72\,h H1 neural-induction motif-temporal ridge predictor (\code{motif\_temporal}, retrospective held-out family MSE 0.252079 against 0.285185 for 5-mers across 118 families). Epigenesis Studio (v0.2.0) and a unified CLI run these workflows locally in English and Bulgarian and export canonical SHA-256 receipts for independent replay.
 
-\smallskip\noindent\textbf{Keywords:} DNA compiler, regulatory variants, simulation, neural development, reproducibility, variant-effect prediction.
+\smallskip\noindent\textbf{Keywords:} DNA compiler, regulatory variants, Boltzmann partition affinity, cryptic bifurcations, neural development, reproducibility, variant-effect prediction.
 \end{abstractbox}
 
 \section{Introduction}
@@ -19,7 +19,7 @@ A researcher who changes a regulatory DNA site wants to know what the change doe
 
 Epigenesis treats a DNA record as the source of a program. A source profile fixes the grammar and identity of the record. The caller supplies an interpretation that states what the DNA is taken to mean. The compiler lowers both to a typed Development Module, an independent validator replays the derivation, and executable models read the sealed module. A compilation is accepted only if that second implementation reproduces it.
 
-The paper follows the order in which a researcher meets the software. Section~\ref{sec:software} describes the compiler, the validator and the executable experiments. Section~\ref{sec:example} is the main workflow: change a DNA site, simulate a neural regulatory network under supplied conditions, and compare the variant with the reference and with a reversion. Section~\ref{sec:predictor} describes the edit predictor, a second component that scores and ranks edits, with its data, method, results, a Studio demonstration and the limits of its transfer. Section~\ref{sec:studio} describes Epigenesis Studio, which runs both, and Section~\ref{sec:limits} states the limits.
+The paper follows the order in which a researcher meets the software. Section~\ref{sec:software} describes the compiler, the validator, the unified CLI and the executable experiments. Section~\ref{sec:example} presents the mechanistic chain: first the 9-base GLI worked example, then its Version~1.7 generalization to full-length enhancers, multi-motif Boltzmann binding, arbitrary $N$-gene circuits, epistatic second-site rescues and structural tissue bridging. Section~\ref{sec:predictor} describes the sequence predictors—the Siraj Huber-linear checkpoint with its cross-study limits and the Kreimer 0–72\,h neural-induction motif-temporal model. Section~\ref{sec:studio} describes Epigenesis Studio, which runs all workflows, and Section~\ref{sec:limits} states the limits.
 
 Among the works reviewed in Section~\ref{sec:related}, none compiles existing DNA under an explicit interpretation with independent replay. This is a scoped comparison; we ran no head-to-head benchmark against other tools. The compiler does not derive biology from sequence, because the interpretation is an input. The simulations hold under their stated assumptions and do not predict embryo outcomes.
 
@@ -27,13 +27,13 @@ Among the works reviewed in Section~\ref{sec:related}, none compiles existing DN
 
 \textbf{Compilers for DNA.} Several systems compile a design description into DNA or genetic circuits: attribute grammars \citep{cai2009}, a spatial language compiled to regulatory networks \citep{beal2011}, the Eugene and Genotype Specification languages \citep{bilitchenko2011,wilson2016} and Cello \citep{nielsen2016}. Epigenesis runs the other way. It takes existing DNA and an explicit interpretation and lowers them to a model input.
 
-\textbf{Simulated development.} CX3D grows neurons and networks from local rules \citep{zubler2009}. An instruction language drives it \citep{zubler2011} and was applied to cortical development \citep{zubler2013}. One experiment here uses CX3D.
+\textbf{Simulated development.} CX3D grows neurons and networks from local rules \citep{zubler2009}. An instruction language drives it \citep{zubler2011} and was applied to cortical development \citep{zubler2013}. Two experiments here (`neural-construction` and `neural-circuit` bridging) use CX3D.
 
 \textbf{Reproducible models.} COMBINE archives package a model with its data and metadata \citep{bergmann2014}. Epigenesis is narrower. It fixes what a derivation from DNA must record.
 
 \textbf{Biological models in the experiments.} The Sonic Hedgehog readout in the neural tube is a well-quantified model of cell-fate decisions \citep{balaskas2012,cohen2014,herreradelgado2020}. Enhancer evidence comes from \citet{peterson2012} and binding affinities from \citet{hallikas2006}.
 
-\textbf{Variant-effect prediction.} Section~\ref{sec:predictor} and Appendix~\ref{app:record} use reporter-assay data \citep{melnikov2012,tewhey2016,kircher2019} and compare against sequence models \citep{zhou2015,kelley2016,kelley2018,avsec2021,chen2022}. The delivered predictor combines Huber regression \citep{huber1964} with JASPAR motif scores \citep{rauluseviciute2024}. Both methods are established. What we contribute is the implemented and evaluated workflow around them.
+\textbf{Variant-effect prediction.} Section~\ref{sec:predictor} and Appendix~\ref{app:record} use reporter-assay data \citep{melnikov2012,tewhey2016,kircher2019,kreimer2022} and compare against sequence models \citep{zhou2015,kelley2016,kelley2018,avsec2021,chen2022}. The delivered predictors combine regularized regression (Huber \citealt{huber1964} or orthogonal temporal ridge) with JASPAR 2024 motif scores \citep{rauluseviciute2024}. Both methods are established. What we contribute is the implemented, audited and replayable workflow around them.
 
 \section{The software}\label{sec:software}
 
@@ -41,28 +41,30 @@ Among the works reviewed in Section~\ref{sec:related}, none compiles existing DN
 
 The compiler turns a DNA source into a Development Module in four stages:
 \begin{center}DNA source $\rightarrow$ typed source bundle $\rightarrow$ explicit interpretation $\rightarrow$ Development Module\end{center}
-Built-in profiles read raw IUPAC sequence, FASTA, streaming reference FASTA, GenBank and GFF3. Other grammars enter through a version-2 external frontend. This frontend is an executable pinned by digest and paired with a separate executable validator. The caller supplies the interpretation (manifest, request, response), a lowering policy and a target contract. The compiler checks types, coordinates, references and budgets.
+Built-in profiles read raw IUPAC sequence, FASTA, streaming reference FASTA, GenBank and GFF3. Other grammars enter through a version-2 external frontend. This frontend is an executable pinned by digest and paired with a separate executable validator. The caller supplies the interpretation (manifest, request, response), a lowering policy and a target contract. The compiler checks types, coordinates, references and budgets. Version~1.7 adds \code{brainc} v3 bundle contracts alongside v1/v2 for multi-transcription-factor circuit pairs and arbitrary-length motif-temporal predictions while preserving every v1/v2 schema and hash identity, and ships a standard-library unified CLI (\code{epigenesis}, \code{epigenesis\_cli.py}).
 
 Every artifact is a closed JSON object. At every level, the compiler rejects unknown or missing members, duplicate keys, non-finite numbers, integers beyond ±(2\textsuperscript{53}−1) and wrong types. Identities are SHA-256 digests of the RFC~8785 canonical encoding \citep{rundgren2020,nist2015}. Sequence identities follow the GA4GH refget scheme. \code{SPEC.md} states the contracts. \code{docs/reference/STANDARDS.md} maps each contract to its specification.
 
 \subsection{Independent validation}
 
-A producer-isolated validator reparses the original source, reruns external validators on fresh snapshots and replays lowering and linking. It does not import the producer. The release gate runs 505 unit tests (three skip on this machine) and end-to-end checks of a minimal example, universal translation, boundary conditions, and wheel and source-archive installation. The minimal example reproduces four fixed digests: source descriptor, Development Module, development bundle and validation report.
+A producer-isolated validator reparses the original source, reruns external validators on fresh snapshots and replays lowering and linking. It does not import the producer. The Version~1.7 release suite runs 535 unit and integration tests (four skip when optional Java/external tools are absent), 32 Studio tests, and end-to-end release gates (\code{tests/verify.py}) covering the minimal example, universal translation, boundary conditions, contract attacks, path safety, real-DNA compilation, \code{neural-circuit}, \code{neural-regulation-motif}, \code{neural-construction}, and wheel and source-archive installation. The minimal example reproduces four fixed digests: source descriptor, Development Module, development bundle and validation report.
 
 \subsection{Executable experiments}\label{sec:experiments}
 
-Each experiment states its inputs, assumptions, controls and the claim it supports (Table~\ref{tab:experiments}). Neural patterning is the worked example of Section~\ref{sec:example}.
+Each experiment states its inputs, assumptions, controls and the claim it supports (Table~\ref{tab:experiments}). Neural patterning and neural circuit form the mechanistic chain of Section~\ref{sec:example}.
 
 \begin{table}[tb]
 \small
 \caption{Executable experiments.}\label{tab:experiments}
-\begin{tabular}{@{}L{22mm}L{58mm}L{68mm}@{}}
+\begin{tabular}{@{}L{24mm}L{56mm}L{68mm}@{}}
 \toprule
 Experiment & What it does & Result and assumption \\
 \midrule
-Neural patterning & Reads an \emph{Nkx2.2} enhancer substitution \citep{peterson2012}, measured GLI binding ratios \citep{hallikas2006} and a four-gene model \citep{herreradelgado2020,cohen2014} & Reversion restores the original state. Signal-history, rescue and phenocopy controls and numerical refinement pass. The in-vitro binding ratio is transferred to intracellular affinity by assumption. \\
-Coding consequences & Reconstructs \emph{Sox2} edits from genomic FASTA and translates them with the NCBI standard code & A four-base deletion gives a 97-residue product (69 unchanged residues) and a stop at codon 98, matching the mutant of \citet{gong2020}. No protein abundance is claimed. \\
-Neural evidence & Reconstructs 109 observations of \emph{gcy-22} expression after CHE-1 depletion in \emph{C. elegans} \citep{traets2021}, each traced to a workbook cell and an intended DNA edit & Mean auxin/control ratios are 8.70\% for a transferred 12-base binding core and 66.33\% for a larger fragment. Sampling limits and conflicting source labels stay attached. \\
+Neural patterning & Reads a 9-bp \emph{Nkx2.2} enhancer substitution \citep{peterson2012}, measured GLI binding ratios \citep{hallikas2006} and a four-gene model \citep{herreradelgado2020,cohen2014} & Reversion restores the original state. Signal-history, rescue and phenocopy controls and numerical refinement pass. In-vitro binding ratio is transferred to intracellular affinity by assumption. \\
+Neural circuit & Scans arbitrary enhancers via strand-symmetric Boltzmann physics (GLI2/GLI3, 532 JASPAR motifs, or custom PWMs) into $N$-gene ODEs (\code{neural-tube}, \code{mutual-toggle}, \code{tri-lineage-switch}, or custom \code{CircuitSpec}), tests second-site rescue and optionally bridges to CX3D & Exposes 7 cryptic bifurcations on \code{chr15} (33 across 5 loci) and 74 on \code{tri-lineage-switch}; exact 9-bp parity ($<10^{-15}$) and reversion ($0.0$). Conditional on partition-sum affinity transfer and uncalibrated model units. \\
+Neural regulation & H1 neural-induction 0–72\,h reporter assay \citep{kreimer2022}: frozen k-mer baseline (\code{regulation.py}) and motif-temporal model (\code{motif\_temporal.py}) & k-mer baseline failed dinucleotide gate; \code{motif\_temporal} reaches held-out family MSE 0.252079 vs 0.285185 (k5) across 118 families, conditional on published preprocessing. \\
+Coding consequences & Reconstructs \emph{Sox2} edits from genomic FASTA and translates them with the NCBI standard code & A four-base deletion gives a 97-residue product (69 unchanged residues) and a stop at codon 98, matching \citet{gong2020}. No protein abundance is claimed. \\
+Neural evidence & Reconstructs 109 observations of \emph{gcy-22} expression after CHE-1 depletion in \emph{C. elegans} \citep{traets2021}, traced to workbook cells and DNA edits & Mean auxin/control ratios are 8.70\% for a transferred 12-base core and 66.33\% for a larger fragment. Sampling limits and conflicting labels stay attached. \\
 Neural fate & Computes Pax6, Olig2 and Nkx2.2 dynamics from a 512-base artificial parameter recipe & Reproduces specified behavior of published ODE models. The equations set the interactions. The recipe does not discover them. \\
 Neural construction & Grows cells, neurites and contacts from one founder and an artificial 480-base recipe (15 parameters) on CX3D; stimulates cells and lesions contacts & Morphology and connections emerge during execution and are not encoded. The recipe is artificial. \\
 \bottomrule
@@ -130,7 +132,33 @@ The result depends on six declared assumptions, listed in \code{examples/neural-
 \end{enumerate}
 \citet{peterson2012} report \emph{Nkx2.2} reporter expression in 4 of 6 embryos with the reference site and in 0 of 13 with the variant (E10.5). The model has no detection threshold or embryo-level noise model, so these counts are shown beside the simulation and are not scored as a reproduced prediction. The four-gene model omits Foxa2.
 
-The supported input is one substitution with a measured, positive binding weight in this site, a signal protocol of up to 10 phases and 100 model units, and an optional starting state. A different genome or site is outside the supported path. The result is a conditional mechanistic simulation. It supports comparing hypotheses about a binding change before an experiment is chosen, and it does not establish natural-genome-to-brain development, connectivity or learning.
+The supported 9-bp path takes one substitution with a measured, positive binding weight in this site, a signal protocol of up to 10 phases and 100 model units, and an optional starting state. Version~1.7 lifts this restriction via \code{examples/neural-circuit}.
+
+\subsection{Generalizing to full enhancers and arbitrary N-gene circuits}\label{sec:circuit}
+
+To move beyond a single 9-base consensus site and a single fixed four-gene diagram, \code{neural-circuit} links arbitrary regulatory sequences directly to user-defined $N$-gene differential equation circuits (\code{CircuitSpec}, 1 to 64 genes). For any transcription-factor binding matrix $M$—either the Hallikas GLI2/GLI3 profiles, any of the 532 JASPAR 2024 vertebrate matrices, or a custom position-weight matrix—the partition sum over all forward and reverse-complement sliding windows is
+\[
+Z(S_{\mathrm{DNA}}, M) = \sum_{i=1}^{L-W+1} \frac{w_{+,i} + w_{-,i}}{2} + \varepsilon,
+\qquad
+q = \frac{Z(S_{\mathrm{var}}, M)}{Z(S_{\mathrm{ref}}, M)},
+\]
+with default Laplace pseudocount $\varepsilon=10^{-4}$ (at $\varepsilon=0$ on the 9-bp site, GAACACCCA reproduces the measured 0.0423555 ratio to within $10^{-15}$). Ratios bind per gene as activators ($q$) or repressors ($1/q$) under either competitive or activation-only occupancy, and pairs compile with exact sequence reversions into sealed \code{brainc} v2 or v3 Development Modules supporting SNVs, MNVs and indels.
+
+Across real human 171-base enhancers from GSE188264 (Table~\ref{tab:circuit}), scanning all $3L=513$ single-base substitutions exposes \emph{cryptic bifurcations}: variants that alter passive promoter occupancy by less than 0.02 yet cross a saddle-node threshold in endogenous feedback to flip final cell fate. On \code{chr15:90936956-90937127} under GLI2 ($S=0.20$), 7 substitutions are cryptic bifurcations (including \code{60:C>A}, $q=0.042455$, passive reporter $-0.0124$, endogenous Nkx2.2 $-0.9318$, $75.2\times$ amplification and spatial P3 domain contraction from $x=0.25$ to $0.125$). Across five curated GSE188264 enhancers, 33 substitutions act as cryptic bifurcations, and suboptimal enhancers (\code{chr18:56475717-56475888} and \code{chr1:175099416-175099587}) admit second-site epistatic substitutions that restore the wild-type fate without reverting the primary mutation. Applying the same framework to a multi-factor three-lineage circuit (\code{tri-lineage-switch}: \code{MA0069.1} PAX6 activator on \code{Excitatory} paired with \code{MA0463.3} BCL6 repressor on \code{Inhibitory}) yields 74 cryptic fate transitions on \code{chr15} (e.g.\ \code{24:T>C}, shifting \code{Excitatory} to \code{Progenitor}, $\Delta=0.8149$ vs.\ passive $0.0$). Steady states can optionally lower into the 480-base CX3D construction recipe for morphogenetic and LIF transmission checks. Every generalized circuit result remains conditional on affinity-transfer assumptions and uncalibrated units (\code{biological\_acceptance = False}).
+
+\begin{table}[tb]
+\small
+\caption{Summary of Version 1.7 full-enhancer and multi-circuit scans (\code{neural-circuit}, $S=0.20$ for neural-tube and $S=0.35$ for tri-lineage).}\label{tab:circuit}
+\begin{tabular}{@{}L{41mm}L{38mm}rrrL{22mm}@{}}
+\toprule
+Enhancer / benchmark & Circuit \& TF(s) & Length & Cryptic & Variants & Second-site rescue \\
+\midrule
+\code{chr15:90936956-90937127} & \code{neural-tube} (GLI2) & 171 & 7 & 513 & None (single core) \\
+Five GSE188264 loci (benchmark) & \code{neural-tube} (GLI2) & 171 & 33 & 2,565 & \code{chr18}, \code{chr1} \\
+\code{chr15:90936956-90937127} & \code{tri-lineage-switch} (\code{MA0069.1}+\code{MA0463.3}) & 171 & 74 & 513 & Supported in API \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{The edit predictor}\label{sec:predictor}
 
@@ -271,64 +299,71 @@ Rummel$^\dagger$ & 611 & 349 & 0.0375 & 0.0488 & 0.0505 & 0.5420 & 0.5503 & +1.5
 \caption{Left: correlation per study (Table~\ref{tab:transfer}). Right: error of Huber-linear relative to predicting no effect. The first bar is the internal tuning partition (below no effect), the next five bars are the studies, and the last bar compares the two mean errors.}\label{fig:transfer}
 \end{figure}
 
+\subsection{Kreimer 0--72\,h motif-temporal neural-induction predictor}\label{sec:kreimer}
+
+A second Version~1.7 checkpoint, the Kreimer motif-temporal model (\code{epigenesis-kreimer-} \code{motif-temporal-v1}, implemented in \code{motif\_temporal.py} inside \code{examples/neural-regulation/}), models temporal enhancer perturbations across seven timepoints ($[0, 3, 6, 12, 24, 48, 72]$\,h) in the H1 neural-induction dataset of \citet{kreimer2022} (GSE188264). Earlier frozen k-mer models (\code{regulation.py}) reduced squared error by 20.97\% relative to zero effect yet failed to outperform a dinucleotide control (Appendix~\ref{app:record}). \code{motif\_temporal} expands features to the same 512 canonical 5-mer differences plus 532 JASPAR 2024 motif potential differences ($s=1.0$), decomposes the seven-hour response into an orthogonal time-averaged mean column and six temporal-deviation columns via QR factorization, and applies a 10$\times$ stronger ridge penalty to the temporal-deviation columns (\code{word\_penalty} $=0.3$, \code{motif\_penalty} $=3.0$, \code{temporal\_multiplier} $=10.0$). All hyperparameters were selected purely on the training-to-validation family split before refitting on training plus validation.
+
+Across 1,415 targeted perturbations in 118 held-out test families, equal-family test MSE drops to \textbf{0.252079} versus 0.285185 for the k5 sequence baseline, 0.319358 for dinucleotides, and 0.360870 for predicting no effect. The 95\% whole-family bootstrap improvement intervals stay positive against every comparator: $[0.041258, 0.188584]$ over zero effect, $[0.008174, 0.138345]$ over dinucleotides, and $[0.007810, 0.061363]$ over k5. On time-centered trajectories, temporal-contrast MSE improves from 0.032108 to \textbf{0.031285} ($[0.000220, 0.001528]$). Arbitrary-length sequence pairs (5 to 16,384\,bp, including unequal-length insertions and deletions) compile into \code{brainc} v2 Development Modules, and Studio exposes per-edit JASPAR motif attributions alongside the seven-timepoint curve. Because GSE188264 estimates were preprocessed with MPRAnalyze prior to splitting and the 118 test families had been examined during earlier k-mer studies, this result is retrospective and conditional (\code{biological\_development\_accepted = False}).
+
 \subsection{Intended use}
 
-The predictor is meant for prioritizing edits within the studied assay, for example when choosing which of many candidates to measure first. Whether this saves laboratory work has not been measured. Outside the assay, a score is a hypothesis to test.
+Both predictors are meant for prioritizing edits within their studied assay or exploring sequence hypotheses—for example, contrasting passive MPRA predictions against coupled ODE fate flips in Section~\ref{sec:circuit}. Neither predictor is validated for cross-assay or endogenous clinical effect sizes without fresh confirmation.
 
 \section{Epigenesis Studio}\label{sec:studio}
 
-Studio (\code{studio/}, command \code{epigenesis-studio}) is a local desktop application. Its server listens on 127.0.0.1 only and rejects requests whose Host header is not local. The interface is in English and Bulgarian, with a switch in the sidebar. It has four tabs (Table~\ref{tab:studio}).
+Studio (\code{studio/}, command \code{epigenesis-studio} or \code{epigenesis studio}) is a local desktop application in Version~0.2.0. Its server listens on 127.0.0.1 only and rejects requests whose Host header is not local. The interface is in English and Bulgarian, with a switch in the sidebar. It has five tabs (Table~\ref{tab:studio}).
 
 \begin{table}[tb]
 \small
-\caption{Studio tabs.}\label{tab:studio}
-\begin{tabular}{@{}L{17mm}L{62mm}L{68mm}@{}}
+\caption{Studio tabs in Version 0.2.0.}\label{tab:studio}
+\begin{tabular}{@{}L{22mm}L{60mm}L{66mm}@{}}
 \toprule
 Tab & Input & Output \\
 \midrule
-Simulate & One substitution of the nine-base site, GLI2 or GLI3, a signal protocol of up to 10 phases and 100 model units, and an optional starting state & Trajectories for reference, variant and reversion; the reporter-versus-network comparison; controls; the six assumptions; CSV; receipt \\
-Scan & One FASTA record or plain sequence of 5 to 1,000 bases (A, C, G, T only; several records are refused) & Heatmap of all three substitutions at every position; ranked table; CSV; receipt \\
-Edits & Up to 5,000 reference and edited pairs (CSV or JSON), with an optional family per pair & Scores; a panel of the requested size with one edit per family; CSV; receipt \\
+Simulate & One substitution of the nine-base site, GLI2 or GLI3, a signal protocol of up to 10 phases and 100 model units, and an optional starting state & Trajectories for reference, variant and reversion; reporter-versus-network comparison; controls; the six assumptions; CSV; receipt \\
+Enhancer Circuit & Curated GSE188264 locus or FASTA enhancer (9 to 500 bases), circuit preset (\code{neural-tube}, \code{mutual-toggle}, \code{tri-lineage-switch}), GLI2/GLI3 or any of 532 JASPAR motifs, target gene(s), optional custom SNV/MNV/indel variant & Cryptic-bifurcation scan ($3L$ variants), endogenous vs.\ passive-reporter trajectories, 21-point spatial domain, pulse-chase derepression, second-site rescues, \code{brainc} v2/v3 receipts, Kreimer/Siraj side-scores \\
+Scan & One FASTA record or plain sequence of 5 to 1,000 bases (A, C, G, T only; several records refused); Siraj or Kreimer 0--72\,h toggle & Heatmap of all three substitutions at every position; 0--72\,h profile and top JASPAR motifs (Kreimer); ranked table; CSV; receipt \\
+Edits & Up to 5,000 reference and edited pairs (CSV or JSON), with optional family; Siraj or Kreimer 0--72\,h toggle & Scores, top contributing JASPAR motifs (Kreimer), family-diverse panel of requested size; CSV; receipt \\
 Verify & A receipt file & Three checks: digest, identity of model and endpoint, replay of every stored result \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Simulate runs the repository backend of Section~\ref{sec:example} live; there is no second simulator. It needs the repository checkout, and without it the tab is disabled while the others still work.
+Simulate and Enhancer Circuit run the repository backends of Section~\ref{sec:example} live; there is no second simulator. Both require the repository checkout, and without it they are disabled while the remaining tabs still work.
 
-Scan and Edits run the predictor of Section~\ref{sec:predictor}, which Section~\ref{sec:demo} demonstrates. Scan scores every single-base change in a window around the position, which is enough because a score depends only on the 18 bases on either side. The result equals scoring whole sequences (tested to $10^{-12}$). Edits scores a table of pairs and selects the panel with the rule of Section~\ref{sec:method}.
+Scan and Edits run either the Siraj Huber-linear checkpoint or the Kreimer 0--72\,h motif-temporal checkpoint of Section~\ref{sec:predictor}. Scan scores every single-base change in a window around the position, which equals whole-sequence scoring (tested to $10^{-12}$) because linear scores depend only on the local k-mer and motif radius (18 bases either side for Siraj and Kreimer). Edits scores full reference/edited pairs (including indels and MNVs) and selects a family-diverse panel.
 
 A receipt (\code{epigenesis-studio-receipt-v1}) holds the model name, its identity hash, the endpoint, the normalized request, the result and a SHA-256 digest over the RFC~8785 canonical JSON of all of it. Verify checks the digest, that the model name, identity and endpoint match the installation, and that rerunning the stored request reproduces every stored result within $10^{-9}$ (Table~\ref{tab:verify}).
 
-Only Simulate compiles its input. Scan and Edits use the compiler's canonical JSON for receipts and do not pass through the Development Module pipeline. The Studio tests (21, passing) cover scan against whole-sequence scoring, the panel against the frozen model, each receipt check, input limits and refusals, the HTTP guards, and the simulation against the backend's command line and published binding ratio.
+Simulate and Enhancer Circuit compile their alleles into sealed \code{brainc} Development Modules; Scan and Edits seal canonical JSON receipts directly. All 32 Studio tests pass, covering local-window versus whole-sequence parity (Siraj and Kreimer), panel selection, cryptic bifurcations and second-site rescues in Enhancer Circuit, all three receipt checks, input limits and refusals, HTTP host/path guards, bilingual EN/BG key parity, and CLI parity.
 
 \section{Limits and open questions}\label{sec:limits}
 
-\textbf{Simulation.} The result is conditional on the six assumptions of Section~\ref{sec:assumptions}. The binding ratio comes from an in-vitro measurement, and its use as an intracellular affinity multiplier is untested. The embryo counts of \citet{peterson2012} are displayed and not scored. One site, one enhancer context and four genes are supported. The workflow does not model multicellular mechanics, connectivity or learning.
+\textbf{Simulation.} All mechanistic results depend on the declared assumptions of Section~\ref{sec:assumptions}. In-vitro binding ratios or Boltzmann partition sums enter as relative affinity multipliers without measured intracellular calibration, and embryo counts \citep{peterson2012} are displayed rather than scored. While Version~1.7 generalizes enhancer length, transcription-factor PWM choice (Hallikas GLI2/GLI3, 532 JASPAR 2024 motifs, or custom matrices), and arbitrary $N$-gene \code{CircuitSpec} wiring, nucleosome positioning, co-factor complexes, 3D chromatin looping, and multicellular organism phenotypes remain outside the model.
 
-\textbf{Predictor.} The internal gains are preliminary because development reused the data, and the ten-edit requirement is open. Section~\ref{sec:transfer} gives the external boundary. In thirteen frozen transfer tests (Appendix~\ref{app:record}) no candidate earned its label. Direction accuracy for fine-mapped eQTLs (0.52 to 0.65) matched a k-mer baseline, and the nearest-gene rule (0.460) picked the causal variant of a credible set better than every model. Prediction across biological contexts therefore remains an open problem. Possible reasons, all untested: reporter effects may depend on vector, promoter and cell state; effect scales differ between studies; the sequence-predictable part of single-base effects may be small; and short-range features may capture mainly composition such as GC content. Predicting between assays that share vector and cell type, on a common effect scale, with well-measured variants only, and with endogenous-locus data would test these.
+\textbf{Predictor.} Siraj internal gains are preliminary because development reused TUNING, the ten-edit bound remains open, and in thirteen frozen cross-study transfer tests (Appendix~\ref{app:record}) no model earned a transfer label (nearest-TSS 0.460 beat all sequence models on credible sets). Kreimer 0--72\,h motif-temporal results improve retrospectively over k5 and dinucleotide baselines on GSE188264 yet remain conditional on published MPRAnalyze preprocessing and previously examined test families. Cross-context variant prediction therefore remains open.
 
-\textbf{Evaluation.} The hashes of the frozen procedure are local. They guard against accidents and unrecorded changes. They do not guard against an author who rewrites a plan and its hash together. The thirteen tests are not corrected for multiplicity, and the same team did the replays. Several evaluation sets were exposed to earlier models. Some studies share a laboratory lineage or cell source. The Salomon neuron data were excluded from cross-study tests because the variant tables are restricted on the IGVF portal. The predictor endpoint is reporter activity or expression; development is not measured.
+\textbf{Evaluation.} The hashes of the frozen procedure are local; they guard against accidents rather than deliberate rewriting, and the thirteen transfer tests are uncorrected for multiplicity. Several external sets were exposed to earlier models or share laboratory lineages. The predictor endpoint is reporter activity or expression rather than cellular fate or morphology.
 
-\textbf{Next steps.} (a) Compare the simulated consequences of the example, for instance the shift from Nkx2.2 to Olig2, with measured endogenous edits, and replace assumed model parameters with measured ones. (b) Use the sealed Siraj RESERVE partition once, for one model chosen in advance. (c) Obtain the restricted IGVF variant tables and test under a new plan. (d) Assemble endogenous-edit datasets with an expression readout. A model that beats the nearest-gene rule or a k-mer baseline under a sealed gate, in two independent datasets it had not seen, would change the transfer conclusion.
+\textbf{Next steps.} (a) Compare simulated cryptic bifurcations and second-site epistatic rescues against measured endogenous CRISPR edits, replacing assumed affinity parameters with biochemical measurements. (b) Score the sealed Siraj RESERVE partition once for one prespecified candidate. (c) Collect fresh, unexposed endogenous-locus and multi-context datasets on calibrated scales.
 
 \section{Conclusion}
 
-Epigenesis lets a researcher change a supported DNA site, run a developmental model under stated conditions and inspect the consequences, with each step recorded so that another installation can replay it. In the worked example a single-base change in a GLI site moves Nkx2.2 from 0.94 to 0.008 in the model, and reversion restores the reference exactly. The predictor and Studio add a way to explore and rank edits within one assay. Their evidence is preliminary, and prediction across biological contexts remains open.
+Epigenesis Version~1.7 links DNA sequences under explicit, independently replayed interpretations to both mechanistic $N$-gene fate simulations and interpretable sequence predictors. In a single 9-base GLI site, a substitution flips Nkx2.2 from 0.940 to 0.0085 while reversion restores the reference exactly; across full 171-base enhancers and multi-TF circuits, Boltzmann partition scanning uncovers cryptic bifurcations where passive reporters barely move yet coupled feedback switches cell identity, alongside candidate epistatic rescues. Together with the Siraj and Kreimer 0--72\,h predictors and bilingual Studio receipts, every run remains computationally auditable while keeping its biological scope and cross-context boundaries explicit.
 
 \section{Availability and statements}
 
-\textbf{Code and data.} \url{https://github.com/dttdrv/epigenesis}. Code is Apache-2.0. Bundled data and third-party components keep their licenses and attributions. For example, JASPAR 2024 is CC BY 4.0, the 80K-Analysis notice is in \code{examples/neural-predictor/LICENSE.Salomon}, and the bundled attention predictor uses Interlace (see \code{NOTICE.md} in the same folder).
+\textbf{Code and data.} \url{https://github.com/dttdrv/epigenesis}. Code is Apache-2.0. Bundled data and third-party components keep their licenses and attributions: JASPAR 2024 is CC BY 4.0, the 80K-Analysis notice is in \code{examples/neural-predictor/LICENSE.Salomon}, and the bundled attention predictor uses Interlace (see \code{NOTICE.md}).
 
-\textbf{Running it.} The README lists commands. Python 3.11 or later and the standard library run the compiler and the evidence and patterning demonstrations. Studio needs NumPy and the compiler: \code{uv tool install --editable studio --with-editable .} puts \code{epigenesis-studio} on the path. The pretrained feature extractors and the construction experiment need additional tools, which their documentation names.
+\textbf{Running it.} Python 3.11 or later runs the compiler, unified CLI (\code{python3.11 epigenesis\_cli.py check --full}), and core experiments using the standard library. Studio (\code{uv tool install --editable studio --with-editable .}) and the sequence predictors require NumPy; CX3D construction bridging uses Java 21 and \code{patch}.
 
-\textbf{Figure data.} \code{docs/paper/figure-patterning.csv} was written from the Studio simulation of GAACACCCA with GLI2 (one phase of 20 model units at signal 0.2, all genes starting at zero); \code{patterning.py run} gives the same trajectories. \code{docs/paper/figure-data.py} rebuilds \code{figure-scan.csv} and \code{figure-studies.csv} and prints the demonstration numbers of Section~\ref{sec:predictor}. The utilities of Table~\ref{tab:internal} come from \code{RESULTS.md} of the fixed Huber joint comparison in the unversioned build tree (\code{build/neural-predictor-reviewed-20261005/siraj-huber-joint-20261019/}).
+\textbf{Figure data.} \code{docs/paper/figure-patterning.csv} records the 9-bp GAACACCCA GLI2 simulation ($S=0.2$, 20 model units). \code{docs/paper/figure-data.py} rebuilds \code{figure-scan.csv} and \code{figure-studies.csv} and prints the Studio demonstration numbers of Section~\ref{sec:predictor}. Table~\ref{tab:circuit} numbers reproduce directly via \code{examples/neural-circuit/circuit.py} (\code{demo}, \code{benchmark}, and \code{scan --circuit tri-lineage-switch}); Section~\ref{sec:kreimer} numbers reproduce via \code{python3.11 tests/verify.py neural-regulation-motif}.
 
-\textbf{Frozen tests.} Plans, hashes, scripts and results are in \code{research/frozen-tests/} (Appendix~\ref{app:tests}). \code{python3 research/check\_freeze.py} recomputes the hashes. The Siraj RESERVE partition remains sealed. The Salomon and Kosicki confirmations are spent.
+\textbf{Frozen tests.} Plans, hashes, scripts and results are in \code{research/frozen-tests/} (Appendix~\ref{app:tests}). \code{python3.11 research/check\_freeze.py} recomputes the hashes. The Siraj RESERVE partition remains sealed. The Salomon and Kosicki confirmations are spent.
 
-\textbf{Data without a journal article.} Gene Expression Omnibus series GSE244011, GSE211045, GSE225815, GSE221384, GSE152404 and GSE188264 (\citealt{kreimer2022}); the 80K-Analysis repository (\url{https://github.com/kircherlab/80K-Analysis}); Interlace (\url{https://github.com/MisulOrg/Interlace}); CX3D 0.03 (\url{https://tilde.ini.uzh.ch/~amw/seco/cx3d/cx3d-0.03.zip}); GENCODE v39 \citep{frankish2021}; UCSC hg38 and phyloP100way tracks.
+\textbf{Data without a journal article.} Gene Expression Omnibus series GSE244011, GSE211045, GSE225815, GSE221384, GSE152404 and GSE188264 (\citealt{kreimer2022}); 80K-Analysis (\url{https://github.com/kircherlab/80K-Analysis}); Interlace (\url{https://github.com/MisulOrg/Interlace}); CX3D 0.03 (\url{https://tilde.ini.uzh.ch/~amw/seco/cx3d/cx3d-0.03.zip}); GENCODE v39 \citep{frankish2021}; UCSC hg38 and phyloP100way tracks.
 
-\textbf{Responsibility.} The author is responsible for the content. Every number comes from the result files listed in Appendix~\ref{app:tests}, the example folders and the repository README. Competing interests and funding: to be completed by the author before submission.
+\textbf{Responsibility.} The author is responsible for the content. Every number comes from the executable checks, result files listed in Appendix~\ref{app:tests}, example folders and the repository README. Competing interests and funding: to be completed by the author before submission.
 
 \input{references}
 
@@ -365,7 +400,7 @@ The tests ask whether sequence alone predicts what an unseen DNA change does in 
 
 \subsection{Earlier negative experiments}
 
-Two experiments outside the Siraj series ended in negative results. One is a predictor for H1 neural induction. Its frozen model lowered mean squared error by 20.97\% against zero effect but failed the required comparison with a dinucleotide model. The other is a benchmark of the FamilyCode homeodomain model \citep{liu2025} on \emph{Nkx2-2}, which failed.
+Two experiments outside the Siraj series ended in negative results. One is a frozen k-mer predictor for H1 neural induction (\code{examples/neural-regulation/regulation.py}). Its frozen model lowered mean squared error by 20.97\% against zero effect but failed the required comparison with a dinucleotide model (Section~\ref{sec:kreimer} presents the Version~1.7 motif-temporal follow-up that surpasses both k5 and dinucleotide baselines retrospectively). The other is a benchmark of the FamilyCode homeodomain model \citep{liu2025} on \emph{Nkx2-2}, which failed.
 
 \subsection{Measurement checks}
 
