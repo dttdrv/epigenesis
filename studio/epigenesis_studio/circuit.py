@@ -141,7 +141,7 @@ def _resolve_circuit_choice(cb, raw_circuit):
 
 def normalize(request):
     cb = _backend()
-    allowed = {'mode', 'sequence', 'variant_sequence', 'protein', 'target', 'circuit', 'phases', 'epsilon', 'initial_state'}
+    allowed = {'mode', 'sequence', 'variant_sequence', 'protein', 'target', 'circuit', 'phases', 'epsilon', 'background_floor', 'initial_state'}
     needed = {'mode', 'sequence', 'phases'} if 'circuit' in request else {'mode', 'sequence', 'protein', 'phases'}
     if not needed <= set(request) <= allowed:
         raise Refusal('unsupported', 'unsupported request')
@@ -153,6 +153,10 @@ def normalize(request):
     number = lambda v: type(v) in (int, float) and math.isfinite(v)
     if not number(epsilon) or not 0.0 <= epsilon <= 1.0:
         raise Refusal('circ_epsilon', 'epsilon must be between 0 and 1')
+
+    bg_floor = request.get('background_floor')
+    if bg_floor is not None and (not number(bg_floor) or not 0.0 <= bg_floor <= 10.0):
+        raise Refusal('circ_background_floor', 'background_floor must be between 0 and 10')
 
     protein = request.get('protein', model.get('default_protein', 'GLI2'))
     if type(protein) not in (str, dict):
@@ -217,6 +221,8 @@ def normalize(request):
         phases=[[float(d), float(s)] for d, s in phases],
         initial_state={gene: float(initial[gene]) for gene in genes},
     )
+    if 'background_floor' in request:
+        out['background_floor'] = float(bg_floor)
     if 'circuit' in request:
         out['circuit'] = circuit_val
     if variant_seq is not None:
@@ -245,6 +251,7 @@ def run(request):
     protein = request['protein']
     target = request.get('target', cb.DEFAULT_TARGET)
     epsilon = request['epsilon']
+    eff_floor = cb._resolve_background_floor(request.get('background_floor'), epsilon)
     phases = request['phases']
     initial_dict = request['initial_state']
 
@@ -300,7 +307,8 @@ def run(request):
             q_by_tf = {}
             for lbl, tbl in tf_tables.items():
                 z_mut = tbl['z_wt'] + cb._delta_partition_single(reference, pos, alt, tbl['ratios'], tbl['width'])
-                q_by_tf[lbl] = z_mut / tbl['z_wt'] if tbl['z_wt'] > 0 else 1.0
+                denom = tbl['z_wt'] + eff_floor
+                q_by_tf[lbl] = (z_mut + eff_floor) / denom if denom > 0 else 1.0
             ratio_map = {g: q_by_tf[cb._motif_spec_label(bindings[g]['protein'])] for g in bound_genes}
             q_primary = q_by_tf[primary_label]
             key = tuple(round(ratio_map[g], 8) for g in bound_genes)
@@ -348,14 +356,14 @@ def run(request):
     second_site = cb._find_second_site_rescue(
         reference, dict(featured, variant=auto_variant_seq),
         None if multi_edge else protein, epsilon,
-        target=ctx['target'], phases=phases, initial=initial_dict,
+        background_floor=eff_floor, target=ctx['target'], phases=phases, initial=initial_dict,
         circuit=ctx['circuit_arg'], roles=ctx['roles'], mechanisms=ctx['mechanisms'],
     )
     if second_site is not None:
         second_site = {k: v for k, v in second_site.items() if k != 'double_variant'}
 
     variant_seq = variant_override if variant_override is not None else auto_variant_seq
-    multi_var = cb.multi_tf_affinity(reference, variant_seq, dict(ctx['unique_specs']), epsilon)
+    multi_var = cb.multi_tf_affinity(reference, variant_seq, dict(ctx['unique_specs']), epsilon, background_floor=eff_floor)
     var_q_by_tf = multi_var['ratios']
     q_feat = var_q_by_tf[primary_label]
     var_ratio_map = {g: var_q_by_tf[cb._motif_spec_label(b['protein'])] for g, b in bindings.items()}
@@ -366,13 +374,13 @@ def run(request):
         comp_dir = Path(scratch) / 'variant_bundle'
         receipt_var = cb.compile_circuit_bundle(
             reference, variant_seq, protein=ctx['primary_protein'], epsilon=epsilon,
-            output=comp_dir, motif_specs=motif_list, circuit=ctx['circuit_arg'],
+            background_floor=eff_floor, output=comp_dir, motif_specs=motif_list, circuit=ctx['circuit_arg'],
         )
         verified_var = cb.verify_circuit_bundle(comp_dir, receipt_var)
         rev_dir = Path(scratch) / 'reversion_bundle'
         receipt_rev = cb.compile_circuit_bundle(
             reference, reference, protein=ctx['primary_protein'], epsilon=epsilon,
-            output=rev_dir, motif_specs=motif_list, circuit=ctx['circuit_arg'],
+            background_floor=eff_floor, output=rev_dir, motif_specs=motif_list, circuit=ctx['circuit_arg'],
         )
         verified_rev = cb.verify_circuit_bundle(rev_dir, receipt_rev)
 
@@ -443,6 +451,7 @@ def run(request):
         protein=primary_label,
         proteins=[lbl for lbl, _ in ctx['unique_specs']],
         epsilon=epsilon,
+        background_floor=eff_floor,
         unique_affinity_solves=len(cache),
         wt_partition=wt_info,
         wt_partitions={lbl: tbl['wt_part'] for lbl, tbl in tf_tables.items()},

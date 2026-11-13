@@ -101,6 +101,8 @@ def _append_circuit_opts(cmd: list[str | Path], args: argparse.Namespace) -> Non
         cmd.extend(["--target", str(args.target)])
     if getattr(args, "signal", None) is not None:
         cmd.extend(["--signal", str(args.signal)])
+    if getattr(args, "background_floor", None) is not None:
+        cmd.extend(["--background-floor", str(args.background_floor)])
 
 
 def _cmd_circuit(args: argparse.Namespace) -> int:
@@ -189,6 +191,8 @@ def _cmd_radar(args: argparse.Namespace) -> int:
         common.extend(["--signal-max", str(args.signal_max)])
     if args.steps is not None:
         common.extend(["--steps", str(args.steps)])
+    if getattr(args, "background_floor", None) is not None:
+        common.extend(["--background-floor", str(args.background_floor)])
     if args.no_sequence_models:
         common.append("--no-sequence-models")
 
@@ -338,6 +342,7 @@ def build_parser() -> argparse.ArgumentParser:
     cc.add_argument("--target", help="regulated target gene in the chosen circuit (e.g. Nkx2.2, Olig2, Both, All, or GeneA)")
     cc.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
     cc.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
+    cc.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
     cc.add_argument("--reference", help="custom reference DNA sequence or FASTA path for pairwise comparison")
     cc.add_argument("--variant", help="custom variant DNA sequence or FASTA path (SNV, MNV, or indel)")
     cc.add_argument("--mapping", type=Path, help="optional JSON mapping of GRN gene steady state to CX3D Program fields")
@@ -352,8 +357,9 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("fasta", type=Path, help="FASTA file containing a single enhancer sequence")
     sc.add_argument("--circuit", help="circuit preset ('neural-tube', 'mutual-toggle', 'tri-lineage-switch') or JSON spec path")
     sc.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
-    sc.add_argument("--target", help="regulated target gene in the chosen circuit")
+    sc.add_argument("--target", help="regulated target gene name in the chosen circuit")
     sc.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
+    sc.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
     sc.add_argument("--output", type=Path, help="output directory")
 
     rd = sub.add_parser("radar", help="run V2F tipping-point, dual rescue, and null-control radar for silent non-coding variants")
@@ -368,6 +374,7 @@ def build_parser() -> argparse.ArgumentParser:
     rd.add_argument("--signal-max", type=float, help="maximum morphogen signal S (default 0.85)")
     rd.add_argument("--steps", type=int, help="number of morphogen signal grid points >= 3 (default 9)")
     rd.add_argument("--shuffles", type=int, help="dinucleotide-shuffled decoy controls per locus")
+    rd.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
     rd.add_argument("--no-sequence-models", action="store_true", help="skip optional Siraj/Kreimer sequence predictor scoring")
     rd.add_argument("--output", type=Path, help="output directory")
 

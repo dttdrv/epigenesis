@@ -189,6 +189,30 @@ class NeuralV2FRadarTests(unittest.TestCase):
             self.assertTrue((out / "radar_benchmark.json").is_file())
             self.assertTrue((out / "measured_discordance.csv").is_file())
 
+    def test_nonspecific_floor_suppresses_scrambled_pwm_false_positives(self):
+        rows, _ = self.reg.load_data()
+        chr1 = next(r.reference for r in rows if r.locus == self.cir.CURATED_LOCI[4])
+        for locus_seq, min_unfloored in ((self.chr15, 2), (chr1, 1)):
+            scan_floored = self.radar.scan_enhancer_regime(
+                locus_seq, signal_min=0.06, signal_max=0.85, signal_steps=9, include_sequence_models=False
+            )
+            self.assertAlmostEqual(scan_floored["background_floor"], self.cir.DEFAULT_BACKGROUND_FLOOR, places=12)
+            ctx = self.cir._resolve_context(None, "GLI2", "Nkx2.2", 0.455, None, None)
+            null_floored = self.radar.run_null_controls(
+                locus_seq, scan_floored, ctx=ctx, signal_min=0.06, signal_max=0.85, signal_steps=9, n_shuffles=0, seed=17,
+            )
+            self.assertEqual(null_floored["motif_pwm_scramble"]["scrambled_cryptic_count"], 0)
+
+            scan_unfloored = self.radar.scan_enhancer_regime(
+                locus_seq, signal_min=0.06, signal_max=0.85, signal_steps=9,
+                background_floor=0.0, include_sequence_models=False,
+            )
+            null_unfloored = self.radar.run_null_controls(
+                locus_seq, scan_unfloored, ctx=ctx, signal_min=0.06, signal_max=0.85, signal_steps=9,
+                n_shuffles=0, background_floor=0.0, seed=17,
+            )
+            self.assertGreaterEqual(null_unfloored["motif_pwm_scramble"]["scrambled_cryptic_count"], min_unfloored)
+
 
 if __name__ == "__main__":
     unittest.main()

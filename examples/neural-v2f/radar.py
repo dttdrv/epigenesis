@@ -527,6 +527,7 @@ def scan_enhancer_regime(
     signal_max: float = DEFAULT_SIGNAL_MAX,
     signal_steps: int = DEFAULT_SIGNAL_STEPS,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
     reporter_threshold: float = DEFAULT_REPORTER_SILENT,
     sequence_threshold: float = DEFAULT_SEQUENCE_SILENT,
@@ -536,6 +537,7 @@ def scan_enhancer_regime(
     ctx: dict | None = None,
 ) -> dict:
     """Scan all 3*L SNVs across a full signaling regime [signal_min, signal_max]."""
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     if ctx is None:
         ctx = nc._resolve_context(circuit, protein, target, 0.5 * (signal_min + signal_max), None, None)
     signal_grid = _signal_grid(signal_min, signal_max, signal_steps)
@@ -564,7 +566,7 @@ def scan_enhancer_regime(
             q_by_tf = {}
             for lbl, tbl in tf_tables.items():
                 z_mut = tbl["z_wt"] + nc._delta_partition_single(reference, pos, alt, tbl["ratios"], tbl["width"])
-                q_by_tf[lbl] = z_mut / tbl["z_wt"]
+                q_by_tf[lbl] = (z_mut + eff_floor) / (tbl["z_wt"] + eff_floor)
             ratio_map = {g: q_by_tf[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
             reg_eval = _evaluate_regime_for_ratios(
                 ctx, ratio_map, wt_profile, wt_base["wt_primary_critical"],
@@ -649,6 +651,7 @@ def scan_enhancer_regime(
         "proteins": [lbl for lbl, _ in ctx["unique_specs"]],
         "target": ctx["target"],
         "epsilon": epsilon,
+        "background_floor": eff_floor,
         "length": len(reference),
         "signal_grid": signal_grid,
         "wt_profile": wt_profile,
@@ -675,9 +678,11 @@ def _rescue_candidate(
     signal_grid: list[float],
     *,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
 ) -> dict:
     """Compute both trans signal rescue and regime-evaluated cis epistatic rescue for a candidate."""
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     bindings = ctx["bindings"]
     bound_genes = sorted(bindings)
     fail_sig = candidate["worst_signal"]
@@ -685,7 +690,9 @@ def _rescue_candidate(
 
     # Variant ratios
     if candidate.get("variant"):
-        q_by_tf = nc.multi_tf_affinity(reference, candidate["variant"], dict(ctx["unique_specs"]), epsilon)["ratios"]
+        q_by_tf = nc.multi_tf_affinity(
+            reference, candidate["variant"], dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+        )["ratios"]
     else:
         q_by_tf = candidate["affinity_ratios"]
     var_ratio_map = {g: q_by_tf[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
@@ -699,6 +706,7 @@ def _rescue_candidate(
             candidate,
             protein=ctx["primary_protein"],
             epsilon=epsilon,
+            background_floor=eff_floor,
             signal=fail_sig,
             target=ctx["target"],
             duration=duration,
@@ -708,7 +716,9 @@ def _rescue_candidate(
         )
         if raw_cis is not None:
             dbl_seq = raw_cis["double_variant"]
-            dbl_q_by_tf = nc.multi_tf_affinity(reference, dbl_seq, dict(ctx["unique_specs"]), epsilon)["ratios"]
+            dbl_q_by_tf = nc.multi_tf_affinity(
+                reference, dbl_seq, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+            )["ratios"]
             dbl_ratio_map = {g: dbl_q_by_tf[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
             dbl_eval = _evaluate_regime_for_ratios(
                 ctx, dbl_ratio_map, wt_base["wt_profile"], wt_base["wt_primary_critical"],
@@ -748,11 +758,13 @@ def run_null_controls(
     signal_steps: int,
     n_shuffles: int = DEFAULT_SHUFFLES,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
     reporter_threshold: float = DEFAULT_REPORTER_SILENT,
     seed: int = 17,
 ) -> dict:
     """Falsification harness: compare true enhancer against dinucleotide-shuffled decoys and scrambled PWM."""
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     decoy_records = []
     for idx in range(n_shuffles):
         decoy_seq = dinucleotide_shuffle(reference, seed=seed + idx)
@@ -764,6 +776,7 @@ def run_null_controls(
             signal_max=signal_max,
             signal_steps=signal_steps,
             epsilon=epsilon,
+            background_floor=eff_floor,
             duration=duration,
             reporter_threshold=reporter_threshold,
             include_sequence_models=False,
@@ -834,6 +847,7 @@ def run_null_controls(
         signal_max=signal_max,
         signal_steps=signal_steps,
         epsilon=epsilon,
+        background_floor=eff_floor,
         duration=duration,
         reporter_threshold=reporter_threshold,
         include_sequence_models=False,
@@ -845,6 +859,7 @@ def run_null_controls(
     scram_z = scram_scan["wt_partition"]["partition_sum"]
     motif_scramble_summary = {
         "scrambled_protein": scrambled_spec["id"],
+        "background_floor": eff_floor,
         "true_cryptic_count": true_cryptic,
         "scrambled_cryptic_count": scram_cryptic,
         "true_regime_flip_edits": sum(1 for e in true_scan["edits"] if e["regime_flip_fraction"] > 0),
@@ -855,9 +870,9 @@ def run_null_controls(
         "scrambled_partition_sum": round(scram_z, 6),
         "partition_sum_ratio": round(true_z / max(scram_z, 1e-12), 4),
         "true_exceeds_scrambled_pwm": true_cryptic > scram_cryptic,
-        "ratio_only_noise_note": (
-            "Self-normalized q=Z_mut/Z_ref cancels absolute Z_ref; scrambled/decoy controls with tiny Z_ref "
-            "can still cross ratio thresholds if no minimum occupancy floor is imposed."
+        "biophysical_floor_note": (
+            f"Partition ratios use q = (Z_mut + Z_ns) / (Z_ref + Z_ns) with non-specific floor Z_ns={eff_floor:g} "
+            "to damp ratio blow-ups when baseline Z_ref << 1 in featureless/scrambled DNA."
         ),
     }
     return {
@@ -875,12 +890,14 @@ def verify_causal_controls(
     signal_grid: list[float],
     output: Path,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
 ) -> dict:
     """Verify exact allele reversion, passive-reporter isolation, and sealed brainc compilation."""
     if top_candidate is None:
         return {"skipped": True, "reason": "no variant available for causal compilation check", "all_passed": True}
 
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     bindings = ctx["bindings"]
     bound_genes = sorted(bindings)
     variant = top_candidate["variant"]
@@ -890,7 +907,7 @@ def verify_causal_controls(
     compiled_dir.mkdir(parents=True, exist_ok=True)
     top_receipt = nc.compile_circuit_bundle(
         reference, variant, protein=ctx["primary_protein"], epsilon=epsilon,
-        output=compiled_dir / "top_candidate", motif_specs=motif_list, circuit=ctx["circuit_arg"],
+        background_floor=eff_floor, output=compiled_dir / "top_candidate", motif_specs=motif_list, circuit=ctx["circuit_arg"],
     )
     top_compiled = nc.verify_circuit_bundle(compiled_dir / "top_candidate", top_receipt)
 
@@ -899,16 +916,20 @@ def verify_causal_controls(
     if cis_seq.get("double_variant"):
         cis_receipt = nc.compile_circuit_bundle(
             reference, cis_seq["double_variant"], protein=ctx["primary_protein"], epsilon=epsilon,
-            output=compiled_dir / "cis_rescue", motif_specs=motif_list, circuit=ctx["circuit_arg"],
+            background_floor=eff_floor, output=compiled_dir / "cis_rescue", motif_specs=motif_list, circuit=ctx["circuit_arg"],
         )
         cis_compiled = nc.verify_circuit_bundle(compiled_dir / "cis_rescue", cis_receipt)
 
     # Exact reversion and reporter isolation checks across the signal grid
-    rev_q = nc.multi_tf_affinity(reference, reference, dict(ctx["unique_specs"]), epsilon)["ratios"]
+    rev_q = nc.multi_tf_affinity(
+        reference, reference, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+    )["ratios"]
     rev_map = {g: rev_q[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
     wt_map = dict.fromkeys(bound_genes, 1.0)
 
-    var_q = nc.multi_tf_affinity(reference, variant, dict(ctx["unique_specs"]), epsilon)["ratios"]
+    var_q = nc.multi_tf_affinity(
+        reference, variant, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+    )["ratios"]
     var_map = {g: var_q[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
 
     rev_max_diff = 0.0
@@ -1175,12 +1196,14 @@ def run_radar(
     n_shuffles: int = DEFAULT_SHUFFLES,
     top_k: int = DEFAULT_TOP_K,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
     include_sequence_models: bool = True,
     seed: int = 17,
 ) -> dict:
     """Run full V2F tipping-point scan, rescues, null shuffles, brainc verification, and exports."""
     output.mkdir(parents=True, exist_ok=True)
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     ctx = nc._resolve_context(circuit, protein, target, 0.5 * (signal_min + signal_max), None, None)
     scan = scan_enhancer_regime(
         sequence,
@@ -1191,6 +1214,7 @@ def run_radar(
         signal_max=signal_max,
         signal_steps=signal_steps,
         epsilon=epsilon,
+        background_floor=eff_floor,
         duration=duration,
         include_sequence_models=include_sequence_models,
         ctx=ctx,
@@ -1212,7 +1236,10 @@ def run_radar(
     export_rows = []
     for rank, cand in enumerate(selected, start=1):
         cand_with_wt = dict(cand, wt_critical_signal=scan["wt_critical_signal"])
-        rescues = _rescue_candidate(sequence, cand_with_wt, ctx, wt_base, signal_grid, epsilon=epsilon, duration=duration)
+        rescues = _rescue_candidate(
+            sequence, cand_with_wt, ctx, wt_base, signal_grid,
+            epsilon=epsilon, background_floor=eff_floor, duration=duration,
+        )
         rescues_by_id[cand["id"]] = rescues
         export_rows.append(_candidate_row_for_export(rank, cand_with_wt, rescues))
 
@@ -1237,6 +1264,7 @@ def run_radar(
         signal_steps=signal_steps,
         n_shuffles=n_shuffles,
         epsilon=epsilon,
+        background_floor=eff_floor,
         duration=duration,
         seed=seed,
     )
@@ -1248,6 +1276,7 @@ def run_radar(
         signal_grid=signal_grid,
         output=output,
         epsilon=epsilon,
+        background_floor=eff_floor,
         duration=duration,
     )
 
@@ -1281,6 +1310,8 @@ def run_radar(
         "protein": scan["protein"],
         "proteins": scan["proteins"],
         "target": scan["target"],
+        "epsilon": epsilon,
+        "background_floor": eff_floor,
         "wt_critical_signal": scan["wt_critical_signal"],
         "featured_candidate": {k: v for k, v in featured.items() if k != "variant"} if featured else None,
         "featured_variant_profile": featured_profile,
@@ -1325,11 +1356,13 @@ def analyze_variant_table(
     signal_max: float = DEFAULT_SIGNAL_MAX,
     signal_steps: int = DEFAULT_SIGNAL_STEPS,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
     include_sequence_models: bool = True,
 ) -> dict:
     """Evaluate arbitrary SNV/MNV/insertion/deletion variants from a JSON/CSV/TSV table across the full signal regime."""
     output.mkdir(parents=True, exist_ok=True)
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     rows = _load_variants_file(variants_path)
     ctx = nc._resolve_context(circuit, protein, target, 0.5 * (signal_min + signal_max), None, None)
     signal_grid = _signal_grid(signal_min, signal_max, signal_steps)
@@ -1359,7 +1392,9 @@ def analyze_variant_table(
         if set(ref) - set("ACGT") or set(var) - set("ACGT"):
             raise ValueError(f"variant row {eid} contains non-ACGT bases")
 
-        q_by_tf = nc.multi_tf_affinity(ref, var, dict(ctx["unique_specs"]), epsilon)["ratios"]
+        q_by_tf = nc.multi_tf_affinity(
+            ref, var, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+        )["ratios"]
         ratio_map = {g: q_by_tf[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
         reg_eval = _evaluate_regime_for_ratios(
             ctx, ratio_map, wt_base["wt_profile"], wt_base["wt_primary_critical"],
@@ -1413,7 +1448,10 @@ def analyze_variant_table(
             seq_silent = abs(item["siraj_score"]) < DEFAULT_SEQUENCE_SILENT and abs(item["kreimer_mpra_mean"]) < DEFAULT_SEQUENCE_SILENT
             item["sequence_silent"] = seq_silent
             item["doubly_silent"] = bool(item["category"] == "cryptic_bifurcation" and seq_silent)
-        rescues = _rescue_candidate(item["reference"], item, ctx, wt_base, signal_grid, epsilon=epsilon, duration=duration)
+        rescues = _rescue_candidate(
+            item["reference"], item, ctx, wt_base, signal_grid,
+            epsilon=epsilon, background_floor=eff_floor, duration=duration,
+        )
         item["rescues"] = {
             "trans_rescue": rescues["trans_rescue"],
             "cis_rescue": (
@@ -1424,10 +1462,14 @@ def analyze_variant_table(
         export_rows.append(_candidate_row_for_export(idx, item, rescues))
 
     top_cand = max(parsed, key=lambda e: (e["category"] == "cryptic_bifurcation", e["regime_flip_fraction"], e["max_abs_target_delta"]))
-    top_rescue = _rescue_candidate(top_cand["reference"], top_cand, ctx, wt_base, signal_grid, epsilon=epsilon, duration=duration)
+    top_rescue = _rescue_candidate(
+        top_cand["reference"], top_cand, ctx, wt_base, signal_grid,
+        epsilon=epsilon, background_floor=eff_floor, duration=duration,
+    )
     causal = verify_causal_controls(
         top_cand["reference"], top_cand, top_rescue, ctx=ctx,
-        signal_grid=signal_grid, output=output, epsilon=epsilon, duration=duration,
+        signal_grid=signal_grid, output=output, epsilon=epsilon,
+        background_floor=eff_floor, duration=duration,
     )
 
     report = {
@@ -1438,6 +1480,8 @@ def analyze_variant_table(
         "genes": ctx["genes"],
         "protein": ctx["primary_label"],
         "target": ctx["target"],
+        "epsilon": epsilon,
+        "background_floor": eff_floor,
         "signal_grid": signal_grid,
         "wt_critical_signal": wt_base["wt_primary_critical"],
         "variants_tested": len(parsed),
@@ -1465,6 +1509,7 @@ def benchmark_radar(
     signal_steps: int = DEFAULT_SIGNAL_STEPS,
     n_shuffles: int = 5,
     epsilon: float = nc.DEFAULT_EPSILON,
+    background_floor: float | None = None,
     duration: float = 40.0,
     include_sequence_models: bool = True,
     seed: int = 17,
@@ -1479,6 +1524,7 @@ def benchmark_radar(
         by_locus.setdefault(r.locus, []).append(r)
 
     output.mkdir(parents=True, exist_ok=True)
+    eff_floor = nc._resolve_background_floor(background_floor, epsilon)
     ctx = nc._resolve_context(circuit, protein, target, 0.5 * (signal_min + signal_max), None, None)
     signal_grid = _signal_grid(signal_min, signal_max, signal_steps)
     bindings = ctx["bindings"]
@@ -1494,7 +1540,8 @@ def benchmark_radar(
         ref = locus_rows[0].reference
         scan = scan_enhancer_regime(
             ref, signal_min=signal_min, signal_max=signal_max, signal_steps=signal_steps,
-            epsilon=epsilon, duration=duration, include_sequence_models=include_sequence_models, ctx=ctx,
+            epsilon=epsilon, background_floor=eff_floor, duration=duration,
+            include_sequence_models=include_sequence_models, ctx=ctx,
         )
         wt_base = {
             "wt_profile": scan["wt_profile"],
@@ -1504,7 +1551,8 @@ def benchmark_radar(
         }
         nulls = run_null_controls(
             ref, scan, ctx=ctx, signal_min=signal_min, signal_max=signal_max, signal_steps=signal_steps,
-            n_shuffles=n_shuffles, epsilon=epsilon, duration=duration, seed=seed + 100 * l_idx,
+            n_shuffles=n_shuffles, epsilon=epsilon, background_floor=eff_floor,
+            duration=duration, seed=seed + 100 * l_idx,
         )
 
         # Evaluate real measured sequence perturbations at this locus
@@ -1515,7 +1563,9 @@ def benchmark_radar(
             if r.kind == "wild-type" or r.sequence == ref or r.sequence in seen_seq:
                 continue
             seen_seq.add(r.sequence)
-            q_by_tf = nc.multi_tf_affinity(ref, r.sequence, dict(ctx["unique_specs"]), epsilon)["ratios"]
+            q_by_tf = nc.multi_tf_affinity(
+                ref, r.sequence, dict(ctx["unique_specs"]), epsilon, background_floor=eff_floor
+            )["ratios"]
             ratio_map = {g: q_by_tf[nc._motif_spec_label(bindings[g]["protein"])] for g in bound_genes}
             reg_eval = _evaluate_regime_for_ratios(
                 ctx, ratio_map, wt_base["wt_profile"], wt_base["wt_primary_critical"],
@@ -1556,7 +1606,10 @@ def benchmark_radar(
         top_rescue = None
         if top is not None:
             top_with_wt = dict(top, wt_critical_signal=scan["wt_critical_signal"])
-            top_rescue = _rescue_candidate(ref, top_with_wt, ctx, wt_base, signal_grid, epsilon=epsilon, duration=duration)
+            top_rescue = _rescue_candidate(
+                ref, top_with_wt, ctx, wt_base, signal_grid,
+                epsilon=epsilon, background_floor=eff_floor, duration=duration,
+            )
             all_wetlab_rows.append(dict(_candidate_row_for_export(len(all_wetlab_rows) + 1, top_with_wt, top_rescue), locus=locus))
 
         locus_reports.append({
@@ -1589,11 +1642,12 @@ def benchmark_radar(
     first_ref = by_locus[loci[0]][0].reference
     first_scan = scan_enhancer_regime(
         first_ref, signal_min=signal_min, signal_max=signal_max, signal_steps=signal_steps,
-        epsilon=epsilon, duration=duration, include_sequence_models=False, ctx=ctx,
+        epsilon=epsilon, background_floor=eff_floor, duration=duration, include_sequence_models=False, ctx=ctx,
     )
     rep_cand = first_scan["cryptic_switches"][0] if first_scan["cryptic_switches"] else first_scan["edits"][0]
     causal = verify_causal_controls(
-        first_ref, rep_cand, None, ctx=ctx, signal_grid=signal_grid, output=output, epsilon=epsilon, duration=duration,
+        first_ref, rep_cand, None, ctx=ctx, signal_grid=signal_grid, output=output,
+        epsilon=epsilon, background_floor=eff_floor, duration=duration,
     )
 
     summary = {
@@ -1603,6 +1657,8 @@ def benchmark_radar(
         "circuit": ctx["circuit_name"],
         "protein": ctx["primary_label"],
         "target": ctx["target"],
+        "epsilon": epsilon,
+        "background_floor": eff_floor,
         "signal_grid": signal_grid,
         "loci_tested": len(locus_reports),
         "total_cryptic_bifurcations": sum(r["category_counts"]["cryptic_bifurcation"] for r in locus_reports),
@@ -1638,6 +1694,7 @@ def _add_regime_args(sp: argparse.ArgumentParser) -> None:
     sp.add_argument("--signal-min", type=float, default=DEFAULT_SIGNAL_MIN)
     sp.add_argument("--signal-max", type=float, default=DEFAULT_SIGNAL_MAX)
     sp.add_argument("--steps", type=int, default=DEFAULT_SIGNAL_STEPS)
+    sp.add_argument("--background-floor", type=float, default=None, help=f"non-specific partition floor Z_ns (default {nc.DEFAULT_BACKGROUND_FLOOR:g} when epsilon>0)")
     sp.add_argument("--no-sequence-models", action="store_true", help="skip optional Siraj/Kreimer sequence predictor scoring")
     sp.add_argument("--output", type=Path, required=True)
 
@@ -1679,13 +1736,15 @@ def main() -> int:
             rep = run_radar(
                 ref, args.output, label=args.locus, circuit=args.circuit, protein=args.protein, target=args.target,
                 signal_min=args.signal_min, signal_max=args.signal_max, signal_steps=args.steps,
-                n_shuffles=args.shuffles, top_k=args.top_k, include_sequence_models=seq_on,
+                n_shuffles=args.shuffles, top_k=args.top_k, background_floor=args.background_floor,
+                include_sequence_models=seq_on,
             )
             print(json.dumps({
                 "output": str(args.output),
                 "label": rep["label"],
                 "circuit": rep["circuit"],
                 "protein": rep["protein"],
+                "background_floor": rep["background_floor"],
                 "wt_critical_signal": rep["wt_critical_signal"],
                 "category_counts": rep["scan"]["category_counts"],
                 "doubly_silent_count": rep["scan"]["doubly_silent_count"],
@@ -1704,11 +1763,13 @@ def main() -> int:
             rep = run_radar(
                 ref, args.output, label=args.fasta.name, circuit=args.circuit, protein=args.protein, target=args.target,
                 signal_min=args.signal_min, signal_max=args.signal_max, signal_steps=args.steps,
-                n_shuffles=args.shuffles, top_k=args.top_k, include_sequence_models=seq_on,
+                n_shuffles=args.shuffles, top_k=args.top_k, background_floor=args.background_floor,
+                include_sequence_models=seq_on,
             )
             print(json.dumps({
                 "output": str(args.output),
                 "label": rep["label"],
+                "background_floor": rep["background_floor"],
                 "category_counts": rep["scan"]["category_counts"],
                 "doubly_silent_count": rep["scan"]["doubly_silent_count"],
                 "featured_candidate": rep["featured_candidate"],
@@ -1720,10 +1781,11 @@ def main() -> int:
             rep = analyze_variant_table(
                 args.variants, args.output, circuit=args.circuit, protein=args.protein, target=args.target,
                 signal_min=args.signal_min, signal_max=args.signal_max, signal_steps=args.steps,
-                include_sequence_models=seq_on,
+                background_floor=args.background_floor, include_sequence_models=seq_on,
             )
             print(json.dumps({
                 "output": str(args.output),
+                "background_floor": rep["background_floor"],
                 "variants_tested": rep["variants_tested"],
                 "cryptic_count": rep["cryptic_count"],
                 "doubly_silent_count": rep["doubly_silent_count"],
@@ -1734,7 +1796,7 @@ def main() -> int:
         bench = benchmark_radar(
             args.output, circuit=args.circuit, protein=args.protein, target=args.target,
             signal_min=args.signal_min, signal_max=args.signal_max, signal_steps=args.steps,
-            n_shuffles=args.shuffles, include_sequence_models=seq_on,
+            n_shuffles=args.shuffles, background_floor=args.background_floor, include_sequence_models=seq_on,
         )
         print(json.dumps({k: v for k, v in bench.items() if k != "measured_variants"}, indent=2))
         return 0 if bench["causal_controls"]["all_passed"] else 1

@@ -58,6 +58,8 @@ def _circuit_opts(args):
         extra += ['--target', args.target]
     if getattr(args, 'signal', None) is not None:
         extra += ['--signal', args.signal]
+    if getattr(args, 'background_floor', None) is not None:
+        extra += ['--background-floor', args.background_floor]
     return extra
 
 
@@ -99,6 +101,8 @@ def radar(args):
         opts += ['--signal-max', args.signal_max]
     if args.steps is not None:
         opts += ['--steps', args.steps]
+    if getattr(args, 'background_floor', None) is not None:
+        opts += ['--background-floor', args.background_floor]
     if args.no_sequence_models:
         opts.append('--no-sequence-models')
     if args.benchmark:
@@ -165,6 +169,7 @@ cc.add_argument('--locus', default='chr15:90936956-90937127')
 cc.add_argument('--target')
 cc.add_argument('--protein')
 cc.add_argument('--signal', type=float)
+cc.add_argument('--background-floor', type=float)
 cc.add_argument('--reference')
 cc.add_argument('--variant')
 cc.add_argument('--mapping', type=Path)
@@ -179,6 +184,7 @@ sc.add_argument('--circuit')
 sc.add_argument('--protein')
 sc.add_argument('--target')
 sc.add_argument('--signal', type=float)
+sc.add_argument('--background-floor', type=float)
 sc.add_argument('--output', type=Path)
 rd = sub.add_parser('radar', help='run V2F tipping-point, dual rescue, and null-control radar')
 rd.add_argument('--locus', default='chr15:90936956-90937127')
@@ -192,6 +198,7 @@ rd.add_argument('--signal-min', type=float)
 rd.add_argument('--signal-max', type=float)
 rd.add_argument('--steps', type=int)
 rd.add_argument('--shuffles', type=int)
+rd.add_argument('--background-floor', type=float)
 rd.add_argument('--no-sequence-models', action='store_true')
 rd.add_argument('--output', type=Path)
 sub.add_parser('construction', help='compile a 480-bp developmental recipe and run the CX3D + LIF assay')
