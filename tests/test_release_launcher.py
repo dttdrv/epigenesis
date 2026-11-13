@@ -85,3 +85,35 @@ class ReleaseLauncherTests(unittest.TestCase):
         (self.root / "studio/epigenesis_studio/model/predict.py").write_text(
             "import sys\nsys.exit(7)\n")
         self.assertEqual(self.invoke().returncode, 7)
+
+    def test_circuit_and_scan_dispatch_forwards_generalized_options(self):
+        circuit_script = self.root / "examples/neural-circuit/circuit.py"
+        circuit_script.parent.mkdir(parents=True, exist_ok=True)
+        circuit_script.write_text("import json, sys\nprint(json.dumps(sys.argv[1:]))\n")
+
+        for args, expected_prefix in (
+            (["circuit", "--list-circuits"], ["list-circuits"]),
+            (["circuit", "--list-motifs"], ["list-motifs"]),
+            (
+                ["scan", "--fasta", "enh.fa", "--circuit", "mutual-toggle", "--protein", "MA0069.1",
+                 "--target", "GeneA", "--signal", "0.22", "--output", "scan_out"],
+                ["scan", "--fasta", "enh.fa", "--circuit", "mutual-toggle", "--protein", "MA0069.1",
+                 "--target", "GeneA", "--signal", "0.22", "--output", "scan_out"],
+            ),
+            (
+                ["circuit", "--circuit", "tri-lineage-switch", "--protein", "MA0069.1", "--target", "All",
+                 "--signal", "0.35", "--reference", "ref.fa", "--variant", "var.fa",
+                 "--with-construction", "--mapping", "map.json", "--output", "bridge_out"],
+                ["bridge", "--reference", "ref.fa", "--variant", "var.fa", "--circuit", "tri-lineage-switch",
+                 "--protein", "MA0069.1", "--target", "All", "--signal", "0.35", "--output", "bridge_out",
+                 "--mapping", "map.json"],
+            ),
+        ):
+            with self.subTest(args=args):
+                res = subprocess.run(
+                    [sys.executable, str(self.root / "epigenesis.py"), *args],
+                    cwd=self.root, capture_output=True, text=True,
+                )
+                self.assertEqual(res.returncode, 0, res.stderr)
+                first_line = res.stdout.splitlines()[0]
+                self.assertEqual(json.loads(first_line), expected_prefix)

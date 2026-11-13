@@ -148,6 +148,52 @@ class NeuralRegulationMotifTests(unittest.TestCase):
         self.assertTrue(np.isfinite(p_short).all())
         self.assertLess(np.max(np.abs(p_ins[0] + p_ins[1])), 1e-12)
 
+    def test_compile_prediction_arbitrary_lengths_and_indels_with_tamper(self):
+        rows = [r for r in self._synthetic_rows() if r.split == "train"]
+        model, coef = self.mt.fit(rows, 1.0)
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mdir = root / "model_dir"
+            mdir.mkdir()
+            np.save(mdir / "coefficients.npy", coef, allow_pickle=False)
+            model["coefficients_sha256"] = hashlib.sha256((mdir / "coefficients.npy").read_bytes()).hexdigest()
+            (mdir / "model.json").write_text(json.dumps(model))
+
+            for label, ref_seq, var_seq in (
+                ("insertion_60_69", "ACGT" * 15, "ACGT" * 7 + "GACCACCCA" + "ACGT" * 8),
+                ("deletion_240_225", "ACTG" * 60, "ACTG" * 30 + "TGCA" * 26 + "ACT"),
+            ):
+                with self.subTest(case=label):
+                    ref_p, var_p = root / f"{label}_ref.fa", root / f"{label}_var.fa"
+                    ref_p.write_text(f">ref\n{ref_seq}\n")
+                    var_p.write_text(f">var\n{var_seq}\n")
+                    out = root / f"out_{label}"
+                    compiled = self.mt.compile_prediction(mdir, ref_p, var_p, out)
+                    reloaded = self.mt.load_prediction(out)
+                    self.assertEqual(len(compiled), 7)
+                    self.assertEqual(compiled, reloaded)
+                    expected = [float(x) for x in self.mt.predict_rows(model, coef, [{"reference": ref_seq, "sequence": var_seq}])[0]]
+                    self.assertLess(max(abs(a - b) for a, b in zip(compiled, expected)), 1e-12)
+
+                    # Tamper coefficients.npy without updating model.json -> load_prediction rejects
+                    saved_coef = (out / "coefficients.npy").read_bytes()
+                    try:
+                        np.save(out / "coefficients.npy", coef * 2.0, allow_pickle=False)
+                        with self.assertRaises(ValueError):
+                            self.mt.load_prediction(out)
+                    finally:
+                        (out / "coefficients.npy").write_bytes(saved_coef)
+
+            # Too short (<5 bp) and invalid bases refused
+            for bad_name, bad_seq in (("short", "ACGT"), ("non_acgt", "ACGTNACGT")):
+                bad_p = root / f"{bad_name}.dna"
+                bad_p.write_text(bad_seq)
+                ok_p = root / "ok.dna"
+                ok_p.write_text("ACGTACGT")
+                with self.subTest(bad=bad_name), self.assertRaises(ValueError):
+                    self.mt.compile_prediction(mdir, bad_p, ok_p, root / f"fail_{bad_name}")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -92,15 +92,28 @@ def _cmd_studio(args: argparse.Namespace) -> int:
         sys.argv = saved
 
 
+def _append_circuit_opts(cmd: list[str | Path], args: argparse.Namespace) -> None:
+    if getattr(args, "circuit", None) is not None:
+        cmd.extend(["--circuit", str(args.circuit)])
+    if getattr(args, "protein", None) is not None:
+        cmd.extend(["--protein", str(args.protein)])
+    if getattr(args, "target", None) is not None:
+        cmd.extend(["--target", str(args.target)])
+    if getattr(args, "signal", None) is not None:
+        cmd.extend(["--signal", str(args.signal)])
+
+
 def _cmd_circuit(args: argparse.Namespace) -> int:
     repo = _find_repo(args.repo)
     script = repo / "examples/neural-circuit/circuit.py"
+    if args.list_circuits:
+        return _run_py([script, "list-circuits"])
+    if args.list_motifs:
+        return _run_py([script, "list-motifs"])
     if args.benchmark:
         out = _resolve_out(args.output, "circuit-benchmark")
-        cmd: list[str | Path] = [
-            script, "benchmark", "--protein", args.protein, "--target", args.target,
-            "--signal", str(args.signal), "--output", out,
-        ]
+        cmd: list[str | Path] = [script, "benchmark", "--output", out]
+        _append_circuit_opts(cmd, args)
         rc = _run_py(cmd)
         if rc == 0:
             print(f"\nBenchmark report: {out / 'benchmark.json'}")
@@ -113,9 +126,11 @@ def _cmd_circuit(args: argparse.Namespace) -> int:
             out = _resolve_out(args.output, "circuit-bridge")
             cmd = [
                 script, "bridge", "--reference", args.reference, "--variant", args.variant,
-                "--protein", args.protein, "--target", args.target, "--signal", str(args.signal),
                 "--duration", str(args.duration), "--output", out,
             ]
+            _append_circuit_opts(cmd, args)
+            if args.mapping is not None:
+                cmd.extend(["--mapping", str(args.mapping)])
             rc = _run_py(cmd)
             if rc == 0:
                 print(f"\nConstruction bridge report: {out / 'bridge.json'}")
@@ -123,18 +138,16 @@ def _cmd_circuit(args: argparse.Namespace) -> int:
         out = _resolve_out(args.output, "circuit-compare")
         cmd = [
             script, "compare", "--reference", args.reference, "--variant", args.variant,
-            "--protein", args.protein, "--target", args.target, "--signal", str(args.signal),
             "--output", out,
         ]
+        _append_circuit_opts(cmd, args)
         rc = _run_py(cmd)
         if rc == 0:
             print(f"\nComparison report: {out / 'compare.json'}")
         return rc
     out = _resolve_out(args.output, "neural-circuit")
-    cmd = [
-        script, "demo", "--locus", args.locus, "--target", args.target,
-        "--signal", str(args.signal), "--protein", args.protein, "--output", out,
-    ]
+    cmd = [script, "demo", "--locus", args.locus, "--output", out]
+    _append_circuit_opts(cmd, args)
     if args.with_construction:
         cmd.append("--with-construction")
     rc = _run_py(cmd)
@@ -147,10 +160,8 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     repo = _find_repo(args.repo)
     script = repo / "examples/neural-circuit/circuit.py"
     out = _resolve_out(args.output, "enhancer-scan")
-    cmd: list[str | Path] = [
-        script, "scan", "--fasta", args.fasta, "--protein", args.protein,
-        "--target", args.target, "--signal", str(args.signal), "--output", out,
-    ]
+    cmd: list[str | Path] = [script, "scan", "--fasta", args.fasta, "--output", out]
+    _append_circuit_opts(cmd, args)
     rc = _run_py(cmd)
     if rc == 0:
         print(f"\nScan output: {out / 'scan.json'}")
@@ -261,22 +272,27 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--no-browser", action="store_true", help="start server without opening a browser tab")
 
     cc = sub.add_parser("circuit", help="run Variant-to-Circuit analysis, comparison, benchmark, or CX3D bridge")
+    cc.add_argument("--circuit", help="circuit preset ('neural-tube', 'mutual-toggle', 'tri-lineage-switch') or JSON spec path")
     cc.add_argument("--locus", default="chr15:90936956-90937127", help="GSE188264 reference enhancer locus for demo")
-    cc.add_argument("--target", choices=("Nkx2.2", "Olig2", "Both"), default="Nkx2.2", help="downstream neural-tube GRN target")
-    cc.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
-    cc.add_argument("--signal", type=float, default=0.20, help="Gli activator input S in [0, 1]")
+    cc.add_argument("--target", help="regulated target gene in the chosen circuit (e.g. Nkx2.2, Olig2, Both, All, or GeneA)")
+    cc.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
+    cc.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
     cc.add_argument("--reference", help="custom reference DNA sequence or FASTA path for pairwise comparison")
     cc.add_argument("--variant", help="custom variant DNA sequence or FASTA path (SNV, MNV, or indel)")
+    cc.add_argument("--mapping", type=Path, help="optional JSON mapping of GRN gene steady state to CX3D Program fields")
     cc.add_argument("--with-construction", action="store_true", help="chain GRN steady states into CX3D morphogenesis and LIF controls")
     cc.add_argument("--duration", type=float, default=3.0, help="CX3D simulation duration when --with-construction is set")
     cc.add_argument("--benchmark", action="store_true", help="run multi-locus GSE188264 cryptic bifurcation benchmark")
+    cc.add_argument("--list-circuits", action="store_true", help="print built-in circuit presets as JSON and exit")
+    cc.add_argument("--list-motifs", action="store_true", help="print available TF motifs (Hallikas + JASPAR 2024) as JSON and exit")
     cc.add_argument("--output", type=Path, help="output directory (auto-generated under ./epigenesis-out/ if omitted)")
 
     sc = sub.add_parser("scan", help="scan all 3*L single-base mutations of a FASTA enhancer through the circuit ODE")
     sc.add_argument("fasta", type=Path, help="FASTA file containing a single enhancer sequence")
-    sc.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
-    sc.add_argument("--target", choices=("Nkx2.2", "Olig2", "Both"), default="Nkx2.2")
-    sc.add_argument("--signal", type=float, default=0.20)
+    sc.add_argument("--circuit", help="circuit preset ('neural-tube', 'mutual-toggle', 'tri-lineage-switch') or JSON spec path")
+    sc.add_argument("--protein", help="TF motif: GLI2, GLI3, any bundled JASPAR ID (e.g. MA0069.1), or custom PWM JSON path")
+    sc.add_argument("--target", help="regulated target gene in the chosen circuit")
+    sc.add_argument("--signal", type=float, help="morphogen input fraction S in [0, 1]")
     sc.add_argument("--output", type=Path, help="output directory")
 
     pr = sub.add_parser("predict", help="score DNA edit pairs with Huber-linear (default) or Kreimer 0-72h")

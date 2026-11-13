@@ -385,7 +385,9 @@ dialog p { color: var(--text2); line-height: 1.55; }
       <div class="panel-head">
         <div class="grow"><h2 data-k="circ.input"></h2><p class="sub" data-k="circ.input.help"></p></div>
         <div class="tools">
+          <select id="circCircuitSelect" class="circ-select" data-label="circ.circuitLabel"><option value="neural-tube">neural-tube</option><option value="mutual-toggle">mutual-toggle</option><option value="tri-lineage-switch">tri-lineage-switch</option></select>
           <div class="seg" id="circProtSeg" role="group"><button type="button" data-prot="GLI2" aria-pressed="true">GLI2</button><button type="button" data-prot="GLI3" aria-pressed="false">GLI3</button></div>
+          <select id="circMotifSelect" class="circ-select" data-label="circ.motifLabel"><option value="GLI2">GLI2 (Hallikas)</option><option value="GLI3">GLI3 (Hallikas)</option><option value="MA0069.1">MA0069.1 (JASPAR)</option><option value="MA0463.3">MA0463.3 (JASPAR)</option></select>
           <div class="seg" id="circTargetSeg" role="group"><button type="button" data-target="Nkx2.2" aria-pressed="true">Nkx2.2</button><button type="button" data-target="Olig2" aria-pressed="false">Olig2</button><button type="button" data-target="Both" aria-pressed="false" data-k="circ.target.both"></button></div>
           <div class="seg" id="circPresetSeg" role="group"><button type="button" data-preset="const" aria-pressed="true" data-k="sim.p.const"></button><button type="button" data-preset="primed" aria-pressed="false" data-k="sim.p.primed"></button><button type="button" data-preset="low" aria-pressed="false" data-k="sim.p.low"></button></div>
         </div>
@@ -594,7 +596,7 @@ const dirOf = e => e < 0 ? 'down' : e > 0 ? 'up' : 'none';
 const ARROW = { up: '↑ ', down: '↓ ', none: '' };
 const TOL_DIGITS = 3;
 let model = null, scan = null, pairs = null, ver = null, dirFilter = '', currentModel = 'siraj';
-const circ = { protein: 'GLI2', target: 'Nkx2.2', preset: 'const', cat: 'all', presets: [], result: null, dots: [], hover: null };
+const circ = { circuit: 'neural-tube', circuits: [], protein: 'GLI2', target: 'Nkx2.2', preset: 'const', cat: 'all', presets: [], result: null, dots: [], hover: null };
 const CIRC_PRESETS = { const: [[40, 0.2]], primed: [[10, 0.9], [30, 0.2]], low: [[40, 0.05]] };
 
 class Fail extends Error { constructor(key, params = {}) { super(key || params.msg); this.key = key; this.params = params; } }
@@ -758,12 +760,13 @@ const T = { en: {/*en*/
   'err.circ_unavailable': 'The circuit backend (examples/neural-circuit) was not found.',
   'err.circ_multi_record': 'The FASTA has {n} records. Scan one enhancer at a time.',
   'err.circ_len': 'Enhancer sequence needs {min} to {max} bases.',
-  'err.circ_protein': 'Choose GLI2 or GLI3.',
-  'err.circ_target': 'Choose Nkx2.2, Olig2 or Both.',
+  'err.circ_protein': 'Choose GLI2, GLI3, a JASPAR motif ID, or a valid custom PWM.',
+  'err.circ_target': 'Choose a valid gene target for the selected circuit.',
   'err.circ_epsilon': 'Epsilon must be between 0 and 1.',
   'err.circ_phases': 'Give 1 to {max} phases, each with a positive duration and a signal from 0 to 1.',
   'err.circ_time': 'The total duration is at most {max} model units.',
-  'err.circ_initial': 'The starting state needs all four genes, each from 0 to 1.',
+  'err.circ_initial': 'The starting state needs all circuit genes, each from 0 to 1.',
+  'err.circ_circuit': 'Choose neural-tube, mutual-toggle, tri-lineage-switch, or a valid circuit specification.',
   'model.label': 'Model',
   'model.siraj': 'Siraj SK-N-SH',
   'model.kreimer': 'Kreimer 0–72h',
@@ -771,11 +774,14 @@ const T = { en: {/*en*/
   'detail.topMotifs': 'Top JASPAR motif drivers',
   'nav.circuit': 'Enhancer Circuit',
   'circ.title': 'Variant-to-circuit enhancer scan',
-  'circ.lead': 'Scan every single-base substitution across a whole enhancer via a Boltzmann GLI binding partition sum coupled to the four-gene neural-tube circuit, and compare against passive reporter models.',
+  'circ.lead': 'Scan every single-base substitution across a whole enhancer via a strand-symmetric Boltzmann TF partition sum coupled to a nonlinear regulatory circuit, and compare against passive reporter models.',
   'circ.unavailable': 'The circuit backend (examples/neural-circuit) was not found. Install Studio from a repository checkout to enable it.',
-  'circ.input': 'Enhancer & Shh signaling',
-  'circ.input.help': 'Paste a human/mouse enhancer (9–500 bases) or load a curated human GSE188264 enhancer, then pick GLI protein, target gene wiring, and Shh signal regime.',
+  'circ.input': 'Enhancer & circuit signaling',
+  'circ.input.help': 'Paste an enhancer (up to 500 bases) or load a curated human GSE188264 enhancer, then choose a circuit topology, TF motif (GLI2/GLI3 or any JASPAR 2024 motif), target gene wiring, and signal regime.',
+  'circ.circuitLabel': 'Circuit topology',
+  'circ.motifLabel': 'TF motif',
   'circ.target.both': 'Both',
+  'circ.target.all': 'All',
   'circ.ph': 'Paste DNA enhancer sequence (9 to 500 bases) or FASTA record',
   'circ.varLabel': 'Optional variant / indel sequence (leave blank to scan SNVs automatically)',
   'circ.varPh': 'Optional alternate haplotype, MNV, insertion, or deletion (9 to 500 bases)',
@@ -789,17 +795,17 @@ const T = { en: {/*en*/
   'circ.t.crypticSub': 'out of {n} variants (wt fate {f})',
   'circ.t.featured': 'Strongest cryptic switch',
   'circ.t.featuredSub': '{g} Δ {d} ({amp}× vs reporter)',
-  'circ.t.p3': 'Spatial p3 domain',
-  'circ.t.p3Sub': '{w} → {m} points (of 21 Shh sites)',
-  'circ.t.glir': 'GliR pulse-chase Nkx2.2',
+  'circ.t.p3': 'Spatial target domain',
+  'circ.t.p3Sub': '{w} → {m} points (of 21 gradient sites)',
+  'circ.t.glir': 'Pulse-chase target',
   'circ.t.glirSub': 'activation-only would stay {a}',
   'circ.scatter.title': 'Passive reporter vs circuit bifurcation',
-  'circ.scatter.help': 'Each dot is a single-base edit. Orange dots are cryptic bifurcations: silent on a passive reporter (|Δ| < 0.02) yet flipping neural-tube fate inside the feedback circuit.',
-  'circ.traj.title': 'Featured variant Nkx2.2 & Olig2 trajectory',
+  'circ.scatter.help': 'Each dot is a single-base edit. Orange dots are cryptic bifurcations: silent on a passive reporter (|Δ| < 0.02) yet flipping cell fate inside the feedback circuit.',
+  'circ.traj.title': 'Featured variant trajectory',
   'circ.traj.featuredSub': 'Variant {id} (q = {q}, {cat}) · reversion diff {rev}',
   'circ.table.title': 'Ranked enhancer substitutions',
   'circ.cat.cryptic': 'Cryptic only',
-  'circ.col.q': 'q (GLI)',
+  'circ.col.q': 'q (TF)',
   'circ.col.rep': '|Δ Reporter|',
   'circ.col.nkx': 'Δ Target',
   'circ.col.kreimer': 'Kreimer 72h',
@@ -976,12 +982,13 @@ const T = { en: {/*en*/
   'err.circ_unavailable': 'Не е намерена базата за енхансърен контур (examples/neural-circuit).',
   'err.circ_multi_record': 'FASTA съдържа {n} записа. Сканирайте по един енхансър.',
   'err.circ_len': 'Енхансърът трябва да е от {min} до {max} бази.',
-  'err.circ_protein': 'Изберете GLI2 или GLI3.',
-  'err.circ_target': 'Изберете Nkx2.2, Olig2 или Двата.',
+  'err.circ_protein': 'Изберете GLI2, GLI3, JASPAR идентификатор или валидна PWM матрица.',
+  'err.circ_target': 'Изберете валиден прицелен ген за избрания контур.',
   'err.circ_epsilon': 'Epsilon трябва да е между 0 и 1.',
   'err.circ_phases': 'Задайте от 1 до {max} фази, всяка с положителна продължителност и сигнал от 0 до 1.',
   'err.circ_time': 'Общата продължителност е най-много {max} единици на модела.',
-  'err.circ_initial': 'Началното състояние трябва да съдържа и четирите гена, всеки от 0 до 1.',
+  'err.circ_initial': 'Началното състояние трябва да съдържа всички гени на контура, всеки от 0 до 1.',
+  'err.circ_circuit': 'Изберете neural-tube, mutual-toggle, tri-lineage-switch или валидна спецификация на контур.',
   'model.label': 'Модел',
   'model.siraj': 'Siraj SK-N-SH',
   'model.kreimer': 'Kreimer 0–72 ч.',
@@ -989,11 +996,14 @@ const T = { en: {/*en*/
   'detail.topMotifs': 'Водещи JASPAR мотиви',
   'nav.circuit': 'Енхансърен контур',
   'circ.title': 'Сканиране на енхансър към контур',
-  'circ.lead': 'Сканирайте всяка единична замяна в цял енхансър чрез сумата на Болцман за свързване на GLI, свързана с четиригенния контур на невралната тръба, и сравнете с пасивни репортери.',
+  'circ.lead': 'Сканирайте всяка единична замяна в цял енхансър чрез сума на Болцман за свързване на TF, свързана с нелинеен регулаторен контур, и сравнете с пасивни репортери.',
   'circ.unavailable': 'Не е намерена базата за енхансърен контур (examples/neural-circuit). Инсталирайте Studio от хранилището.',
-  'circ.input': 'Енхансър и Shh сигнал',
-  'circ.input.help': 'Поставете енхансър (9–500 бази) или заредете подбран човешки енхансър от GSE188264 и изберете GLI протеин, прицелен ген и сигнален режим.',
+  'circ.input': 'Енхансър и сигнал на контура',
+  'circ.input.help': 'Поставете енхансър (до 500 бази) или заредете подбран човешки енхансър от GSE188264, след което изберете топология на контура, TF мотив (GLI2/GLI3 или JASPAR 2024), прицелен ген и сигнал.',
+  'circ.circuitLabel': 'Топология на контура',
+  'circ.motifLabel': 'TF мотив',
   'circ.target.both': 'Двата',
+  'circ.target.all': 'Всички',
   'circ.ph': 'Поставете ДНК енхансър (от 9 до 500 бази) или FASTA запис',
   'circ.varLabel': 'Незадължителен вариант / индел последователност (оставете празно за автоматично SNV сканиране)',
   'circ.varPh': 'Незадължителен алтернативен хаплотип, MNV, вмъкване или делеция (9–500 бази)',
@@ -1007,17 +1017,17 @@ const T = { en: {/*en*/
   'circ.t.crypticSub': 'от {n} варианта (референтна съдба {f})',
   'circ.t.featured': 'Най-силен скрит превключвател',
   'circ.t.featuredSub': '{g} Δ {d} ({amp}× спрямо репортера)',
-  'circ.t.p3': 'Пространствен домейн p3',
-  'circ.t.p3Sub': '{w} → {m} точки (от 21 Shh позиции)',
-  'circ.t.glir': 'Импулс-проследяване GliR Nkx2.2',
+  'circ.t.p3': 'Пространствен домейн на целта',
+  'circ.t.p3Sub': '{w} → {m} точки (от 21 позиции в градиента)',
+  'circ.t.glir': 'Импулс-проследяване на целта',
   'circ.t.glirSub': 'само активация би останала {a}',
   'circ.scatter.title': 'Пасивен репортер спрямо контурна бифуркация',
-  'circ.scatter.help': 'Всяка точка е единична замяна. Оранжевите точки са скрити бифуркации: тихи в пасивен репортер (|Δ| < 0.02), но преобръщащи съдбата в контура с обратна връзка.',
-  'circ.traj.title': 'Траектория на Nkx2.2 и Olig2 за избрания вариант',
+  'circ.scatter.help': 'Всяка точка е единична замяна. Оранжевите точки са скрити бифуркации: тихи в пасивен репортер (|Δ| < 0.02), но преобръщащи клетъчната съдба в контура с обратна връзка.',
+  'circ.traj.title': 'Траектория на избрания вариант',
   'circ.traj.featuredSub': 'Вариант {id} (q = {q}, {cat}) · разлика при връщане {rev}',
   'circ.table.title': 'Подредени замени в енхансъра',
   'circ.cat.cryptic': 'Само скрити',
-  'circ.col.q': 'q (GLI)',
+  'circ.col.q': 'q (TF)',
   'circ.col.rep': '|Δ Репортер|',
   'circ.col.nkx': 'Δ Цел',
   'circ.col.kreimer': 'Kreimer 72ч',
@@ -1653,14 +1663,66 @@ $('#pairsCsv').onclick = () => {
 $('#pairsReceipt').onclick = () => saveReceipt(pairs.receipt);
 
 // enhancer circuit
-document.querySelectorAll('#circProtSeg button').forEach(b => b.onclick = () => {
-  circ.protein = b.dataset.prot;
-  document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-});
-document.querySelectorAll('#circTargetSeg button').forEach(b => b.onclick = () => {
-  circ.target = b.dataset.target;
-  document.querySelectorAll('#circTargetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-});
+function syncCircProtein(prot) {
+  circ.protein = prot;
+  document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.prot === prot)));
+  const sel = $('#circMotifSelect');
+  if (sel && [...sel.options].some(o => o.value === prot)) sel.value = prot;
+}
+function rebuildCircTargets(circuitSpec) {
+  const seg = $('#circTargetSeg');
+  if (!seg) return;
+  let opts;
+  if (!circuitSpec || circuitSpec.name === 'neural-tube') {
+    opts = [{ v: 'Nkx2.2', label: 'Nkx2.2' }, { v: 'Olig2', label: 'Olig2' }, { v: 'Both', k: 'circ.target.both' }];
+  } else {
+    opts = circuitSpec.genes.map(g => ({ v: g, label: g })).concat([{ v: 'All', k: 'circ.target.all' }]);
+  }
+  if (!opts.some(o => o.v === circ.target)) circ.target = circuitSpec ? circuitSpec.default_target : opts[0].v;
+  seg.replaceChildren(...opts.map(o => {
+    const attrs = { type: 'button', 'data-target': o.v, 'aria-pressed': String(o.v === circ.target) };
+    const btn = o.k ? el('button', { ...attrs, 'data-k': o.k }, t(o.k)) : el('button', attrs, o.label);
+    btn.onclick = () => {
+      circ.target = o.v;
+      document.querySelectorAll('#circTargetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.target === circ.target)));
+    };
+    return btn;
+  }));
+}
+function populateCircuitMetadata(ex) {
+  if (Array.isArray(ex.circuits) && ex.circuits.length) {
+    circ.circuits = ex.circuits;
+    const cSel = $('#circCircuitSelect');
+    if (cSel) {
+      cSel.replaceChildren(...ex.circuits.map(c => el('option', { value: c.name }, `${c.name} (${c.genes.join('/')})`)));
+      cSel.value = circ.circuit || ex.circuit || 'neural-tube';
+    }
+  }
+  if (ex.motifs && Array.isArray(ex.motifs.jaspar_ids)) {
+    const mSel = $('#circMotifSelect');
+    if (mSel) {
+      const items = [
+        el('option', { value: 'GLI2' }, 'GLI2 (Hallikas 2006)'),
+        el('option', { value: 'GLI3' }, 'GLI3 (Hallikas 2006)'),
+        ...ex.motifs.jaspar_ids.map(id => el('option', { value: id }, `${id} (JASPAR)`)),
+      ];
+      mSel.replaceChildren(...items);
+      if ([...mSel.options].some(o => o.value === circ.protein)) mSel.value = circ.protein;
+    }
+  }
+}
+document.querySelectorAll('#circProtSeg button').forEach(b => b.onclick = () => syncCircProtein(b.dataset.prot));
+if ($('#circMotifSelect')) $('#circMotifSelect').onchange = e => syncCircProtein(e.target.value);
+if ($('#circCircuitSelect')) $('#circCircuitSelect').onchange = e => {
+  circ.circuit = e.target.value;
+  const spec = circ.circuits.find(c => c.name === circ.circuit);
+  if (spec) {
+    circ.target = spec.default_target;
+    syncCircProtein(spec.default_protein || 'GLI2');
+  }
+  rebuildCircTargets(spec);
+};
+rebuildCircTargets(null);
 document.querySelectorAll('#circPresetSeg button').forEach(b => b.onclick = () => {
   circ.preset = b.dataset.preset;
   document.querySelectorAll('#circPresetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -1681,22 +1743,24 @@ $('#circLocusSelect').onchange = () => {
 };
 $('#circExample').onclick = () => guarded($('#circExample'), $('#circErr'), async () => {
   const ex = await api('/api/circuit-example');
+  populateCircuitMetadata(ex);
   circ.presets = Array.isArray(ex.presets) ? ex.presets : [{ locus: ex.locus, sequence: ex.sequence, length: ex.length }];
   const sel = $('#circLocusSelect');
   sel.replaceChildren(...circ.presets.map(p => el('option', { value: p.locus }, `${p.locus} (${p.length} bp)`)));
   sel.value = ex.locus;
   sel.hidden = circ.presets.length <= 1;
   loadCuratedLocus({ locus: ex.locus, sequence: ex.sequence, length: ex.length });
-  circ.protein = ex.protein || 'GLI2';
+  circ.circuit = ex.circuit || 'neural-tube';
+  if ($('#circCircuitSelect')) $('#circCircuitSelect').value = circ.circuit;
   circ.target = ex.target || 'Nkx2.2';
-  document.querySelectorAll('#circProtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.prot === circ.protein)));
-  document.querySelectorAll('#circTargetSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.target === circ.target)));
+  rebuildCircTargets(circ.circuits.find(c => c.name === circ.circuit));
+  syncCircProtein(ex.protein || 'GLI2');
 });
 $('#circRun').onclick = () => guarded($('#circRun'), $('#circErr'), async () => {
   say($('#circInfo'), 'circ.running');
   try {
     const t0 = performance.now();
-    const payload = { mode: 'circuit', sequence: $('#circSeq').value, protein: circ.protein, target: circ.target, phases: CIRC_PRESETS[circ.preset] };
+    const payload = { mode: 'circuit', circuit: circ.circuit, sequence: $('#circSeq').value, protein: circ.protein, target: circ.target, phases: CIRC_PRESETS[circ.preset] };
     const varRaw = $('#circVarSeq').value.trim();
     if (varRaw) payload.variant_sequence = varRaw;
     const receipt = await api('/api/score', payload);
@@ -1710,7 +1774,7 @@ function renderCirc() {
   $('#circOut').hidden = !circ.result;
   if (!circ.result) return;
   const r = circ.result.receipt.result, f = r.featured, sp = r.spatial, pc = r.pulse_chase;
-  const tg = r.target === 'Olig2' ? 'Olig2' : 'Nkx2.2';
+  const tg = r.target_gene || (r.target === 'Olig2' ? 'Olig2' : (r.genes && r.genes.includes(r.target) ? r.target : (r.genes ? r.genes[0] : 'Nkx2.2')));
   const fd = f.target_delta ?? f.nkx2_2_delta;
   const tile = (key, value, sub, cls = '') => el('div', { class: 'stat' }, el('span', { class: 'k' }, t(key)), el('b', { class: cls }, value), el('span', { class: 'sub' }, sub));
   const amp = Math.round(f.amplification_ratio);
@@ -1793,13 +1857,21 @@ function drawCircScatter() {
 function drawCircTraj() {
   const cv = $('#circTraj'), parent = cv.parentElement;
   if (!circ.result || !parent.clientWidth) return;
-  const r = circ.result.receipt.result, nkxIdx = r.genes.indexOf('Nkx2.2'), oligIdx = r.genes.indexOf('Olig2');
+  const r = circ.result.receipt.result;
+  const tgtName = r.target_gene || (r.genes.includes(r.target) ? r.target : (r.genes.includes('Nkx2.2') ? 'Nkx2.2' : r.genes[0]));
+  const tgtIdx = Math.max(0, r.genes.indexOf(tgtName));
+  const altName = r.alt_gene && r.genes.includes(r.alt_gene) ? r.alt_gene : (r.genes.includes('Olig2') && tgtName !== 'Olig2' ? 'Olig2' : r.genes[(tgtIdx + 1) % r.genes.length]);
+  const altIdx = Math.max(0, r.genes.indexOf(altName));
   const curves = [
-    { values: r.runs.reference.states.map(s => s[nkxIdx]), color: css('--text'), width: 2.2, dash: [] },
-    { values: r.runs.variant.states.map(s => s[nkxIdx]), color: css('--pos'), width: 2.4, dash: [] },
-    { values: r.runs.reference.states.map(s => s[oligIdx]), color: css('--text3'), width: 1.8, dash: [4, 4] },
-    { values: r.runs.variant.states.map(s => s[oligIdx]), color: css('--neg'), width: 1.8, dash: [4, 4] },
+    { values: r.runs.reference.states.map(s => s[tgtIdx]), color: css('--text'), width: 2.2, dash: [] },
+    { values: r.runs.variant.states.map(s => s[tgtIdx]), color: css('--pos'), width: 2.4, dash: [] },
   ];
+  if (altIdx !== tgtIdx) {
+    curves.push(
+      { values: r.runs.reference.states.map(s => s[altIdx]), color: css('--text3'), width: 1.8, dash: [4, 4] },
+      { values: r.runs.variant.states.map(s => s[altIdx]), color: css('--neg'), width: 1.8, dash: [4, 4] },
+    );
+  }
   drawChart(cv, { h: 170, time: r.time, curves, threshold: true, cursor: null, step: false, fill: false });
 }
 
@@ -1816,8 +1888,9 @@ $('#circScatter').onmousemove = ev => {
 $('#circScatter').onmouseleave = () => { $('#circTip').hidden = true; };
 $('#circCsv').onclick = () => {
   const r = circ.result.receipt.result;
-  const head = ['id', 'pos', 'ref', 'alt', 'affinity_ratio', 'reporter_delta_end', 'nkx2_2_delta', 'olig2_delta', 'target_delta', 'wt_fate', 'mut_fate', 'amplification_ratio', 'siraj_score', 'kreimer_mean', 'kreimer_72h', 'category'];
-  save('epigenesis-circuit.csv', toCsv(head, r.edits.map(e => [e.id, e.pos + 1, e.ref, e.alt, e.affinity_ratio, e.reporter_delta_end, e.nkx2_2_delta, e.olig2_delta, e.target_delta ?? e.nkx2_2_delta, e.wt_fate, e.mut_fate, e.amplification_ratio, e.siraj_score, e.kreimer_mean, e.kreimer_72h, e.category])), 'text/csv');
+  const geneCols = (r.genes || []).map(g => `delta_${g}`);
+  const head = ['id', 'pos', 'ref', 'alt', 'affinity_ratio', 'reporter_delta_end', ...geneCols, 'target_delta', 'wt_fate', 'mut_fate', 'amplification_ratio', 'siraj_score', 'kreimer_mean', 'kreimer_72h', 'category'];
+  save('epigenesis-circuit.csv', toCsv(head, r.edits.map(e => [e.id, e.pos + 1, e.ref, e.alt, e.affinity_ratio, e.reporter_delta_end, ...(r.genes || []).map(g => (e.gene_deltas || {})[g] ?? ''), e.target_delta ?? e.nkx2_2_delta, e.wt_fate, e.mut_fate, e.amplification_ratio, e.siraj_score, e.kreimer_mean, e.kreimer_72h, e.category])), 'text/csv');
 };
 $('#circReceipt').onclick = () => saveReceipt(circ.result.receipt);
 
@@ -1916,6 +1989,7 @@ $('#about').onclick = e => { if (e.target === $('#about')) $('#about').close(); 
     sim.initial = Object.fromEntries(siteTable.genes.map(g => [g, 0])); buildInitial(); renderSite(); renderPhases();
   } else { $('#simOff').hidden = false; $('#simRun').disabled = true; }
   if (!model.circuit) { $('#circOff').hidden = false; $('#circRun').disabled = true; }
+  else { try { populateCircuitMetadata(await api('/api/circuit-example')); } catch {} }
   folder = await api('/api/files'); renderOpen();
   const pre = await api('/api/preload');
   if (pre) openDoc(pre); else if (folder.files.length) openDialog();

@@ -384,6 +384,9 @@ class Circuit(unittest.TestCase):
         self.assertGreaterEqual(len(self.ex['presets']), 5)
         self.assertEqual(self.ex['presets'][0]['locus'], 'chr15:90936956-90937127')
         self.assertIn('chr18:56475717-56475888', {p['locus'] for p in self.ex['presets']})
+        self.assertEqual({c['name'] for c in self.ex['circuits']}, {'neural-tube', 'mutual-toggle', 'tri-lineage-switch'})
+        self.assertEqual(self.ex['motifs']['hallikas_gli'], ['GLI2', 'GLI3'])
+        self.assertEqual(self.ex['motifs']['jaspar_count'], 532)
 
     def test_chr15_scan_finds_cryptic_bifurcations_and_reverts_exactly(self):
         self.assertEqual(self.result['length'], 171)
@@ -432,6 +435,57 @@ class Circuit(unittest.TestCase):
         self.assertEqual(sealed(lambda r: r['request'].update(variant_sequence=base)), [True, True, False])
         self.assertEqual(sealed(lambda r: r['result']['custom_variant'].update(target_delta=0.5)), [True, True, False])
 
+    def test_circuit_generalized_presets_and_custom_specs_replay(self):
+        seq = 'ACTG' * 3 + 'TTCACGCATGAGTT' + 'TGCA' * 2 + 'GCTTTCGAGGAAT' + 'ACGT' * 2
+
+        tri = server.score(dict(mode='circuit', sequence=seq, circuit='tri-lineage-switch', target='All', phases=[[25.0, 0.35]]))
+        self.assertEqual(tri['result']['circuit'], 'tri-lineage-switch')
+        self.assertEqual(tri['result']['proteins'], ['MA0069.1', 'MA0463.3'])
+        self.assertEqual(tri['result']['target'], 'All')
+        self.assertTrue(server.verify(tri)['ok'])
+
+        tog = server.score(dict(mode='circuit', sequence=seq[:32], circuit='mutual-toggle', protein='MA0069.1', target='GeneA', phases=[[25.0, 0.22]]))
+        self.assertEqual(tog['result']['circuit'], 'mutual-toggle')
+        self.assertEqual(tog['result']['genes'], ['GeneA', 'GeneB'])
+        self.assertTrue(server.verify(tog)['ok'])
+
+        custom_circuit = {
+            'name': 'studio-custom-2',
+            'genes': ['Alpha', 'Beta'],
+            'basal': [1.0, 2.0],
+            'input': [160.0, 20.0],
+            'tf_binding': [10.0, 2.0],
+            'repression': [[0.0, 30.0], [30.0, 0.0]],
+            'cooperativity': 2.0,
+            'production': [2.0, 2.0],
+            'decay': [2.0, 2.0],
+            'default_target': 'Alpha',
+            'default_signal': 0.25,
+            'default_protein': 'MA0069.1',
+        }
+        custom_pwm = {
+            'id': 'ST-PWM-5',
+            'kind': 'weights',
+            'matrix': {
+                'A': [1.0, 0.1, 0.1, 1.0, 0.1],
+                'C': [0.1, 1.0, 0.1, 0.1, 1.0],
+                'G': [0.1, 0.1, 1.0, 0.1, 0.1],
+                'T': [0.1, 0.1, 0.1, 0.1, 0.1],
+            },
+        }
+        cust = server.score(dict(
+            mode='circuit', sequence='TTTTACGACGGGGTTTT', circuit=custom_circuit,
+            protein=custom_pwm, target='Alpha', phases=[[20.0, 0.25]],
+        ))
+        self.assertEqual(cust['result']['circuit'], 'studio-custom-2')
+        self.assertEqual(cust['result']['protein'], 'ST-PWM-5')
+        self.assertTrue(server.verify(cust)['ok'])
+
+        tampered = json.loads(json.dumps(cust))
+        tampered['request']['target'] = 'Beta'
+        tampered['receipt_sha256'] = server.canonical.digest({k: v for k, v in tampered.items() if k != 'receipt_sha256'})
+        self.assertEqual([c['ok'] for c in server.verify(tampered)['checks']], [True, True, False])
+
     def test_circuit_receipt_replays_and_catches_tampering(self):
         self.assertTrue(server.verify(self.receipt)['ok'])
         copy = lambda: json.loads(json.dumps(self.receipt))
@@ -449,6 +503,7 @@ class Circuit(unittest.TestCase):
         bad = {
             'circ_len': dict(sequence='ACGT'),
             'circ_multi_record': dict(sequence='>a\nGACCACCCAG\n>b\nGACCACCCAG'),
+            'circ_circuit': dict(circuit='not-a-preset'),
             'circ_protein': dict(protein='GLI1'),
             'circ_target': dict(target='Pax6'),
             'circ_epsilon': dict(epsilon=1.5),
