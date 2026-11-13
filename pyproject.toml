@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "epigenesis-compiler"
-version = "1.6.0"
+version = "1.7.0"
 description = "Universal DNA translation compiler targeting Development Module IR"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,6 +13,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 [project.scripts]
+epigenesis = "epigenesis_cli:main"
 brainc = "brainc.cli:main"
 brainc-validate-bio-chain = "brainc.validator_bio_chain:main"
 brainc-validate-genbank = "brainc.validator_insdc:main"
@@ -21,6 +22,7 @@ brainc-validate-development = "brainc.validator_development:main"
 
 [tool.setuptools]
 packages = ["brainc", "brainc.v2"]
+py-modules = ["epigenesis_cli"]
 
 [tool.setuptools.package-data]
 brainc = ["standards/*.json"]

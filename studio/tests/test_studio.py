@@ -14,7 +14,7 @@ from pathlib import Path
 
 try:
     import numpy  # noqa: F401
-    from epigenesis_studio import server, simulate
+    from epigenesis_studio import circuit, kreimer, server, simulate
 except ImportError as failure:
     raise unittest.SkipTest(f'Epigenesis Studio and its dependencies are required: {failure}')
 
@@ -165,11 +165,36 @@ class Http(unittest.TestCase):
         status, page = self.call('/')
         self.assertEqual(status, 200)
         self.assertIn(b'Epigenesis Studio', page)
-        self.assertEqual(json.loads(self.call('/api/model')[1])['manifest_sha256'], server.MANIFEST_SHA256)
+        model_payload = json.loads(self.call('/api/model')[1])
+        self.assertEqual(model_payload['manifest_sha256'], server.MANIFEST_SHA256)
+        self.assertEqual(model_payload['kreimer']['manifest_sha256'], kreimer.MANIFEST_SHA256)
         status, body = self.call('/api/score', dict(mode='pairs', rows=EXAMPLE[:4]))
         self.assertEqual(status, 200)
         status, body = self.call('/api/verify', json.loads(body))
         self.assertTrue(status == 200 and json.loads(body)['ok'])
+        status, kbody = self.call('/api/score', dict(mode='pairs', rows=EXAMPLE[:3], model='kreimer'))
+        self.assertEqual(status, 200)
+        kreceipt = json.loads(kbody)
+        self.assertEqual(kreceipt['model'], kreimer.MANIFEST['format'])
+        self.assertTrue(json.loads(self.call('/api/verify', kreceipt)[1])['ok'])
+        if circuit.available():
+            status, ex_body = self.call('/api/circuit-example')
+            self.assertEqual(status, 200)
+            ex_json = json.loads(ex_body)
+            self.assertEqual(ex_json['locus'], 'chr15:90936956-90937127')
+            self.assertGreaterEqual(len(ex_json['presets']), 5)
+            short_ref = ex_json['sequence'][:45]
+            short_var = short_ref[:15] + 'TTT' + short_ref[15:]
+            status, cbody = self.call(
+                '/api/score',
+                dict(mode='circuit', sequence=short_ref, variant_sequence=short_var,
+                     protein='GLI2', target='Olig2', phases=[[20.0, 0.2]]),
+            )
+            self.assertEqual(status, 200)
+            creceipt = json.loads(cbody)
+            self.assertEqual(creceipt['result']['target'], 'Olig2')
+            self.assertEqual(creceipt['result']['custom_variant']['edit_kind'], 'insertion')
+            self.assertTrue(json.loads(self.call('/api/verify', creceipt)[1])['ok'])
 
     def test_guards(self):
         self.assertEqual(self.call('/api/model', headers={'Host': 'evil.example'})[0], 403)
@@ -307,6 +332,136 @@ class Simulation(unittest.TestCase):
         self.assertEqual(table['published']['site'], 'GAACACCCA')
 
 
+class Kreimer(unittest.TestCase):
+    def test_cropped_kreimer_scan_equals_whole_sequences(self):
+        short_ref = REFERENCE[:35]
+        receipt = server.score(dict(mode='scan', sequence=short_ref, model='kreimer'))
+        scanned = receipt['result']['predictions']
+        self.assertEqual(receipt['result']['times_hours'], kreimer.MANIFEST['times_hours'])
+        whole = [dict(id=f'{i+1}:{b}>{a}', reference=short_ref, sequence=short_ref[:i]+a+short_ref[i+1:])
+                 for i, b in enumerate(short_ref) for a in 'ACGT' if a != b]
+        expected = kreimer.predict(whole)
+        self.assertEqual([p['id'] for p in scanned], [p['id'] for p in expected])
+        self.assertLess(max(abs(a['effect']-b['effect']) for a, b in zip(scanned, expected)), 1e-12)
+        self.assertLess(max(abs(x-y) for a, b in zip(scanned, expected) for x, y in zip(a['temporal'], b['temporal'])), 1e-12)
+        for a, b in zip(scanned, expected):
+            self.assertEqual([m['id'] for m in a['top_motifs']], [m['id'] for m in b['top_motifs']])
+
+    def test_kreimer_pairs_panel_and_receipt_replay(self):
+        receipt = server.score(dict(mode='pairs', rows=EXAMPLE[:8], budget=2, model='kreimer'))
+        self.assertEqual(receipt['model'], kreimer.MANIFEST['format'])
+        self.assertEqual(len(receipt['result']['selection']), 2)
+        self.assertTrue(all(len(p['temporal']) == 7 for p in receipt['result']['predictions']))
+        self.assertTrue(all('top_motifs' in p and len(p['top_motifs']) <= 5 for p in receipt['result']['predictions']))
+        first_motifs = receipt['result']['predictions'][0]['top_motifs']
+        if first_motifs:
+            self.assertEqual(set(first_motifs[0]), {'id', 'delta', 'effect', 'h72_effect'})
+        self.assertTrue(server.verify(receipt)['ok'])
+        copy = lambda: json.loads(json.dumps(receipt))
+        def sealed(edit):
+            changed = copy()
+            edit(changed)
+            changed['receipt_sha256'] = server.canonical.digest({k: v for k, v in changed.items() if k != 'receipt_sha256'})
+            return [c['ok'] for c in server.verify(changed)['checks']]
+        self.assertEqual(sealed(lambda r: r['result']['predictions'][0]['temporal'].__setitem__(0, 9.9)), [True, True, False])
+        self.assertEqual(sealed(lambda r: r.update(manifest_sha256='0'*64)), [True, False, True])
+        with self.assertRaises(server.Refusal) as refused:
+            server.score(dict(mode='scan', sequence=REFERENCE[:20], model='invalid'))
+        self.assertEqual(refused.exception.code, 'bad_model')
+
+
+@unittest.skipUnless(circuit.available(), 'the repository checkout with examples/neural-circuit is required')
+class Circuit(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        ex = circuit.example_enhancer()
+        cls.ex = ex
+        cls.request = dict(mode='circuit', sequence=ex['sequence'], protein='GLI2', phases=[[40.0, 0.2]])
+        cls.receipt = server.score(cls.request)
+        cls.result = cls.receipt['result']
+
+    def test_example_enhancer_provides_curated_presets(self):
+        self.assertGreaterEqual(len(self.ex['presets']), 5)
+        self.assertEqual(self.ex['presets'][0]['locus'], 'chr15:90936956-90937127')
+        self.assertIn('chr18:56475717-56475888', {p['locus'] for p in self.ex['presets']})
+
+    def test_chr15_scan_finds_cryptic_bifurcations_and_reverts_exactly(self):
+        self.assertEqual(self.result['length'], 171)
+        self.assertGreater(self.result['category_counts']['cryptic_bifurcation'], 0)
+        self.assertEqual(self.result['featured']['category'], 'cryptic_bifurcation')
+        self.assertEqual(self.result['controls']['reversion_max_difference'], 0.0)
+        self.assertTrue(self.result['controls']['reversion_ratio_exact'])
+        self.assertEqual(self.result['compiled']['variant_contract_sha256'],
+                         self.result['compiled']['reversion_contract_sha256'])
+        self.assertNotEqual(self.result['compiled']['variant_bundle_sha256'],
+                            self.result['compiled']['reversion_bundle_sha256'])
+        self.assertLess(self.result['spatial']['p3_mut_points'], self.result['spatial']['p3_wt_points'])
+        self.assertGreater(self.result['pulse_chase']['mut_competitive_nkx'],
+                           self.result['pulse_chase']['mut_activation_only_nkx'])
+
+    def test_circuit_supports_targets_and_second_site_rescue(self):
+        chr18 = next(p for p in self.ex['presets'] if p['locus'] == 'chr18:56475717-56475888')
+        r18 = server.score(dict(mode='circuit', sequence=chr18['sequence'], protein='GLI2', target='Nkx2.2', phases=[[40.0, 0.2]]))
+        self.assertTrue(r18['result']['second_site_rescue']['fate_rescued'])
+        self.assertTrue(server.verify(r18)['ok'])
+
+        for target in ('Olig2', 'Both'):
+            with self.subTest(target=target):
+                rec = server.score(dict(mode='circuit', sequence=chr18['sequence'][:45], protein='GLI2', target=target, phases=[[20.0, 0.2]]))
+                self.assertEqual(rec['result']['target'], target)
+                self.assertTrue(server.verify(rec)['ok'])
+                if target == 'Olig2':
+                    self.assertEqual(rec['result']['featured']['target_delta'], rec['result']['featured']['olig2_delta'])
+
+    def test_circuit_custom_indel_variant_and_receipt_replay(self):
+        base = self.ex['sequence']
+        ins = base[:58] + 'GACCACCCA' + base[58:]
+        rec = server.score(dict(mode='circuit', sequence=base, variant_sequence=ins, protein='GLI2', phases=[[40.0, 0.2]]))
+        cv = rec['result']['custom_variant']
+        self.assertEqual(cv['edit_kind'], 'insertion')
+        self.assertEqual(rec['result']['compiled']['reference_length'], len(base))
+        self.assertEqual(rec['result']['compiled']['variant_length'], len(ins))
+        self.assertTrue(server.verify(rec)['ok'])
+
+        copy = lambda: json.loads(json.dumps(rec))
+        def sealed(edit):
+            changed = copy()
+            edit(changed)
+            changed['receipt_sha256'] = server.canonical.digest({k: v for k, v in changed.items() if k != 'receipt_sha256'})
+            return [c['ok'] for c in server.verify(changed)['checks']]
+        self.assertEqual(sealed(lambda r: r['request'].update(variant_sequence=base)), [True, True, False])
+        self.assertEqual(sealed(lambda r: r['result']['custom_variant'].update(target_delta=0.5)), [True, True, False])
+
+    def test_circuit_receipt_replays_and_catches_tampering(self):
+        self.assertTrue(server.verify(self.receipt)['ok'])
+        copy = lambda: json.loads(json.dumps(self.receipt))
+        def sealed(edit):
+            changed = copy()
+            edit(changed)
+            changed['receipt_sha256'] = server.canonical.digest({k: v for k, v in changed.items() if k != 'receipt_sha256'})
+            return [c['ok'] for c in server.verify(changed)['checks']]
+        self.assertEqual(sealed(lambda r: r['result']['edits'][0].update(nkx2_2_delta=0.123)), [True, True, False])
+        self.assertEqual(sealed(lambda r: r['result']['compiled'].update(variant_contract_sha256='0'*64)), [True, True, False])
+        self.assertEqual(sealed(lambda r: r['request'].update(protein='GLI3')), [True, True, False])
+        self.assertEqual(sealed(lambda r: r.update(manifest_sha256='0'*64)), [True, False, True])
+
+    def test_circuit_refusals(self):
+        bad = {
+            'circ_len': dict(sequence='ACGT'),
+            'circ_multi_record': dict(sequence='>a\nGACCACCCAG\n>b\nGACCACCCAG'),
+            'circ_protein': dict(protein='GLI1'),
+            'circ_target': dict(target='Pax6'),
+            'circ_epsilon': dict(epsilon=1.5),
+            'circ_phases': dict(phases=[[0.0, 0.2]]),
+            'circ_time': dict(phases=[[circuit.MAX_TIME + 1.0, 0.2]]),
+            'circ_initial': dict(initial_state=dict(Pax6=0.1)),
+        }
+        for code, patch in bad.items():
+            with self.subTest(code=code), self.assertRaises(server.Refusal) as caught:
+                server.score(dict(self.request, **patch))
+            self.assertEqual(caught.exception.code, code)
+
+
 class Page(unittest.TestCase):
     """The page has no JavaScript engine here, so its translation tables are checked as text."""
     PAGE = (Path(server.HERE)/'index.html').read_text()
@@ -324,7 +479,8 @@ class Page(unittest.TestCase):
         keys = self.table('en')
         used = set(re.findall(r'data-(?:k|ph|label)="([\w.]+)"', self.PAGE)) | set(re.findall(r"\bt\('([\w.]+)'", self.PAGE))
         self.assertEqual({k for k in used if not k.endswith('.')} - keys, set())
-        for code in set(re.findall(r"Refusal\('(\w+)'", (Path(server.HERE)/'server.py').read_text()+(Path(server.HERE)/'simulate.py').read_text())):
+        src = ''.join((Path(server.HERE)/name).read_text() for name in ('server.py', 'simulate.py', 'circuit.py'))
+        for code in set(re.findall(r"Refusal\('(\w+)'", src)):
             self.assertIn('err.'+code, keys, code)
         for family in ('kind.sequence', 'kind.edits', 'kind.receipt', 'dir.up', 'dir.down', 'dir.none', 'verify.c.0', 'verify.c.1', 'verify.c.2', 'field.reference', 'field.sequence', *('sim.a.%d' % i for i in range(6))):
             self.assertIn(family, keys)

@@ -975,7 +975,7 @@ def development_real_dna() -> None:
             ]
             metadata = archive.read(metadata_name).decode("utf-8")
             entry_points = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 1.6.0\n" in metadata
+            assert "Version: 1.7.0\n" in metadata
             assert "brainc/source.py" in names
             assert "brainc/development_bundle.py" in names
             assert "brainc/validator_development.py" in names
@@ -1311,7 +1311,7 @@ def wheel() -> None:
                 name for name in names if name.endswith(".dist-info/entry_points.txt")
             ]
             entry_points_text = archive.read(entry_points_name).decode("utf-8")
-            assert "Version: 1.6.0\n" in metadata_text
+            assert "Version: 1.7.0\n" in metadata_text
             assert "License-Expression: Apache-2.0\n" in metadata_text
             assert (
                 "Universal DNA translation compiler targeting Development Module IR"
@@ -1336,6 +1336,8 @@ def wheel() -> None:
                 "brainc/standards/genbank-273-insdc-ft-11.4.authority.json",
             ):
                 assert required_module in names, required_module
+            assert "epigenesis_cli.py" in names
+            assert "epigenesis = epigenesis_cli:main" in entry_points_text
             assert "brainc = brainc.cli:main" in entry_points_text
             assert (
                 "brainc-validate-genbank = brainc.validator_insdc:main"
@@ -1357,6 +1359,10 @@ def wheel() -> None:
         subprocess.run([sys.executable, "-m", "pip", "install", "--no-index", "--no-deps", "--target", str(installed),
                         str(wheel_path)], check=True, capture_output=True, text=True)
         environment = dict(os.environ); environment["PYTHONPATH"] = str(installed)
+        cli_help = subprocess.run([sys.executable, "-m", "epigenesis_cli", "--help"], check=True,
+                                  capture_output=True, text=True, cwd=root, env=environment)
+        for subcommand in ("studio", "circuit", "scan", "predict", "check"):
+            assert subcommand in cli_help.stdout, (subcommand, cli_help.stdout)
         result = subprocess.run([sys.executable, "-m", "brainc", "--help"], check=True,
                                 capture_output=True, text=True, cwd=root, env=environment)
         for command in (
@@ -1391,7 +1397,7 @@ def wheel() -> None:
                     "brainc.external_source, brainc.development_bundle, "
                     "brainc.validator_reference, brainc.validator_external, "
                     "brainc.validator_development; "
-                    "assert brainc.__version__ == '1.6.0'"
+                    "assert brainc.__version__ == '1.7.0'"
                 ),
             ],
             check=True,
@@ -1751,6 +1757,7 @@ def sdist() -> None:
                 "SPEC.md",
                 "docs/releases/RELEASE-1.5.md",
                 "docs/releases/RELEASE-1.6.md",
+                "docs/releases/RELEASE-1.7.md",
                 "docs/research/CRX_BINDING_AUDIT.md",
                 "docs/reference/PRIOR_ART.md",
                 "docs/reference/STANDARDS.md",
@@ -1778,6 +1785,9 @@ def sdist() -> None:
                 "examples/neural-patterning/viewer.html",
                 "examples/neural-patterning/README.md",
                 "tests/test_neural_patterning.py",
+                "examples/neural-circuit/README.md",
+                "examples/neural-circuit/circuit.py",
+                "tests/test_neural_circuit.py",
                 "examples/neural-evidence/README.md",
                 "examples/neural-evidence/evidence.py",
                 "examples/neural-evidence/viewer.html",
@@ -1791,6 +1801,12 @@ def sdist() -> None:
                 "tests/test_neural_evidence.py",
                 "examples/neural-regulation/README.md",
                 "examples/neural-regulation/regulation.py",
+                "examples/neural-regulation/motif_temporal.py",
+                "tests/test_neural_regulation_motif.py",
+                "studio/epigenesis_studio/kreimer.py",
+                "studio/epigenesis_studio/circuit.py",
+                "studio/epigenesis_studio/model/kreimer_model.json",
+                "studio/epigenesis_studio/model/kreimer_weights.npz",
                 "examples/neural-regulation/data/design.fasta",
                 "examples/neural-regulation/data/alphas.csv.gz",
                 "examples/neural-regulation/data/provenance.json",
@@ -1889,6 +1905,8 @@ def sdist() -> None:
                 "examples/neural-binding/data/nkx2-2-p156l-selection.json",
                 "tests/test_neural_binding.py",
                 "tests/test_neural_binding_benchmark.py",
+                "tests/test_epigenesis_cli.py",
+                "epigenesis_cli.py",
                 "pyproject.toml",
                 "tests/verify.py",
                 "tests/data/J02482.1.fasta",
@@ -2019,7 +2037,7 @@ def sdist() -> None:
                     "brainc.external_profile, brainc.external_runtime, brainc.external_source, "
                     "brainc.development_bundle, brainc.validator_reference, "
                     "brainc.validator_external, brainc.validator_development; "
-                    "assert brainc.__version__ == '1.6.0'"
+                    "assert brainc.__version__ == '1.7.0'"
                 ),
             ],
             check=True,
@@ -2348,9 +2366,26 @@ def neural_binding() -> None:
     print("Source-bound preferences and frozen evaluation; see the separate benchmark's predictive_acceptance result.")
 
 
+def neural_circuit() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_circuit","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-CIRCUIT-SOFTWARE-PASSED")
+    print("Boltzmann partition sum, cryptic bifurcation detection, and brainc compilation controls passed; organism phenotype is NOT ESTABLISHED.")
+
+
+def neural_regulation_motif() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_regulation_motif","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-REGULATION-MOTIF-SOFTWARE-PASSED")
+    print("Retrospective GSE188264 motif-temporal fit and bundled Studio Kreimer checkpoint match; biological development acceptance remains FALSE.")
+
+
 COMMANDS = {
     "coding-consequences": coding_consequences,
     "neural-binding": neural_binding,
+    "neural-circuit": neural_circuit,
     "boundary": boundary,
     "canonical": canonical,
     "contract-attacks": contract_attacks,
@@ -2360,6 +2395,7 @@ COMMANDS = {
     "neural-mechanism-controls": neural_mechanism_controls,
     "neural-fate-experiment": neural_fate_experiment,
     "neural-regulation": neural_regulation,
+    "neural-regulation-motif": neural_regulation_motif,
     "neural-construction": neural_construction,
     "universal-translation": universal_translation,
     "real-dna": real_dna,

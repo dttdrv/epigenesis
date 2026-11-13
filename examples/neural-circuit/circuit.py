@@ -1,0 +1,1275 @@
+"""Variant-to-Circuit bridge: arbitrary regulatory DNA -> GLI partition physics -> neural GRN bifurcation.
+
+Connects full-length DNA enhancers (via brainc Development Modules and Boltzmann
+partition affinity over Hallikas et al. 2006 Table S1 GLI2/GLI3 weights) to the
+four-gene neural-tube ODE (Pax6, Olig2, Nkx2.2, Irx3; Herrera-Delgado et al. 2020)
+and optionally scores the same edits with passive reporter sequence models
+(Kreimer neural-induction motif_temporal & Siraj Huber-linear).
+
+Exposes "reporter-silent, circuit-switch" (cryptic bifurcation) edits where
+passive promoter/MPRA readouts barely move yet coupled feedback flips cell fate.
+All developmental concentrations, distances, and times are uncalibrated model units.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import html
+import importlib.util
+import json
+import math
+from pathlib import Path
+import shutil
+import statistics
+import struct
+import sys
+
+# coding-minimalism-rung: reuse (reuses brainc, examples/neural-patterning, examples/neural-construction, and optional Studio)
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "examples/neural-patterning"))
+
+from brainc._canonical import canonical_bytes
+from brainc._io import load_json_object, read_regular_file
+from brainc.development_bundle import compile_development
+from brainc.source import FASTA_PROFILE, compile_source
+from brainc.v2 import inline_storage, make_development_request, pack, policy_artifact, save, target_artifact
+from brainc.v2._common import seal
+from brainc.v2.target import DEV_DOMAIN, OP_UNIT_CREATE
+from brainc.validator_development import load_development_bundle_directory, validate_development_paths
+import patterning as pat
+
+
+TARGET = "org.epigenesis.example.neural-circuit"
+DEFAULT_EPSILON = 1e-4
+DEFAULT_SIGNAL = 0.20
+DEFAULT_TARGET = "Nkx2.2"
+SUPPORTED_TARGETS = ("Nkx2.2", "Olig2", "Both")
+CURATED_LOCI = (
+    "chr15:90936956-90937127",
+    "chr13:26545315-26545486",
+    "chr21:37477109-37477280",
+    "chr18:56475717-56475888",
+    "chr1:175099416-175099587",
+)
+LOCAL_ERROR_TOLERANCE = pat.LOCAL_ERROR_TOLERANCE
+
+
+def _binding_tables(protein: str, epsilon: float) -> tuple[str, dict[str, list[float]]]:
+    if type(epsilon) not in (int, float) or not math.isfinite(epsilon) or epsilon < 0:
+        raise ValueError("epsilon must be finite and nonnegative")
+    binding = pat.load_data()["binding"]
+    if protein not in binding["profiles"]:
+        raise ValueError(f"unsupported GLI protein: {protein}")
+    consensus = binding["consensus"]
+    profile = binding["profiles"][protein]
+    ratios = {
+        base: [
+            (profile[base][pos] + epsilon) / (profile[consensus[pos]][pos] + epsilon)
+            for pos in range(len(consensus))
+        ]
+        for base in "ACGT"
+    }
+    return consensus, ratios
+
+
+def _site_weight(window: str, ratios: dict[str, list[float]]) -> float:
+    weight = 1.0
+    for pos, base in enumerate(window):
+        weight *= ratios[base][pos]
+    return weight
+
+
+def boltzmann_gli_affinity(sequence: str, protein: str = "GLI2", epsilon: float = DEFAULT_EPSILON) -> dict:
+    """Sum relative association affinity across all 9-bp oriented windows of any DNA sequence."""
+    consensus, ratios = _binding_tables(protein, epsilon)
+    width = len(consensus)
+    if type(sequence) is not str or len(sequence) < width or set(sequence) - set("ACGT"):
+        raise ValueError(f"sequence must be >= {width} uppercase ACGT bases")
+
+    total = 0.0
+    best_weight = -1.0
+    best_site = None
+    top_sites = []
+    for start in range(len(sequence) - width + 1):
+        fwd = sequence[start : start + width]
+        rev = pat.reverse_complement(fwd)
+        wf = _site_weight(fwd, ratios)
+        wr = _site_weight(rev, ratios)
+        total += wf + wr
+        for strand, w, oriented in ((1, wf, fwd), (-1, wr, rev)):
+            if w > best_weight:
+                best_weight = w
+                best_site = {"start": start, "strand": strand, "oriented_site": oriented, "weight": w}
+            if w >= 1e-2:
+                top_sites.append({"start": start, "strand": strand, "oriented_site": oriented, "weight": w})
+    top_sites.sort(key=lambda item: -item["weight"])
+    return {
+        "protein": protein,
+        "epsilon": epsilon,
+        "length": len(sequence),
+        "partition_sum": total,
+        "peak_site": best_site,
+        "strong_sites": top_sites[:8],
+    }
+
+
+def affinity_ratio(reference: str, variant: str, protein: str = "GLI2", epsilon: float = DEFAULT_EPSILON) -> float:
+    """Compute thermodynamic GLI affinity ratio q = Z(variant) / Z(reference) (> 0)."""
+    z_ref = boltzmann_gli_affinity(reference, protein, epsilon)["partition_sum"]
+    z_var = boltzmann_gli_affinity(variant, protein, epsilon)["partition_sum"]
+    if z_ref <= 0 or z_var <= 0 or not math.isfinite(z_var / z_ref):
+        raise ValueError("affinity ratio requires positive finite partition sums")
+    return z_var / z_ref
+
+
+def _delta_partition_single(reference: str, pos: int, alt_base: str, ratios: dict[str, list[float]], width: int) -> float:
+    """Exact local partition-sum delta Z(alt) - Z(ref) in O(width) for a single-base edit."""
+    lo = max(0, pos - width + 1)
+    hi = min(len(reference) - width, pos)
+    delta = 0.0
+    for start in range(lo, hi + 1):
+        ref_w = reference[start : start + width]
+        alt_w = ref_w[: pos - start] + alt_base + ref_w[pos - start + 1 :]
+        delta += (_site_weight(alt_w, ratios) + _site_weight(pat.reverse_complement(alt_w), ratios)) - (
+            _site_weight(ref_w, ratios) + _site_weight(pat.reverse_complement(ref_w), ratios)
+        )
+    return delta
+
+
+def resolve_target_ratios(target: str = DEFAULT_TARGET, ratio: float | dict[str, float] = 1.0) -> dict[str, float]:
+    """Map target selection ('Nkx2.2', 'Olig2', 'Both') or explicit per-gene ratios into a clean map."""
+    if isinstance(ratio, dict):
+        genes = set(pat.load_data()["model"]["genes"])
+        if not set(ratio) <= genes:
+            raise ValueError(f"unsupported target gene in ratios: {sorted(set(ratio) - genes)}")
+        out = {}
+        for gene, value in ratio.items():
+            if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+                raise ValueError(f"ratio for {gene} must be finite and positive")
+            out[gene] = float(value)
+        return out
+    if type(ratio) not in (int, float) or not math.isfinite(ratio) or ratio <= 0:
+        raise ValueError("affinity ratio must be finite and positive")
+    if target not in SUPPORTED_TARGETS:
+        raise ValueError(f"target must be one of {SUPPORTED_TARGETS}")
+    q = float(ratio)
+    if target == "Nkx2.2":
+        return {"Nkx2.2": q}
+    if target == "Olig2":
+        return {"Olig2": q}
+    return {"Nkx2.2": q, "Olig2": q}
+
+
+def occupancy_ratios(
+    model: dict,
+    state: tuple[float, ...],
+    signal: float,
+    ratios: dict[str, float] | None = None,
+    mechanism: str = "competitive",
+) -> tuple[float, ...]:
+    """Generalized Herrera-Delgado promoter occupancy allowing independent GLI multipliers per target gene."""
+    ratios = ratios or {}
+    if set(ratios) <= {"Nkx2.2"}:
+        return pat.occupancy(model, state, signal, ratios.get("Nkx2.2", 1.0), mechanism)
+    result = []
+    for i, basal in enumerate(model["basal"]):
+        gene = model["genes"][i]
+        q = ratios.get(gene, 1.0)
+        k = model["gli_binding"][i]
+        on = basal * (1 + k) * (1 + q * model["input"][i] * signal)
+        off = (1 + (q if mechanism == "competitive" else 1) * k) * math.prod(
+            (1 + w * x) ** model["sites_per_repressor"] for w, x in zip(model["repression"][i], state) if w
+        )
+        result.append(on / (on + off))
+    return tuple(result)
+
+
+def _target_gene_index(genes: list[str], target: str) -> int:
+    return genes.index("Olig2") if target == "Olig2" else genes.index("Nkx2.2")
+
+
+def simulate_circuit(
+    protocol: list,
+    *,
+    ratio: float | dict[str, float] = 1.0,
+    target: str = DEFAULT_TARGET,
+    ratios: dict[str, float] | None = None,
+    dt: float = pat.DEFAULT_DT,
+    initial: tuple[float, ...] = (0.0, 0.0, 0.0, 0.0),
+    mechanism: str = "competitive",
+) -> list[tuple]:
+    """Integrate the 4-gene neural-tube ODE for any positive GLI affinity multiplier(s) > 0."""
+    def finite(v):
+        return type(v) in (int, float) and math.isfinite(v)
+
+    model = pat.load_data()["model"]
+    ratio_map = resolve_target_ratios(target, ratios if ratios is not None else ratio)
+    if (
+        not finite(dt) or dt <= 0
+        or mechanism not in ("competitive", "activation-only")
+        or len(initial) != len(model["genes"])
+        or any(type(v) not in (int, float) or not 0 <= v <= 1 for v in initial)
+    ):
+        raise ValueError("invalid timestep, positive affinity ratio, mechanism, or initial state")
+
+    phases = []
+    total, steps = 0.0, 0
+    for phase in protocol:
+        if not isinstance(phase, (list, tuple)) or len(phase) != 2 or any(not finite(v) for v in phase) or phase[0] <= 0 or not 0 <= phase[1] <= 1:
+            raise ValueError("protocol needs positive durations and Gli activator fractions in [0, 1]")
+        duration, signal = phase
+        count = duration / dt
+        end = total + duration
+        if not math.isfinite(count) or not math.isfinite(end) or end <= total or count > pat.MAX_STEPS - steps:
+            raise ValueError("protocol exceeds the step budget or representable time")
+        count = max(1, math.ceil(count))
+        steps += count
+        phases.append((total, end, signal, count, duration / count))
+        total = end
+    if not phases:
+        raise ValueError("protocol must not be empty")
+
+    state = tuple(float(v) for v in initial)
+    trajectory = [(0.0, *state)]
+
+    def rhs(y, s):
+        if any(not math.isfinite(v) or not 0 <= v <= 1 for v in y):
+            raise ArithmeticError("integration stage outside physical [0, 1] state range")
+        return tuple(
+            model["production"] * p - model["decay"] * x
+            for p, x in zip(occupancy_ratios(model, y, s, ratio_map, mechanism), y)
+        )
+
+    def step(y, h, s):
+        a = rhs(y, s)
+        b = rhs(tuple(x + h * v / 2 for x, v in zip(y, a)), s)
+        c = rhs(tuple(x + h * v / 2 for x, v in zip(y, b)), s)
+        d = rhs(tuple(x + h * v for x, v in zip(y, c)), s)
+        result = tuple(x + h * (v + 2 * w + 2 * z + u) / 6 for x, v, w, z, u in zip(y, a, b, c, d))
+        rhs(result, s)
+        return result
+
+    attempts = 0
+    for start, end, signal, count, interval in phases:
+        elapsed, h = 0.0, interval
+        for index in range(count):
+            stop = (index + 1) * interval
+            while elapsed < stop:
+                h = min(h, stop - elapsed)
+                if elapsed + h <= elapsed or attempts >= pat.MAX_STEPS:
+                    raise ValueError("adaptive integration exceeds budget")
+                attempts += 1
+                try:
+                    coarse = step(state, h, signal)
+                    fine = step(step(state, h / 2, signal), h / 2, signal)
+                    error = max(abs(a - b) for a, b in zip(fine, coarse)) / 15
+                except ArithmeticError:
+                    h /= 2
+                    continue
+                if error <= LOCAL_ERROR_TOLERANCE:
+                    state = fine
+                    elapsed = stop if h == stop - elapsed else elapsed + h
+                factor = 2.0 if error == 0 else min(2.0, max(0.2, 0.9 * (LOCAL_ERROR_TOLERANCE / error) ** 0.2))
+                h = min(interval, h * factor)
+            trajectory.append((end if index == count - 1 else start + stop, *state))
+    return trajectory
+
+
+def run_circuit_assay(
+    protocol: list,
+    *,
+    ratio: float | dict[str, float],
+    mode: str,
+    target: str = DEFAULT_TARGET,
+    dt: float = pat.DEFAULT_DT,
+    mechanism: str = "competitive",
+    initial: dict | None = None,
+) -> dict:
+    if mode not in ("reporter", "endogenous"):
+        raise ValueError("mode must be reporter or endogenous")
+    model = pat.load_data()["model"]
+    if initial is None:
+        initial = dict.fromkeys(model["genes"], 0.0)
+    state = pat.named_state(initial)
+    ratio_map = resolve_target_ratios(target, ratio)
+    wt_map = {g: 1.0 for g in ratio_map}
+    trajectory = simulate_circuit(
+        protocol,
+        ratios=wt_map if mode == "reporter" else ratio_map,
+        target=target,
+        dt=dt,
+        mechanism=mechanism,
+        initial=state,
+    )
+    phase, boundary = 0, protocol[0][0]
+    reporter, signals = [], []
+    rep_idx = _target_gene_index(model["genes"], target)
+    for time_val, *y in trajectory:
+        while time_val > boundary and phase + 1 < len(protocol):
+            phase += 1
+            boundary += protocol[phase][0]
+        signal = protocol[phase][1]
+        signals.append(signal)
+        reporter.append(occupancy_ratios(model, tuple(y), signal, ratio_map, mechanism)[rep_idx])
+    return {
+        "mode": mode, "target": target, "mechanism": mechanism, "protocol": protocol,
+        "ratio": ratio_map[target] if target in ratio_map else next(iter(ratio_map.values()), 1.0),
+        "target_ratios": ratio_map,
+        "initial_state": dict(zip(model["genes"], trajectory[0][1:])),
+        "trajectory": trajectory, "signal": signals, "reporter_occupancy": reporter,
+    }
+
+
+def fate_label(state: tuple[float, ...] | list[float], genes: list[str]) -> str:
+    best_i = max(range(1, len(genes)), key=lambda i: state[i])
+    return genes[best_i] if state[best_i] > 0.5 else ("Pax6+" if state[0] > 0.5 else "unresolved")
+
+
+def _target(semantics_hash: str, ref_length: int, var_length: int) -> dict:
+    return target_artifact({
+        "id": TARGET, "abi_major": 1, "opsets": [{"domain": DEV_DOMAIN, "version": 1}],
+        "unit_schemas": [{"id": "enhancer-pair", "fields": [
+            {"id": "affinity_ratio", "type": {"dtype": "f64", "shape": [1]}, "unit": None, "mutability": "constant", "numeric": {"kind": "float"}},
+            {"id": "reference_nucleotides", "type": {"dtype": "u64", "shape": [ref_length]}, "unit": None, "mutability": "constant", "numeric": {"kind": "integer"}},
+            {"id": "variant_nucleotides", "type": {"dtype": "u64", "shape": [var_length]}, "unit": None, "mutability": "constant", "numeric": {"kind": "integer"}},
+        ]}],
+        "edge_schemas": [], "ports": [],
+        "rules": [{"id": TARGET + ".partition", "version": 1, "semantics_sha256": semantics_hash,
+                   "subject": "unit", "schema": "enhancer-pair", "phase": "UPDATE", "triggers": ["step"], "parameters": [],
+                   "reads": [{"scope": "subject", "field": "affinity_ratio"},
+                             {"scope": "subject", "field": "reference_nucleotides"},
+                             {"scope": "subject", "field": "variant_nucleotides"}], "writes": []}],
+    })
+
+
+def compile_circuit_bundle(reference: str, variant: str, *, protein: str = "GLI2",
+                           epsilon: float = DEFAULT_EPSILON, output: Path) -> str:
+    """Compile a reference/variant enhancer pair (SNV, MNV, or indel) and Boltzmann affinity ratio into a brainc bundle."""
+    q = affinity_ratio(reference, variant, protein, epsilon)
+    contract = {
+        "format": "epigenesis.neural-circuit-pair", "version": 2,
+        "protein": protein, "epsilon": epsilon,
+        "reference_length": len(reference), "variant_length": len(variant),
+        "data_sha256": pat.DATA_SHA256,
+    }
+    impl_bytes = read_regular_file(Path(__file__).resolve(), maximum_bytes=256 * 1024)
+    semantics_hash = hashlib.sha256(impl_bytes + b"\0" + canonical_bytes(contract)).hexdigest()
+    receipt = hashlib.sha256(canonical_bytes(contract)).hexdigest()
+
+    output.mkdir()
+    pair_fasta = output / "pair.fasta"
+    pair_fasta.write_text(f">reference\n{reference}\n>variant\n{variant}\n")
+    (output / "contract.json").write_bytes(canonical_bytes(contract) + b"\n")
+    source = compile_source(FASTA_PROFILE, {"sequence": pair_fasta}, parameters={"wrapper": "identity"})
+    source.save(output / "source")
+
+    tensors = sorted([
+        {"id": "count", "type": {"dtype": "u64", "shape": []}, "unit": None, "axes": [],
+         "storage": inline_storage(pack("u64", [1]))},
+        {"id": "reference_nucleotides", "type": {"dtype": "u64", "shape": [len(reference)]}, "unit": None, "axes": [None],
+         "storage": inline_storage(pack("u64", list(reference.encode("ascii"))))},
+        {"id": "variant_nucleotides", "type": {"dtype": "u64", "shape": [len(variant)]}, "unit": None, "axes": [None],
+         "storage": inline_storage(pack("u64", list(variant.encode("ascii"))))},
+        {"id": "affinity_ratio", "type": {"dtype": "f64", "shape": [1]}, "unit": None, "axes": [None],
+         "storage": inline_storage(pack("f64", [q]))},
+    ], key=lambda item: item["id"])
+    manifest = seal({
+        "format": "brainc.provider-manifest", "version": 2,
+        "provider": {"name": TARGET, "version": "1"},
+        "model_identity": {"kind": "content-sha256", "value": semantics_hash},
+        "accepts": [f"brainc.source-descriptor/v1;profile={FASTA_PROFILE}"],
+        "outputs": [{k: t[k] for k in ("id", "type", "unit", "axes")} for t in tensors],
+    })
+    save(manifest, output / "manifest.json")
+    request = make_development_request(source, output / "manifest.json", [t["id"] for t in tensors])
+    save(request, output / "request.json")
+    save(seal({
+        "format": "brainc.prediction-response", "version": 2,
+        "request_artifact_sha256": request["artifact_sha256"],
+        "provider": manifest["provider"], "model_identity": manifest["model_identity"], "outputs": tensors,
+    }), output / "response.json")
+    target = _target(semantics_hash, len(reference), len(variant))
+    save(target, output / "target.json")
+    ops = [
+        {"id": "create.pair", "op": OP_UNIT_CREATE, "version": 1, "schema": "enhancer-pair", "count": "count",
+         "initializers": [{"field": fid, "tensor": fid} for fid in ("affinity_ratio", "reference_nucleotides", "variant_nucleotides")]},
+    ]
+    save(policy_artifact(TARGET, {"id": TARGET, "abi_major": 1, "contract_sha256": target["contract_sha256"]},
+                         [{"id": t["id"], "from_output": t["id"]} for t in tensors], ops), output / "policy.json")
+    compile_development(source, output / "manifest.json", output / "request.json",
+                        output / "response.json", output / "policy.json", output / "target.json").save(output / "development")
+    verify_circuit_bundle(output, receipt)
+    return receipt
+
+
+def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
+    contract = load_json_object(read_regular_file(directory / "contract.json", maximum_bytes=64 * 1024), "circuit contract")
+    if hashlib.sha256(canonical_bytes(contract)).hexdigest() != expected_receipt:
+        raise ValueError("circuit contract receipt mismatch")
+    pair_path = directory / "pair.fasta"
+    validation = validate_development_paths(directory / "source", directory / "development", source_inputs={"sequence": pair_path})
+    if not validation["valid"]:
+        raise ValueError(f"circuit bundle validation failed: {validation}")
+    bundle, artifacts = load_development_bundle_directory(directory / "development")
+    lines = read_regular_file(pair_path, maximum_bytes=64 * 1024).decode("ascii").splitlines()
+    if len(lines) != 4 or lines[0] != ">reference" or lines[2] != ">variant":
+        raise ValueError("invalid circuit pair.fasta layout")
+    reference, variant = lines[1], lines[3]
+    if len(reference) != contract["reference_length"] or len(variant) != contract["variant_length"]:
+        raise ValueError("pair.fasta lengths disagree with circuit contract")
+    module = artifacts["development_module"]["module"]
+    tensors = {t["id"]: base64.b64decode(t["storage"]["data"], validate=True) for t in module["tensors"]}
+    if tensors["reference_nucleotides"] != pack("u64", list(reference.encode("ascii"))) or tensors["variant_nucleotides"] != pack("u64", list(variant.encode("ascii"))):
+        raise ValueError("compiled nucleotides disagree with pair.fasta")
+    stored_q = struct.unpack("<d", tensors["affinity_ratio"])[0]
+    recomputed_q = affinity_ratio(reference, variant, contract["protein"], contract["epsilon"])
+    if not math.isclose(stored_q, recomputed_q, rel_tol=1e-12, abs_tol=1e-12):
+        raise ValueError("compiled affinity ratio disagrees with partition sum")
+    return {
+        "contract_sha256": expected_receipt,
+        "bundle_sha256": bundle["artifact_sha256"],
+        "development_sha256": artifacts["development_module"]["artifact_sha256"],
+        "affinity_ratio": stored_q,
+        "length": len(reference),
+        "reference_length": len(reference),
+        "variant_length": len(variant),
+    }
+
+
+def _optional_sequence_scores(pairs: list[dict], motif_model_dir: Path | None) -> tuple[dict | None, dict | None]:
+    """Optionally evaluate passive reporter predictions (Track A motif_temporal + Siraj Huber-linear)."""
+    kreimer_scores, siraj_scores = None, None
+    try:
+        import numpy as np
+    except ImportError:
+        return None, None
+    try:
+        sys.path.insert(0, str(REPO / "studio/epigenesis_studio/model"))
+        import predict as siraj_predict
+        siraj_scores = {r["id"]: r["effect"] for r in siraj_predict.predict(pairs)}
+    except (ImportError, ValueError, OSError):
+        siraj_scores = None
+    if motif_model_dir is not None and (motif_model_dir / "model.json").is_file() and (motif_model_dir / "coefficients.npy").is_file():
+        try:
+            sys.path.insert(0, str(REPO / "examples/neural-regulation"))
+            import motif_temporal
+            m = json.loads((motif_model_dir / "model.json").read_text())
+            coef = np.load(motif_model_dir / "coefficients.npy", allow_pickle=False)
+            mat = motif_temporal.predict_rows(m, coef, pairs)
+            kreimer_scores = {p["id"]: {"mean": float(mat[i].mean()), "h72": float(mat[i, -1])} for i, p in enumerate(pairs)}
+        except (ImportError, ValueError, OSError):
+            kreimer_scores = None
+    return kreimer_scores, siraj_scores
+
+
+def _classify_edit(d_rep: float, target_delta: float, fate_flipped: bool) -> str:
+    if abs(d_rep) < 0.02 and fate_flipped:
+        return "cryptic_bifurcation"
+    if abs(d_rep) >= 0.02 and abs(target_delta) < 0.05 and not fate_flipped:
+        return "canalized_buffered"
+    if fate_flipped:
+        return "concordant_switch"
+    return "neutral"
+
+
+def _edit_kind(reference: str, variant: str) -> str:
+    if reference == variant:
+        return "identical"
+    if len(reference) > len(variant):
+        return "deletion"
+    if len(reference) < len(variant):
+        return "insertion"
+    diffs = sum(a != b for a, b in zip(reference, variant))
+    return "snv" if diffs == 1 else "mnv"
+
+
+def scan_enhancer(
+    reference: str,
+    *,
+    signal: float = DEFAULT_SIGNAL,
+    protein: str = "GLI2",
+    epsilon: float = DEFAULT_EPSILON,
+    target: str = DEFAULT_TARGET,
+    duration: float = 40.0,
+    motif_model_dir: Path | None = None,
+) -> dict:
+    """Scan all 3*L single-base mutations in an enhancer for reporter-vs-circuit dissociations."""
+    consensus, ratios = _binding_tables(protein, epsilon)
+    width = len(consensus)
+    wt_info = boltzmann_gli_affinity(reference, protein, epsilon)
+    z_wt = wt_info["partition_sum"]
+    model = pat.load_data()["model"]
+    genes = model["genes"]
+    nkx_idx, olig_idx = genes.index("Nkx2.2"), genes.index("Olig2")
+    rep_idx = _target_gene_index(genes, target)
+    wt_ratios = resolve_target_ratios(target, 1.0)
+
+    wt_traj = simulate_circuit([(duration, signal)], ratios=wt_ratios, target=target)
+    wt_end = wt_traj[-1][1:]
+    wt_fate = fate_label(wt_end, genes)
+    wt_rep_end = occupancy_ratios(model, wt_end, signal, wt_ratios)[rep_idx]
+
+    # Precompute unique q responses accurately (keyed at 1e-8 resolution on q)
+    edits = []
+    cache: dict[float, tuple[tuple[float, ...], float]] = {}
+    pairs = []
+    for pos, base in enumerate(reference):
+        for alt in "ACGT":
+            if alt == base:
+                continue
+            eid = f"{pos + 1}:{base}>{alt}"
+            variant = reference[:pos] + alt + reference[pos + 1 :]
+            z_mut = z_wt + _delta_partition_single(reference, pos, alt, ratios, width)
+            q = z_mut / z_wt
+            key = round(q, 8)
+            if key not in cache:
+                ratio_map = resolve_target_ratios(target, q)
+                end_state = simulate_circuit([(duration, signal)], ratios=ratio_map, target=target)[-1][1:]
+                rep_end = occupancy_ratios(model, wt_end, signal, ratio_map)[rep_idx]
+                cache[key] = (end_state, rep_end)
+            end_state, rep_end = cache[key]
+            d_rep = rep_end - wt_rep_end
+            d_nkx = end_state[nkx_idx] - wt_end[nkx_idx]
+            d_olig = end_state[olig_idx] - wt_end[olig_idx]
+            target_delta = d_olig if target == "Olig2" else d_nkx
+            mut_fate = fate_label(end_state, genes)
+            fate_flipped = mut_fate != wt_fate
+            category = _classify_edit(d_rep, target_delta, fate_flipped)
+            pairs.append({"id": eid, "reference": reference, "sequence": variant})
+            edits.append({
+                "id": eid, "pos": pos, "ref": base, "alt": alt,
+                "variant": variant, "affinity_ratio": q, "target": target,
+                "reporter_delta_end": d_rep,
+                "nkx2_2_delta": d_nkx, "olig2_delta": d_olig,
+                "target_delta": target_delta,
+                "wt_fate": wt_fate, "mut_fate": mut_fate,
+                "fate_flipped": fate_flipped,
+                "amplification_ratio": abs(target_delta) / max(abs(d_rep), 1e-12),
+                "category": category,
+            })
+
+    kreimer_scores, siraj_scores = _optional_sequence_scores(pairs, motif_model_dir)
+    for item in edits:
+        if kreimer_scores is not None:
+            item["kreimer_mpra_mean"] = kreimer_scores[item["id"]]["mean"]
+            item["kreimer_mpra_72h"] = kreimer_scores[item["id"]]["h72"]
+        if siraj_scores is not None:
+            item["siraj_score"] = siraj_scores[item["id"]]
+
+    cryptic = sorted(
+        [e for e in edits if e["category"] == "cryptic_bifurcation"],
+        key=lambda e: (-abs(e["target_delta"]), abs(e["reporter_delta_end"]), e["id"]),
+    )
+    counts = {cat: sum(e["category"] == cat for e in edits) for cat in ("cryptic_bifurcation", "concordant_switch", "canalized_buffered", "neutral")}
+    return {
+        "protein": protein, "target": target, "epsilon": epsilon, "signal": signal, "duration": duration,
+        "length": len(reference), "wt_partition": wt_info,
+        "wt_end_state": dict(zip(genes, wt_end)), "wt_fate": wt_fate, "wt_reporter_end": wt_rep_end,
+        "unique_affinity_solves": len(cache), "category_counts": counts,
+        "cryptic_switches": cryptic, "edits": edits,
+    }
+
+
+def compare_variants(
+    reference: str,
+    variant: str,
+    *,
+    protein: str = "GLI2",
+    epsilon: float = DEFAULT_EPSILON,
+    signal: float = DEFAULT_SIGNAL,
+    target: str = DEFAULT_TARGET,
+    duration: float = 40.0,
+    phases: list | None = None,
+    initial: dict | None = None,
+    motif_model_dir: Path | None = None,
+    compile_dir: Path | None = None,
+) -> dict:
+    """Compare any reference vs variant DNA pair (SNV, MNV, insertion, or deletion) end-to-end."""
+    wt_part = boltzmann_gli_affinity(reference, protein, epsilon)
+    var_part = boltzmann_gli_affinity(variant, protein, epsilon)
+    q = var_part["partition_sum"] / wt_part["partition_sum"]
+    if not math.isfinite(q) or q <= 0:
+        raise ValueError("affinity ratio requires positive finite partition sums")
+
+    protocol = list(phases) if phases is not None else [(duration, signal)]
+    model = pat.load_data()["model"]
+    genes = model["genes"]
+    nkx_idx, olig_idx = genes.index("Nkx2.2"), genes.index("Olig2")
+    rep_idx = _target_gene_index(genes, target)
+    end_signal = protocol[-1][1]
+
+    wt_assay = run_circuit_assay(protocol, ratio=1.0, mode="endogenous", target=target, initial=initial)
+    var_assay = run_circuit_assay(protocol, ratio=q, mode="endogenous", target=target, initial=initial)
+    rep_assay = run_circuit_assay(protocol, ratio=q, mode="reporter", target=target, initial=initial)
+    rev_q = affinity_ratio(reference, reference, protein, epsilon)
+    rev_assay = run_circuit_assay(protocol, ratio=rev_q, mode="endogenous", target=target, initial=initial)
+
+    wt_end = tuple(wt_assay["trajectory"][-1][1:])
+    var_end = tuple(var_assay["trajectory"][-1][1:])
+    wt_rep_end = occupancy_ratios(model, wt_end, end_signal, resolve_target_ratios(target, 1.0))[rep_idx]
+    var_rep_end = occupancy_ratios(model, wt_end, end_signal, resolve_target_ratios(target, q))[rep_idx]
+
+    d_rep = var_rep_end - wt_rep_end
+    d_nkx = var_end[nkx_idx] - wt_end[nkx_idx]
+    d_olig = var_end[olig_idx] - wt_end[olig_idx]
+    target_delta = d_olig if target == "Olig2" else d_nkx
+    wt_fate = fate_label(wt_end, genes)
+    mut_fate = fate_label(var_end, genes)
+    fate_flipped = mut_fate != wt_fate
+    category = _classify_edit(d_rep, target_delta, fate_flipped)
+    diff = lambda a, b: max(abs(x - y) for r1, r2 in zip(a["trajectory"], b["trajectory"]) for x, y in zip(r1[1:], r2[1:]))
+
+    compiled = None
+    if compile_dir is not None:
+        receipt = compile_circuit_bundle(reference, variant, protein=protein, epsilon=epsilon, output=compile_dir)
+        compiled = verify_circuit_bundle(compile_dir, receipt)
+
+    kreimer_scores, siraj_scores = _optional_sequence_scores(
+        [{"id": "custom", "reference": reference, "sequence": variant}], motif_model_dir
+    )
+    out = {
+        "protein": protein,
+        "target": target,
+        "epsilon": epsilon,
+        "protocol": protocol,
+        "edit_kind": _edit_kind(reference, variant),
+        "reference_length": len(reference),
+        "variant_length": len(variant),
+        "affinity_ratio": q,
+        "wt_partition": wt_part,
+        "variant_partition": var_part,
+        "wt_end_state": dict(zip(genes, wt_end)),
+        "variant_end_state": dict(zip(genes, var_end)),
+        "wt_fate": wt_fate,
+        "mut_fate": mut_fate,
+        "fate_flipped": fate_flipped,
+        "reporter_delta_end": d_rep,
+        "nkx2_2_delta": d_nkx,
+        "olig2_delta": d_olig,
+        "target_delta": target_delta,
+        "amplification_ratio": abs(target_delta) / max(abs(d_rep), 1e-12),
+        "category": category,
+        "reversion_max_difference": diff(wt_assay, rev_assay),
+        "reporter_max_difference": diff(wt_assay, rep_assay),
+        "wt_assay": wt_assay,
+        "variant_assay": var_assay,
+        "reporter_assay": rep_assay,
+    }
+    if compiled is not None:
+        out["compiled"] = compiled
+    if kreimer_scores is not None:
+        out["kreimer_mpra_mean"] = kreimer_scores["custom"]["mean"]
+        out["kreimer_mpra_72h"] = kreimer_scores["custom"]["h72"]
+    if siraj_scores is not None:
+        out["siraj_score"] = siraj_scores["custom"]
+    return out
+
+
+def _find_second_site_rescue(
+    reference: str,
+    primary_edit: dict,
+    protein: str,
+    epsilon: float,
+    *,
+    signal: float = DEFAULT_SIGNAL,
+    target: str = DEFAULT_TARGET,
+    duration: float = 40.0,
+    phases: list | None = None,
+    initial: dict | None = None,
+) -> dict | None:
+    """Search single-base edits elsewhere in the enhancer that increase GLI affinity q back toward WT and test ODE fate rescue."""
+    pos0 = primary_edit["pos"]
+    base_mut = primary_edit.get("variant") or (
+        reference[:pos0] + primary_edit["alt"] + reference[pos0 + 1 :]
+    )
+    q_single = primary_edit["affinity_ratio"]
+    z_ref = boltzmann_gli_affinity(reference, protein, epsilon)["partition_sum"]
+    consensus, ratios = _binding_tables(protein, epsilon)
+    width = len(consensus)
+    z_single = z_ref * q_single
+    cands = []
+    for pos, base in enumerate(base_mut):
+        if abs(pos - pos0) <= 0:
+            continue
+        for alt in "ACGT":
+            if alt == base:
+                continue
+            z_double = z_single + _delta_partition_single(base_mut, pos, alt, ratios, width)
+            q_double = z_double / z_ref
+            if q_double > q_single * 1.05:
+                cands.append({
+                    "id": f"{pos + 1}:{base}>{alt}",
+                    "pos": pos,
+                    "double_variant": base_mut[:pos] + alt + base_mut[pos + 1 :],
+                    "affinity_ratio": q_double,
+                })
+    if not cands:
+        return None
+
+    cands.sort(key=lambda item: (-item["affinity_ratio"], item["id"]))
+    protocol = list(phases) if phases is not None else [(duration, signal)]
+    genes = pat.load_data()["model"]["genes"]
+    init_tuple = pat.named_state(initial) if initial is not None else (0.0, 0.0, 0.0, 0.0)
+    wt_fate = primary_edit.get("wt_fate") or fate_label(
+        simulate_circuit(protocol, ratio=1.0, target=target, initial=init_tuple)[-1][1:], genes
+    )
+    primary_fate = primary_edit.get("mut_fate") or fate_label(
+        simulate_circuit(protocol, ratio=q_single, target=target, initial=init_tuple)[-1][1:], genes
+    )
+
+    best = None
+    nkx_idx = genes.index("Nkx2.2")
+    for cand in cands[:8]:
+        end_state = simulate_circuit(
+            protocol, ratio=cand["affinity_ratio"], target=target, initial=init_tuple
+        )[-1][1:]
+        d_fate = fate_label(end_state, genes)
+        rescued = d_fate == wt_fate and primary_fate != wt_fate
+        enriched = {
+            **cand,
+            "wt_fate": wt_fate,
+            "primary_fate": primary_fate,
+            "double_fate": d_fate,
+            "double_nkx2_2": float(end_state[nkx_idx]),
+            "double_end_state": dict(zip(genes, (float(v) for v in end_state))),
+            "fate_rescued": rescued,
+        }
+        if best is None or (enriched["fate_rescued"] and not best["fate_rescued"]):
+            best = enriched
+        if best["fate_rescued"]:
+            break
+    return best
+
+
+def multi_locus_benchmark(
+    loci: tuple[str, ...] | list[str] = CURATED_LOCI,
+    *,
+    protein: str = "GLI2",
+    signal: float = DEFAULT_SIGNAL,
+    target: str = DEFAULT_TARGET,
+    duration: float = 40.0,
+    motif_model_dir: Path | None = None,
+    output: Path | None = None,
+) -> dict:
+    """Benchmark cryptic bifurcations and measured GSE188264 variants across multiple GLI-rich human enhancers."""
+    sys.path.insert(0, str(REPO / "examples/neural-regulation"))
+    import regulation as reg
+    rows, _ = reg.load_data()
+    by_locus: dict[str, list] = {}
+    for row in rows:
+        by_locus.setdefault(row.locus, []).append(row)
+
+    results = []
+    for locus in loci:
+        locus_rows = by_locus.get(locus)
+        if not locus_rows:
+            raise ValueError(f"unknown GSE188264 locus: {locus}")
+        reference = locus_rows[0].reference
+        scan = scan_enhancer(
+            reference, signal=signal, protein=protein, target=target,
+            duration=duration, motif_model_dir=motif_model_dir,
+        )
+        measured = []
+        seen_seq: set[str] = set()
+        for row in locus_rows:
+            if row.kind == "wild-type" or row.sequence == reference or row.sequence in seen_seq:
+                continue
+            seen_seq.add(row.sequence)
+            comp = compare_variants(
+                reference, row.sequence, protein=protein, signal=signal,
+                target=target, duration=duration,
+            )
+            alpha_vals = list(row.alpha)
+            measured.append({
+                "id": row.id,
+                "split": row.split,
+                "kind": row.kind,
+                "edit_kind": comp["edit_kind"],
+                "affinity_ratio": comp["affinity_ratio"],
+                "reporter_delta_end": comp["reporter_delta_end"],
+                "target_delta": comp["target_delta"],
+                "wt_fate": comp["wt_fate"],
+                "mut_fate": comp["mut_fate"],
+                "fate_flipped": comp["fate_flipped"],
+                "category": comp["category"],
+                "measured_alpha_mean": sum(alpha_vals) / len(alpha_vals),
+                "measured_alpha_72h": alpha_vals[-1],
+                "measured_alpha_max_abs": max(abs(v) for v in alpha_vals),
+            })
+
+        top_cryptic = (
+            {k: v for k, v in scan["cryptic_switches"][0].items() if k != "variant"}
+            if scan["cryptic_switches"]
+            else None
+        )
+        rescue = (
+            _find_second_site_rescue(reference, scan["cryptic_switches"][0], protein, DEFAULT_EPSILON, signal=signal, target=target, duration=duration)
+            if scan["cryptic_switches"]
+            else None
+        )
+        results.append({
+            "locus": locus,
+            "length": len(reference),
+            "peak_gli_weight": scan["wt_partition"]["peak_site"]["weight"],
+            "strong_site_count": len(scan["wt_partition"]["strong_sites"]),
+            "wt_fate": scan["wt_fate"],
+            "category_counts": scan["category_counts"],
+            "top_cryptic": top_cryptic,
+            "second_site_rescue": {k: v for k, v in rescue.items() if k != "double_variant"} if rescue else None,
+            "measured_variants_tested": len(measured),
+            "measured_variant_switches": sum(m["fate_flipped"] for m in measured),
+            "measured_variants": sorted(measured, key=lambda m: (-abs(m["target_delta"]), m["affinity_ratio"]))[:12],
+        })
+
+    summary = {
+        "format": "epigenesis.neural-circuit-benchmark/v1",
+        "protein": protein,
+        "target": target,
+        "signal": signal,
+        "loci_tested": len(results),
+        "total_cryptic_bifurcations": sum(r["category_counts"]["cryptic_bifurcation"] for r in results),
+        "total_measured_variants": sum(r["measured_variants_tested"] for r in results),
+        "total_measured_switches": sum(r["measured_variant_switches"] for r in results),
+        "loci": results,
+    }
+    if output is not None:
+        output.mkdir(parents=True, exist_ok=True)
+        (output / "benchmark.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
+    return summary
+
+
+def program_from_grn_state(state: dict[str, float]):
+    """Deterministically map 4-gene neural-tube steady state (Pax6, Olig2, Nkx2.2, Irx3) into a valid CX3D Program."""
+    sys.path.insert(0, str(REPO / "examples/neural-construction"))
+    import construction as cx
+
+    base = cx.default_program()
+    pax = float(state.get("Pax6", 0.0))
+    olig = float(state.get("Olig2", 0.0))
+    nkx = float(state.get("Nkx2.2", 0.0))
+    irx = float(state.get("Irx3", 0.0))
+    program = cx.Program(
+        division_signal=base.division_signal,
+        division_threshold=base.division_threshold,
+        division_volume=base.division_volume,
+        volume_rate=base.volume_rate,
+        axon_speed=round(65.0 + 40.0 * nkx + 15.0 * olig, 6),
+        dendrite_speed=round(45.0 + 25.0 * olig + 10.0 * pax, 6),
+        guidance_gain=round(max(0.5, 1.5 + 1.2 * nkx - 0.6 * irx), 6),
+        branch_rate=round(0.2 + 0.25 * olig + 0.1 * nkx, 6),
+        diameter=base.diameter,
+        taper=base.taper,
+        stop_diameter=base.stop_diameter,
+        contact_spacing=base.contact_spacing,
+        contact_reach=base.contact_reach,
+        recognition=base.recognition,
+        noise=round(0.15 + 0.1 * pax, 6),
+    )
+    cx.validate_program(program)
+    return program
+
+
+def bridge_to_construction(
+    reference: str,
+    variant: str,
+    output: Path,
+    *,
+    protein: str = "GLI2",
+    epsilon: float = DEFAULT_EPSILON,
+    signal: float = DEFAULT_SIGNAL,
+    target: str = DEFAULT_TARGET,
+    grn_duration: float = 40.0,
+    dev_duration: float = 3.0,
+    seed: int = 7,
+) -> dict:
+    """Bridge enhancer DNA -> GLI affinity -> 4-gene GRN steady state -> 480-bp recipe -> CX3D morphogenesis + LIF assay."""
+    sys.path.insert(0, str(REPO / "examples/neural-construction"))
+    import activity as lif
+    import construction as cx
+
+    comparison = compare_variants(
+        reference, variant, protein=protein, epsilon=epsilon,
+        signal=signal, target=target, duration=grn_duration,
+    )
+    rev_state = compare_variants(
+        reference, reference, protein=protein, epsilon=epsilon,
+        signal=signal, target=target, duration=grn_duration,
+    )["variant_end_state"]
+
+    output.mkdir(parents=True, exist_ok=True)
+    backend = cx.build_backend(output / "backend")
+
+    runs = {}
+    for label, state in (
+        ("reference", comparison["wt_end_state"]),
+        ("variant", comparison["variant_end_state"]),
+        ("allele_rescue", rev_state),
+    ):
+        branch = output / label
+        branch.mkdir()
+        program = program_from_grn_state(state)
+        recipe_path = branch / "recipe.dna"
+        recipe_bytes = cx.encode_recipe(program)
+        recipe_path.write_bytes(recipe_bytes)
+        cx.compile_recipe(recipe_path, branch / "compiled")
+        loaded_program, validation = cx.load_compiled(branch / "compiled")
+        summary = cx.develop(loaded_program, backend, branch / "development-run", duration=dev_duration, seed=seed)
+        act = lif.assay(branch / "development-run", cx.verify_trace)
+        (branch / "activity.json").write_text(json.dumps(act, indent=2) + "\n")
+        runs[label] = {
+            "program": loaded_program._asdict(),
+            "recipe_sha256": hashlib.sha256(recipe_bytes).hexdigest(),
+            "compiled_valid": validation["valid"],
+            "construction": summary,
+            "activity": {
+                "cells": act["cells"],
+                "contacts": act["contacts"],
+                "transmission_controls_pass": act["transmission_controls_pass"],
+                "total_spikes": sum(len(t["intact_spikes"]) for t in act["trials"]),
+            },
+        }
+
+    ref_r, var_r, res_r = runs["reference"], runs["variant"], runs["allele_rescue"]
+    morphology_diverged = (
+        abs(ref_r["construction"]["length"] - var_r["construction"]["length"]) > 1e-6
+        or ref_r["recipe_sha256"] != var_r["recipe_sha256"]
+    )
+    exact_rescue = (
+        res_r["recipe_sha256"] == ref_r["recipe_sha256"]
+        and res_r["construction"]["length"] == ref_r["construction"]["length"]
+        and res_r["construction"]["cells"] == ref_r["construction"]["cells"]
+        and res_r["construction"]["synapses"] == ref_r["construction"]["synapses"]
+    )
+    controls_ok = all(r["compiled_valid"] and r["activity"]["transmission_controls_pass"] for r in runs.values())
+    bridge_report = {
+        "format": "epigenesis.neural-circuit-construction-bridge/v1",
+        "biological_acceptance": False,
+        "scope": "computational DNA -> GLI -> GRN -> CX3D + LIF chain; parameters and physical units are uncalibrated model assumptions",
+        "variant_summary": {
+            "edit_kind": comparison["edit_kind"],
+            "target": target,
+            "affinity_ratio": comparison["affinity_ratio"],
+            "wt_fate": comparison["wt_fate"],
+            "mut_fate": comparison["mut_fate"],
+            "fate_flipped": comparison["fate_flipped"],
+            "category": comparison["category"],
+        },
+        "runs": runs,
+        "checks": {
+            "all_compiled_and_lif_controls_pass": controls_ok,
+            "variant_diverges_morphology": morphology_diverged,
+            "allele_rescue_matches_reference_exactly": exact_rescue,
+        },
+        "all_checks_passed": bool(controls_ok and morphology_diverged and exact_rescue),
+    }
+    (output / "bridge.json").write_text(json.dumps(bridge_report, indent=2, allow_nan=False) + "\n")
+    return bridge_report
+
+
+def _render_html(report: dict) -> str:
+    scans = report["scan"]["edits"]
+    wt_fate = report["scan"]["wt_fate"]
+    top = report["featured_variant"]
+    target_gene = report["scan"].get("target", DEFAULT_TARGET)
+    # Build crisp SVG scatter points: x = |passive reporter delta|, y = |endogenous target shift|
+    w, h, pad = 540, 290, 48
+    max_x = max([0.05] + [abs(e["reporter_delta_end"]) for e in scans])
+    points = []
+    for e in scans:
+        td = e.get("target_delta", e["nkx2_2_delta"])
+        cx = pad + (w - 2 * pad) * min(1.0, abs(e["reporter_delta_end"]) / max_x)
+        cy = h - pad - (h - 2 * pad) * min(1.0, abs(td))
+        color = "#c0262d" if e["category"] == "cryptic_bifurcation" else "#1f6feb" if e["category"] == "canalized_buffered" else "#9ca3af"
+        r = 5 if e["id"] == top["id"] else 3.2
+        title = html.escape(f"{e['id']} | q={e['affinity_ratio']:.4f} | dRep={e['reporter_delta_end']:+.4f} | d{target_gene}={td:+.3f} ({e['category']})")
+        points.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r}" fill="{color}" opacity="0.82"><title>{title}</title></circle>')
+
+    # Spatial gradient Nkx2.2 & Olig2 profiles (WT vs mutant)
+    sp = report["spatial"]
+    xs = sp["positions"]
+    def poly(vals, stroke, dash=""):
+        pts = " ".join(f"{pad + (w - 2 * pad) * x:.1f},{h - pad - (h - 2 * pad) * v:.1f}" for x, v in zip(xs, vals))
+        d_attr = f' stroke-dasharray="{dash}"' if dash else ""
+        return f'<polyline fill="none" stroke="{stroke}" stroke-width="2.2"{d_attr} points="{pts}"/>'
+
+    nkx_wt = [s[2] for s in sp["reference"]]
+    nkx_mut = [s[2] for s in sp["variant"]]
+    olig_wt = [s[1] for s in sp["reference"]]
+    olig_mut = [s[1] for s in sp["variant"]]
+
+    rows_html = "".join(
+        f"<tr><td><code>{html.escape(e['id'])}</code></td><td>{e['affinity_ratio']:.4f}</td>"
+        f"<td>{e['reporter_delta_end']:+.4f}</td><td>{e.get('target_delta', e['nkx2_2_delta']):+.3f}</td>"
+        f"<td>{html.escape(e['wt_fate'])} &rarr; {html.escape(e['mut_fate'])}</td>"
+        f"<td>{e.get('kreimer_mpra_mean', float('nan')):+.4f}</td>"
+        f"<td>{e.get('siraj_score', float('nan')):+.4f}</td></tr>"
+        for e in report["scan"]["cryptic_switches"][:8]
+    )
+    checks_html = "".join(
+        f"<li><strong>{'PASS' if c['passed'] else 'FAIL'}</strong> &mdash; {html.escape(c['name'])}: <code>{html.escape(json.dumps(c['evidence']))}</code></li>"
+        for c in report["checks"]
+    )
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Epigenesis · Variant-to-Circuit Scanner</title>
+<style>body{{font-family:system-ui,-apple-system,sans-serif;max-width:1120px;margin:24px auto;padding:0 20px;color:#111}}
+.grid{{display:grid;grid-template-columns:1fr 1fr;gap:20px}}svg{{width:100%;border:1px solid #e5e7eb;background:#fff}}
+table{{width:100%;border-collapse:collapse;font-size:14px}}th,td{{padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:left}}
+.badge{{display:inline-block;padding:3px 8px;background:#fee2e2;color:#991b1b;font-weight:600;border-radius:4px}}</style></head>
+<body><h1>Variant-to-Circuit Enhancer Scanner</h1>
+<p><strong>Locus:</strong> {html.escape(report['locus'])} ({report['scan']['length']} bp, target {html.escape(target_gene)}) · <strong>Featured Cryptic Switch:</strong>
+<span class="badge">{html.escape(top['id'])}</span> (q={top['affinity_ratio']:.4f}, passive reporter &Delta;={top['reporter_delta_end']:+.4f}, endogenous &Delta;{html.escape(target_gene)}={top.get('target_delta', top['nkx2_2_delta']):+.3f}, {html.escape(wt_fate)} &rarr; {html.escape(top['mut_fate'])})</p>
+<div class="grid">
+<div><h3>Passive Reporter vs. Endogenous Circuit ({report['scan']['length']*3} edits at S={report['scan']['signal']})</h3>
+<svg viewBox="0 0 {w} {h}"><line x1="{pad}" y1="{h-pad}" x2="{w-pad}" y2="{h-pad}" stroke="#111"/><line x1="{pad}" y1="{pad}" x2="{pad}" y2="{h-pad}" stroke="#111"/>
+<text x="{w/2}" y="{h-10}" text-anchor="middle" font-size="12">|Passive Reporter Occupancy Shift| (max {max_x:.3f})</text>
+<text x="16" y="{h/2}" transform="rotate(-90 16 {h/2})" text-anchor="middle" font-size="12">|Endogenous {html.escape(target_gene)} Fate Shift|</text>
+{''.join(points)}</svg></div>
+<div><h3>Spatial Neural Tube Morphogen Gradient (t={sp['duration']})</h3>
+<svg viewBox="0 0 {w} {h}"><line x1="{pad}" y1="{h-pad}" x2="{w-pad}" y2="{h-pad}" stroke="#111"/><line x1="{pad}" y1="{pad}" x2="{pad}" y2="{h-pad}" stroke="#111"/>
+<text x="{w/2}" y="{h-10}" text-anchor="middle" font-size="12">Ventral &rarr; Dorsal Position x (S=exp(-x/0.15))</text>
+<text x="16" y="{h/2}" transform="rotate(-90 16 {h/2})" text-anchor="middle" font-size="12">Steady Concentration (Solid=WT, Dashed=Mutant)</text>
+{poly(nkx_wt, "#c0262d")}{poly(nkx_mut, "#c0262d", "6 4")}{poly(olig_wt, "#1f6feb")}{poly(olig_mut, "#1f6feb", "6 4")}</svg></div></div>
+<h3>Top Reporter-Silent, Circuit-Switch Mutations</h3>
+<table><thead><tr><th>Edit</th><th>q (GLI2)</th><th>&Delta;Reporter</th><th>&Delta;{html.escape(target_gene)}</th><th>Fate Flip</th><th>Kreimer MPRA</th><th>Siraj Score</th></tr></thead>
+<tbody>{rows_html}</tbody></table>
+<h3>Causal & Numerical Controls</h3><ul>{checks_html}</ul>
+<p style="font-size:12px;color:#555">Compiled brainc receipt: <code>{report['compiled']['contract_sha256']}</code>. Concentrations and time are uncalibrated Herrera-Delgado (2020) model units.</p>
+</body></html>"""
+
+
+def demo(
+    output: Path,
+    *,
+    locus: str = CURATED_LOCI[0],
+    target: str = DEFAULT_TARGET,
+    signal: float = DEFAULT_SIGNAL,
+    protein: str = "GLI2",
+    motif_model_dir: Path | None = None,
+    with_construction: bool = False,
+) -> dict:
+    """Run the Variant-to-Circuit discovery demo on a real human enhancer from GSE188264."""
+    sys.path.insert(0, str(REPO / "examples/neural-regulation"))
+    import regulation as reg
+    rows, _ = reg.load_data()
+    reference = next((r.reference for r in rows if r.locus == locus), None)
+    if reference is None:
+        raise ValueError(f"unknown GSE188264 locus: {locus}")
+
+    output.mkdir()
+    scan = scan_enhancer(reference, signal=signal, protein=protein, epsilon=DEFAULT_EPSILON, target=target, motif_model_dir=motif_model_dir)
+    if not scan["cryptic_switches"] and not scan["edits"]:
+        raise RuntimeError(f"no edits generated for locus {locus}")
+    if locus == CURATED_LOCI[0] and target == DEFAULT_TARGET and signal == DEFAULT_SIGNAL and scan["cryptic_switches"]:
+        featured = next((e for e in scan["cryptic_switches"] if e["id"] == "60:C>A"), scan["cryptic_switches"][0])
+    elif scan["cryptic_switches"]:
+        featured = scan["cryptic_switches"][0]
+    else:
+        featured = max(scan["edits"], key=lambda e: abs(e["target_delta"]))
+    variant = featured["variant"]
+    q = featured["affinity_ratio"]
+
+    # Compile and verify real brainc Development Module
+    receipt = compile_circuit_bundle(reference, variant, protein=protein, epsilon=DEFAULT_EPSILON, output=output / "compiled")
+    compiled = verify_circuit_bundle(output / "compiled", receipt)
+
+    # Causal intervention controls
+    protocol = [(40.0, signal)]
+    wt_assay = run_circuit_assay(protocol, ratio=1.0, mode="endogenous", target=target)
+    mut_assay = run_circuit_assay(protocol, ratio=q, mode="endogenous", target=target)
+    rep_assay = run_circuit_assay(protocol, ratio=q, mode="reporter", target=target)
+    allele_rescue = run_circuit_assay(protocol, ratio=affinity_ratio(reference, reference, protein), mode="endogenous", target=target)
+    mediator_rescue = run_circuit_assay(protocol, ratio=1.0, mode="endogenous", target=target)
+    phenocopy = run_circuit_assay(protocol, ratio=q, mode="endogenous", target=target)
+
+    # Numerical refinement check (dt vs dt/2)
+    fine_wt = run_circuit_assay(protocol, ratio=1.0, mode="endogenous", target=target, dt=pat.DEFAULT_DT / 2)
+    fine_mut = run_circuit_assay(protocol, ratio=q, mode="endogenous", target=target, dt=pat.DEFAULT_DT / 2)
+    diff = lambda a, b: max(abs(x - y) for r1, r2 in zip(a, b) for x, y in zip(r1[1:], r2[1:]))
+    refinement_err = max(diff(wt_assay["trajectory"], fine_wt["trajectory"][::2]), diff(mut_assay["trajectory"], fine_mut["trajectory"][::2]))
+
+    # Spatial boundary shift (0..1)
+    model = pat.load_data()["model"]
+    positions = [i / 40 for i in range(41)]
+    sp_ref = [list(simulate_circuit([(100.0, math.exp(-x / model["gradient_length"]))], ratio=1.0, target=target)[-1][1:]) for x in positions]
+    sp_mut = [list(simulate_circuit([(100.0, math.exp(-x / model["gradient_length"]))], ratio=q, target=target)[-1][1:]) for x in positions]
+    p3_wt = [x for x, y in zip(positions, sp_ref) if y[2] > 0.5]
+    p3_mut = [x for x, y in zip(positions, sp_mut) if y[2] > 0.5]
+
+    # Hysteresis / signal history check on featured variant vs WT (competitive vs activation-only ablation)
+    hist_wt = simulate_circuit([(5.0, 1.0), (15.0, 0.05)], ratio=1.0, target=target, mechanism="competitive")[-1][3]
+    hist_mut = simulate_circuit([(5.0, 1.0), (15.0, 0.05)], ratio=q, target=target, mechanism="competitive")[-1][3]
+    hist_mut_act = simulate_circuit([(5.0, 1.0), (15.0, 0.05)], ratio=q, target=target, mechanism="activation-only")[-1][3]
+
+    # Exact 9bp zero-epsilon equivalence check against patterning.profile
+    core_wt, core_mut = "GACCACCCA", "GAACACCCA"
+    q_exact = affinity_ratio(core_wt, core_mut, "GLI2", epsilon=0.0)
+    q_pat = pat.profile(core_mut, "GLI2")["profile_ratio"]
+
+    checks = [
+        {"name": "exact_9bp_parity_with_patterning", "passed": abs(q_exact - q_pat) < 1e-15, "evidence": {"q_circuit": q_exact, "q_patterning": q_pat}},
+        {"name": "cryptic_bifurcation_found", "passed": abs(featured["reporter_delta_end"]) < 0.02 and featured["fate_flipped"],
+         "evidence": {"id": featured["id"], "reporter_delta": featured["reporter_delta_end"], "target_delta": featured["target_delta"]}},
+        {"name": "reporter_leaves_endogenous_unchanged", "passed": rep_assay["trajectory"] == wt_assay["trajectory"],
+         "evidence": {"max_state_diff": diff(rep_assay["trajectory"], wt_assay["trajectory"])}},
+        {"name": "allele_and_mediator_rescue", "passed": allele_rescue["trajectory"] == wt_assay["trajectory"] and mediator_rescue["trajectory"] == wt_assay["trajectory"],
+         "evidence": {"allele_err": diff(allele_rescue["trajectory"], wt_assay["trajectory"])}},
+        {"name": "phenocopy_reproduces_variant", "passed": phenocopy["trajectory"] == mut_assay["trajectory"],
+         "evidence": {"phenocopy_err": diff(phenocopy["trajectory"], mut_assay["trajectory"])}},
+        {"name": "spatial_p3_domain_contracts", "passed": (len(p3_mut) != len(p3_wt)),
+         "evidence": {"wt_p3_max_x": max(p3_wt) if p3_wt else None, "mut_p3_max_x": max(p3_mut) if p3_mut else None}},
+        {"name": "competitive_primed_derepression_reverses_ablation",
+         "passed": hist_mut != hist_wt and hist_mut_act < 0.01,
+         "evidence": {"wt_primed_nkx": hist_wt, "mut_primed_competitive": hist_mut, "mut_primed_activation_only": hist_mut_act}},
+        {"name": "timestep_refinement_converges", "passed": refinement_err < 1e-4, "evidence": {"max_error": refinement_err, "tolerance": 1e-4}},
+    ]
+
+    construction_report = None
+    if with_construction:
+        construction_report = bridge_to_construction(
+            reference, variant, output / "construction", protein=protein,
+            epsilon=DEFAULT_EPSILON, signal=signal, target=target,
+        )
+        checks.append({
+            "name": "cx3d_construction_and_lif_bridge",
+            "passed": construction_report["all_checks_passed"],
+            "evidence": construction_report["checks"],
+        })
+
+    second_site = _find_second_site_rescue(reference, featured, protein, DEFAULT_EPSILON, signal=signal, target=target)
+    report = {
+        "format": "epigenesis.neural-circuit-experiment/v1",
+        "locus": locus,
+        "target": target,
+        "scope": "computational sequence-to-circuit model; biological embryo phenotype is not established",
+        "compiled": compiled,
+        "featured_variant": {k: v for k, v in featured.items() if k != "variant"},
+        "second_site_candidates": second_site,
+        "scan": {**{k: v for k, v in scan.items() if k != "edits"},
+                 "edits": [{k: v for k, v in e.items() if k != "variant"} for e in scan["edits"]],
+                 "cryptic_switches": [{k: v for k, v in e.items() if k != "variant"} for e in scan["cryptic_switches"]]},
+        "spatial": {"duration": 100.0, "positions": positions, "reference": sp_ref, "variant": sp_mut},
+        "checks": checks,
+        "all_checks_passed": all(c["passed"] for c in checks),
+    }
+    if construction_report is not None:
+        report["construction_bridge"] = construction_report
+    (output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+    (output / "index.html").write_text(_render_html(report))
+    return report
+
+
+def _read_dna_arg(value: str) -> str:
+    candidate = Path(value)
+    if candidate.exists():
+        raw = read_regular_file(candidate, maximum_bytes=128 * 1024).decode("ascii")
+        seq = "".join(line.strip() for line in raw.splitlines() if not line.startswith(">"))
+        return seq.upper()
+    return "".join(value.split()).upper()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    d = sub.add_parser("demo")
+    d.add_argument("--output", type=Path, required=True)
+    d.add_argument("--locus", default=CURATED_LOCI[0])
+    d.add_argument("--target", choices=SUPPORTED_TARGETS, default=DEFAULT_TARGET)
+    d.add_argument("--signal", type=float, default=DEFAULT_SIGNAL)
+    d.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
+    d.add_argument("--motif-model-dir", type=Path)
+    d.add_argument("--with-construction", action="store_true")
+
+    s = sub.add_parser("scan")
+    s.add_argument("--fasta", type=Path, required=True)
+    s.add_argument("--signal", type=float, default=DEFAULT_SIGNAL)
+    s.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
+    s.add_argument("--target", choices=SUPPORTED_TARGETS, default=DEFAULT_TARGET)
+    s.add_argument("--motif-model-dir", type=Path)
+    s.add_argument("--output", type=Path, required=True)
+
+    c = sub.add_parser("compare")
+    c.add_argument("--reference", required=True, help="reference DNA sequence or FASTA path")
+    c.add_argument("--variant", required=True, help="variant DNA sequence or FASTA path (SNV, MNV, or indel)")
+    c.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
+    c.add_argument("--target", choices=SUPPORTED_TARGETS, default=DEFAULT_TARGET)
+    c.add_argument("--signal", type=float, default=DEFAULT_SIGNAL)
+    c.add_argument("--motif-model-dir", type=Path)
+    c.add_argument("--output", type=Path, required=True)
+
+    b = sub.add_parser("benchmark")
+    b.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
+    b.add_argument("--target", choices=SUPPORTED_TARGETS, default=DEFAULT_TARGET)
+    b.add_argument("--signal", type=float, default=DEFAULT_SIGNAL)
+    b.add_argument("--motif-model-dir", type=Path)
+    b.add_argument("--output", type=Path, required=True)
+
+    br = sub.add_parser("bridge")
+    br.add_argument("--reference", required=True, help="reference DNA sequence or FASTA path")
+    br.add_argument("--variant", required=True, help="variant DNA sequence or FASTA path")
+    br.add_argument("--protein", choices=("GLI2", "GLI3"), default="GLI2")
+    br.add_argument("--target", choices=SUPPORTED_TARGETS, default=DEFAULT_TARGET)
+    br.add_argument("--signal", type=float, default=DEFAULT_SIGNAL)
+    br.add_argument("--duration", type=float, default=3.0)
+    br.add_argument("--output", type=Path, required=True)
+
+    args = parser.parse_args()
+    try:
+        if args.command == "demo":
+            report = demo(
+                args.output, locus=args.locus, target=args.target, signal=args.signal,
+                protein=args.protein, motif_model_dir=args.motif_model_dir,
+                with_construction=args.with_construction,
+            )
+            print(json.dumps({
+                "output": str(args.output), "locus": report["locus"], "target": report["target"],
+                "all_checks_passed": report["all_checks_passed"],
+                "category_counts": report["scan"]["category_counts"],
+                "featured": report["featured_variant"],
+                "second_site_candidates": report["second_site_candidates"],
+                "checks": report["checks"],
+            }, indent=2))
+            return 0 if report["all_checks_passed"] else 1
+        if args.command == "scan":
+            raw = read_regular_file(args.fasta, maximum_bytes=128 * 1024).decode("ascii")
+            seq = "".join(line.strip() for line in raw.splitlines() if not line.startswith(">")).upper()
+            res = scan_enhancer(seq, signal=args.signal, protein=args.protein, target=args.target, motif_model_dir=args.motif_model_dir)
+            args.output.mkdir()
+            (args.output / "scan.json").write_text(json.dumps(res, indent=2, allow_nan=False) + "\n")
+            print(json.dumps({
+                "output": str(args.output), "target": res["target"], "category_counts": res["category_counts"],
+                "top_cryptic": [{k: v for k, v in e.items() if k != "variant"} for e in res["cryptic_switches"][:5]],
+            }, indent=2))
+            return 0
+        if args.command == "compare":
+            args.output.mkdir()
+            comp = compare_variants(
+                _read_dna_arg(args.reference), _read_dna_arg(args.variant),
+                protein=args.protein, signal=args.signal, target=args.target,
+                motif_model_dir=args.motif_model_dir, compile_dir=args.output / "compiled",
+            )
+            (args.output / "compare.json").write_text(json.dumps(comp, indent=2, allow_nan=False) + "\n")
+            print(json.dumps({k: v for k, v in comp.items() if not k.endswith("_assay")}, indent=2))
+            return 0
+        if args.command == "benchmark":
+            bench = multi_locus_benchmark(
+                protein=args.protein, signal=args.signal, target=args.target,
+                motif_model_dir=args.motif_model_dir, output=args.output,
+            )
+            print(json.dumps({k: v for k, v in bench.items() if k != "loci"}, indent=2))
+            return 0
+        res = bridge_to_construction(
+            _read_dna_arg(args.reference), _read_dna_arg(args.variant), args.output,
+            protein=args.protein, signal=args.signal, target=args.target, dev_duration=args.duration,
+        )
+        print(json.dumps({k: v for k, v in res.items() if k != "runs"}, indent=2))
+        return 0 if res["all_checks_passed"] else 1
+    except (ValueError, OSError, RuntimeError) as err:
+        print(f"neural-circuit failed: {err}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

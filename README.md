@@ -4,7 +4,7 @@ Epigenesis is a DNA compiler and simulation toolkit. It compiles a DNA source, r
 
 Experiments built on the compiler connect original measurements, reconstructed DNA edits, binding models and developmental dynamics. Every experiment records its inputs, assumptions, interventions and verification results, so a claim can be traced back to the source data. In the works reviewed in [Prior art](docs/reference/PRIOR_ART.md), no other system combines these boundaries; that is a scoped comparison of the cited corpus, not a benchmark against other simulators.
 
-**Status.** Version 1.6 combines a universal DNA translation compiler with a set of executable experiments, all independently replayable. Its experimental edit predictor produces signed reporter-effect scores for the SK-N-SH assay (a preliminary 3.02% error reduction against a 5-mer baseline within that assay). Accuracy across studies is not established: thirteen frozen tests of sequence-based variant-effect prediction, run on 19 and 20 October 2026, found no reliable gain over simple baselines (mean correlation 0.049 on five external studies). [The technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)) states what is and is not established.
+**Status.** Version 1.7 combines the universal DNA translation compiler with Epigenesis Studio `0.2.0` and two new executable neural workflows: the **Variant-to-Circuit Enhancer Scanner** (`neural-circuit`) and the **Kreimer 0–72h H1 neural-induction motif-temporal predictor** (`motif_temporal`, retrospective held-out family MSE `0.252079` vs `k5` `0.285185` on GSE188264). Meanwhile, thirteen frozen cross-study sequence tests (Siraj SK-N-SH, 19–20 October 2026) found no reliable gain over simple baselines (mean correlation 0.049 on five external studies). [The technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)) and [1.7 release notes](docs/releases/RELEASE-1.7.md) state what is and is not established.
 
 ## Contents
 
@@ -14,7 +14,7 @@ Experiments built on the compiler connect original measurements, reconstructed D
 | [`docs/`](docs/README.md) | Index of references, release contracts and research records |
 | [`research/`](research/README.md) | Plans, hashes, scripts and results of the thirteen frozen tests, with a hash checker |
 | [`examples/`](examples/) | One folder per experiment, each with its own README |
-| [`studio/`](studio/README.md) | Epigenesis Studio: a desktop application (English and Bulgarian) to change a DNA site and simulate neural-development dynamics, scan and rank edits with the delivered predictor, and verify sealed results |
+| [`studio/`](studio/README.md) | Epigenesis Studio: a desktop application (English and Bulgarian) for DNA-site simulation, full-enhancer cryptic bifurcation scans, Siraj & Kreimer 0–72h edit scoring, and receipt verification |
 | `brainc/`, [`SPEC.md`](SPEC.md) | The DNA → Development Module compiler and its contract |
 | `tests/`, `studio/tests/` | Compiler, experiment and Studio tests; release gates in `tests/verify.py` |
 
@@ -27,14 +27,25 @@ uv tool install --editable studio --with-editable .
 epigenesis-studio
 ```
 
-Start with **Simulate** to change the GLI binding site and compare neural-development trajectories. **Prediction** scans a sequence or scores an edit table; **Receipts** replays a saved result. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
+Start with **Simulate** to change the GLI binding site, or **Enhancer Circuit** to scan arbitrary enhancers for cryptic fate switches, compare custom indels/MNVs, and wire downstream targets (`Nkx2.2`, `Olig2`, `Both`). **Scan** and **Edits** score sequences with either the Siraj Huber-linear checkpoint or the **Kreimer 0–72h** neural-induction predictor (showing top contributing JASPAR motifs per edit); **Receipts** replays saved results. The interface is available in English and Bulgarian. See [Studio's input formats and limits](studio/README.md).
 
-The two offline reports below use only the standard library and bundled data; they need no installation, GPU or network. Choose an output directory that does not yet exist.
+For a single command-line entry point across Studio, circuit scans/comparisons, predictors, and checks, install the root package (`pip install .`, exposing `epigenesis`) or run [`epigenesis_cli.py`](epigenesis_cli.py) directly with standard-library Python 3.11+:
+
+```sh
+python3.11 epigenesis_cli.py circuit --benchmark
+python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta
+python3.11 epigenesis_cli.py evidence
+python3.11 epigenesis_cli.py patterning
+python3.11 epigenesis_cli.py check --full
+```
+
+Or run each experiment script directly with an explicit `--output` directory (no installation, GPU, or network required for core reports):
 
 ```sh
 python3.11 examples/neural-evidence/evidence.py demo --output /tmp/neural-evidence
 python3.11 examples/neural-evidence/evidence.py verify --output /tmp/neural-evidence
 python3.11 examples/neural-patterning/patterning.py demo --output /tmp/neural-patterning
+python3.11 examples/neural-circuit/circuit.py demo --output /tmp/neural-circuit
 ```
 
 Open `index.html` in each output directory.
@@ -101,6 +112,7 @@ These identities are recorded in [expected.json](examples/minimal-development/ex
 |---|---|---|
 | [Coding consequences](examples/coding-consequences/README.md) | Reconstructs *Sox2* edits from genomic sequence, applies the declared coding annotation and checks the resulting peptides against independent reference sequences | Gong et al. (2020) |
 | [Neural patterning](examples/neural-patterning/README.md) | Connects an *Nkx2.2* enhancer substitution and measured GLI binding profiles to a four-gene model; tests signal history, rescue and phenocopy under an explicit affinity-transfer assumption | Peterson et al. (2012); Cohen et al. (2014) |
+| [Neural circuit](examples/neural-circuit/README.md) | Scans full-length human enhancers via Boltzmann GLI partition physics into the four-gene neural-tube ODE (`Nkx2.2`, `Olig2`, `Both`), compares SNV/MNV/indel alleles, tests second-site rescue, and optionally bridges steady states into CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020) |
 | [Neural construction](examples/neural-construction/README.md) | Grows cells, neurites and contacts from one founder and a shared artificial DNA recipe; tests signal transmission and contact lesions on the developed network | Zubler et al. (2011, 2013) |
 | [Neural evidence](examples/neural-evidence/README.md) | Reconstructs 109 published CHE-1 depletion observations, traces them to workbook cells and intended DNA edits, and compares competing explanations | Traets et al. (2021) |
 | [Neural fate](examples/neural-fate/README.md) | An artificial DNA parameter recipe driving published regulatory dynamics | Balaskas et al. (2012) |

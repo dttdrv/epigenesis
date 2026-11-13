@@ -23,7 +23,7 @@ sys.path.insert(0, str(HERE/'model'))
 import predict  # frozen inference code; model/model.json pins its digest
 from brainc import _canonical as canonical  # the compiler's RFC 8785 digests
 
-from . import simulate
+from . import circuit, kreimer, simulate
 from .refusal import Refusal
 
 MANIFEST_BYTES = (HERE/'model/model.json').read_bytes()
@@ -83,13 +83,25 @@ def scan_rows(reference):
     return rows
 
 
+def _model_choice(request):
+    choice = request.get('model')
+    if choice not in ('siraj', 'kreimer'):
+        raise Refusal('bad_model', 'choose siraj or kreimer')
+    return choice
+
+
 def normalize(request):
     mode = request.get('mode')
     if mode == 'simulate':
         return simulate.normalize(request)
-    if mode == 'scan' and set(request) == {'mode', 'sequence'}:
-        return dict(mode='scan', sequence=fasta_sequence(request['sequence']))
-    if mode == 'pairs' and set(request) <= {'mode', 'rows', 'budget'} and 'rows' in request:
+    if mode == 'circuit':
+        return circuit.normalize(request)
+    if mode == 'scan' and {'mode', 'sequence'} <= set(request) <= {'mode', 'sequence', 'model'}:
+        normalized = dict(mode='scan', sequence=fasta_sequence(request['sequence']))
+        if 'model' in request:
+            normalized['model'] = _model_choice(request)
+        return normalized
+    if mode == 'pairs' and set(request) <= {'mode', 'rows', 'budget', 'model'} and 'rows' in request:
         rows = request['rows']
         if not isinstance(rows, list) or not 0 < len(rows) <= MAX_ROWS:
             raise Refusal('row_count', f'provide 1 to {MAX_ROWS} edits', max=MAX_ROWS)
@@ -112,32 +124,47 @@ def normalize(request):
                                    or len({row['family'] for row in clean}) < budget):
             raise Refusal('need_families', 'a panel needs a family on every edit and at least as many families as its size',
                           budget=budget)
-        return dict(mode='pairs', rows=clean, budget=budget)
+        normalized = dict(mode='pairs', rows=clean, budget=budget)
+        if 'model' in request:
+            normalized['model'] = _model_choice(request)
+        return normalized
     raise Refusal('unsupported', 'unsupported request')
 
 
 def run(request):
     if request['mode'] == 'simulate':
         return simulate.run(request)
+    if request['mode'] == 'circuit':
+        return circuit.run(request)
+    engine = kreimer if request.get('model') == 'kreimer' else predict
     if request['mode'] == 'scan':
         reference = request['sequence']
-        return dict(mode='scan', length=len(reference), predictions=predict.predict(scan_rows(reference)))
-    predictions = predict.predict(request['rows'])
+        result = dict(mode='scan', length=len(reference), predictions=engine.predict(scan_rows(reference)))
+        if engine is kreimer:
+            result['times_hours'] = kreimer.MANIFEST['times_hours']
+        return result
+    predictions = engine.predict(request['rows'])
     result = dict(mode='pairs', predictions=predictions)
+    if engine is kreimer:
+        result['times_hours'] = kreimer.MANIFEST['times_hours']
     if request['budget'] is not None:
-        result['selection'] = predict.select(predictions, request['rows'], request['budget'])
+        result['selection'] = engine.select(predictions, request['rows'], request['budget'])
     return result
 
 
-def identity(mode):
+def identity(mode, model=None):
     if mode == 'simulate':
         return simulate.IDENTITY
+    if mode == 'circuit':
+        return circuit.IDENTITY
+    if model == 'kreimer':
+        return kreimer.IDENTITY
     return dict(model=MANIFEST['format'], manifest_sha256=MANIFEST_SHA256, endpoint=MANIFEST['endpoint'])
 
 
 def score(raw_request):
     request = normalize(raw_request)
-    receipt = dict(format=RECEIPT_FORMAT, **identity(request['mode']), request=request, result=run(request))
+    receipt = dict(format=RECEIPT_FORMAT, **identity(request['mode'], request.get('model')), request=request, result=run(request))
     receipt['receipt_sha256'] = canonical.digest(receipt)
     return receipt
 
@@ -165,7 +192,7 @@ def verify(receipt):
                 or receipt['format'] != RECEIPT_FORMAT:
             raise Refusal('not_receipt', 'not an Epigenesis Studio receipt')
         request = normalize(receipt['request'])
-        expected = identity(request['mode'])
+        expected = identity(request['mode'], request.get('model'))
         content = {key: value for key, value in receipt.items() if key != 'receipt_sha256'}
         accord = dict(gap=0.0, shape=True)
         replays = agree(receipt['result'], run(request), accord)
@@ -230,9 +257,13 @@ def open_file(name):
 
 def model_info():
     return dict(format=MANIFEST['format'], endpoint=MANIFEST['endpoint'], scope=MANIFEST['biological_scope'],
-                status=MANIFEST['status'], manifest_sha256=MANIFEST_SHA256, simulation=simulate.available(), motifs=len(MANIFEST['motif_ids']),
+                status=MANIFEST['status'], manifest_sha256=MANIFEST_SHA256, simulation=simulate.available(),
+                circuit=circuit.available(), motifs=len(MANIFEST['motif_ids']),
                 motif_source=MANIFEST['motif_source']['license'], radius=RADIUS, max_scan=MAX_SCAN,
-                max_rows=MAX_ROWS, max_bases=MAX_BASES)
+                max_rows=MAX_ROWS, max_bases=MAX_BASES,
+                kreimer=dict(format=kreimer.MANIFEST['format'], endpoint=kreimer.MANIFEST['endpoint'],
+                             scope=kreimer.MANIFEST['biological_scope'], status=kreimer.MANIFEST['status'],
+                             manifest_sha256=kreimer.MANIFEST_SHA256, times_hours=kreimer.MANIFEST['times_hours']))
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -272,6 +303,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == '/api/site':
                 return self.send(200, simulate.site_table())
+            if path == '/api/circuit-example':
+                return self.send(200, circuit.example_enhancer())
             if path == '/api/files':
                 return self.send(200, dict(folder=str(FOLDER), files=folder_files()))
             if path == '/api/file':
@@ -335,6 +368,7 @@ def main():
         except (OSError, ValueError) as failure:
             return f'epigenesis-studio: {args.file}: {failure}'
     predict.load()
+    kreimer.load()
     for port in [args.port] if args.port is not None else [8765, 0]:
         try:
             server = ThreadingHTTPServer(('127.0.0.1', port), Handler)

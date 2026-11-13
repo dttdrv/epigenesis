@@ -21,6 +21,7 @@ class ReleaseLauncherTests(unittest.TestCase):
             (self.root / f"{name}.py").write_text("")
         for name, path in (
             ("huber", "studio/epigenesis_studio/model/predict.py"),
+            ("kreimer", "studio/epigenesis_studio/kreimer.py"),
             ("activity", "examples/neural-predictor/activity.py"),
             ("attention", "examples/neural-predictor/predictor.py"),
         ):
@@ -40,6 +41,13 @@ class ReleaseLauncherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout),
                          ["huber", ["--input", "edits with spaces.json", "--output", "scores.json"]])
+
+    def test_kreimer_dispatches_with_optional_budget(self):
+        result = self.invoke("--kreimer", "--budget", "3")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout),
+                         ["kreimer", ["--input", "edits with spaces.json", "--output", "scores.json",
+                                      "--budget", "3"]])
 
     def test_panel_budget_reaches_delivered_model(self):
         result = self.invoke("--budget", "3")
@@ -63,6 +71,8 @@ class ReleaseLauncherTests(unittest.TestCase):
     def test_incompatible_options_are_refused_before_dispatch(self):
         for options in (
             ("--families", "families.json"), ("--device", "mps"),
+            ("--kreimer", "--families", "families.json"), ("--kreimer", "--device", "cpu"),
+            ("--kreimer", "--activity"), ("--kreimer", "--attention"),
             ("--activity", "--budget", "3"), ("--attention", "--budget", "3"),
             ("--activity", "--attention"), ("--activity", "--device", "cpu"),
         ):
