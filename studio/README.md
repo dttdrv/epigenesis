@@ -17,11 +17,11 @@ Simulate needs the repository checkout (the install below is editable, so it fin
 
 ## Enhancer Circuit mode (1.7)
 
-The Enhancer Circuit tab connects arbitrary enhancers (9 to 500 bases) to the four-gene neural-tube ODE via [`examples/neural-circuit`](../examples/neural-circuit/README.md):
+The Enhancer Circuit tab connects arbitrary enhancers (9 to 500 bases) to $N$-gene regulatory ODEs via [`examples/neural-circuit`](../examples/neural-circuit/README.md):
 
-1. Offers five curated GSE188264 human enhancer presets alongside custom FASTA/ACGT input, lets you wire the GLI ratio to **Nkx2.2**, **Olig2**, or **Both**, and optionally compare an arbitrary **custom variant sequence** (SNV, MNV, insertion, or deletion).
-2. Computes a strand-symmetric Boltzmann partition ratio (`q = Z_variant / Z_reference`) over sliding 9-mer Hallikas GLI2/GLI3 binding profiles for every single-base substitution (with Laplace pseudocount `epsilon`, default `1e-4`), then classifies each edit as a cryptic bifurcation (`|Δreporter| < 0.02` with a fate flip), concordant switch, canalized buffered, or neutral.
-3. Compiles the featured or custom variant pair (and exact sequence reversion) into `brainc` v2 Development Modules, searches for ODE-verified **second-site rescue** substitutions, compares endogenous vs passive-reporter trajectories, checks the 21-point spatial Shh gradient P3 domain and pulse-chase competitive GliR derepression control, and displays Kreimer 0–72h and Siraj scores beside the circuit shift.
+1. Offers five curated GSE188264 human enhancer presets alongside custom FASTA/ACGT input, lets you pick between built-in circuits (**neural-tube**, **mutual-toggle**, **tri-lineage-switch**, or custom JSON `CircuitSpec`s via the API), choose **GLI2**, **GLI3**, any of the **532 bundled JASPAR 2024 motifs**, or custom PWMs, wire target genes dynamically, and optionally compare an arbitrary **custom variant sequence** (SNV, MNV, insertion, or deletion).
+2. Computes a strand-symmetric Boltzmann partition ratio (`q = Z_variant / Z_reference`) over sliding PWM windows for every single-base substitution (with Laplace pseudocount `epsilon`, default `1e-4`), then classifies each edit as a cryptic bifurcation (`|Δreporter| < 0.02` with a fate flip), concordant switch, canalized buffered, or neutral.
+3. Compiles the featured or custom variant pair (and exact sequence reversion) into sealed `brainc` v2/v3 Development Modules, searches for ODE-verified **second-site rescue** substitutions, compares endogenous vs passive-reporter trajectories, checks the 21-point spatial Shh gradient domain and pulse-chase competitive derepression control, and displays Kreimer 0–72h and Siraj scores beside the circuit shift.
 
 Requires the repository checkout; unavailable when installed standalone without `examples/`.
 

@@ -115,6 +115,87 @@ class EpigenesisCliTests(unittest.TestCase):
         )
         self.assertEqual(res_bad.returncode, 2)
 
+    def test_circuit_list_presets_and_motifs(self):
+        res_c = self._run("circuit", "--list-circuits")
+        self.assertEqual(res_c.returncode, 0, res_c.stderr)
+        presets = json.loads(res_c.stdout)
+        self.assertEqual(set(presets), {"neural-tube", "mutual-toggle", "tri-lineage-switch"})
+
+        res_m = self._run("circuit", "--list-motifs")
+        self.assertEqual(res_m.returncode, 0, res_m.stderr)
+        motifs = json.loads(res_m.stdout)
+        self.assertEqual(motifs["hallikas_gli"], ["GLI2", "GLI3"])
+        self.assertEqual(motifs["jaspar_count"], 532)
+
+    def test_circuit_and_scan_generalized_jaspar_and_custom_specs(self):
+        ref = "ACTG" * 4 + "TTCACGCATGAGTT" + "TGCA" * 2 + "GCTTTCGAGGAAT" + "ACGT" * 2
+        var = "ACTG" * 4 + "TTCACAAATGAGTT" + "TGCA" * 2 + "GCTTTCGAGGAAT" + "ACGT" * 2
+        with tempfile.TemporaryDirectory() as tmp:
+            troot = Path(tmp)
+            fasta = troot / "enh.fasta"
+            fasta.write_text(f">enh\n{ref}\n")
+
+            tri_out = troot / "tri_cmp"
+            res_tri = self._run(
+                "circuit", "--circuit", "tri-lineage-switch", "--target", "All",
+                "--reference", ref, "--variant", var, "--output", str(tri_out),
+            )
+            self.assertEqual(res_tri.returncode, 0, res_tri.stderr)
+            tri = json.loads((tri_out / "compare.json").read_text())
+            self.assertEqual(tri["circuit"], "tri-lineage-switch")
+            self.assertEqual(tri["genes"], ["Progenitor", "Excitatory", "Inhibitory"])
+            self.assertEqual(tri["proteins"], ["MA0069.1", "MA0463.3"])
+            self.assertEqual(tri["target"], "All")
+
+            tog_out = troot / "tog_scan"
+            res_tog = self._run(
+                "scan", str(fasta), "--circuit", "mutual-toggle",
+                "--protein", "MA0069.1", "--target", "GeneA", "--output", str(tog_out),
+            )
+            self.assertEqual(res_tog.returncode, 0, res_tog.stderr)
+            tog = json.loads((tog_out / "scan.json").read_text())
+            self.assertEqual(tog["circuit"], "mutual-toggle")
+            self.assertEqual(tog["protein"], "MA0069.1")
+            self.assertEqual(tog["target"], "GeneA")
+
+            custom_circuit = troot / "custom_circuit.json"
+            custom_circuit.write_text(json.dumps({
+                "name": "cli-custom-2",
+                "genes": ["X", "Y"],
+                "basal": [1.0, 2.0],
+                "input": [150.0, 20.0],
+                "tf_binding": [10.0, 2.0],
+                "repression": [[0.0, 30.0], [30.0, 0.0]],
+                "cooperativity": 2.0,
+                "production": [2.0, 2.0],
+                "decay": [2.0, 2.0],
+                "default_target": "X",
+                "default_signal": 0.25,
+                "default_protein": "MA0069.1",
+            }))
+            custom_pwm = troot / "custom_pwm.json"
+            custom_pwm.write_text(json.dumps({
+                "id": "CLI-PWM-5",
+                "kind": "weights",
+                "matrix": {
+                    "A": [1.0, 0.1, 0.1, 1.0, 0.1],
+                    "C": [0.1, 1.0, 0.1, 0.1, 1.0],
+                    "G": [0.1, 0.1, 1.0, 0.1, 0.1],
+                    "T": [0.1, 0.1, 0.1, 0.1, 0.1],
+                },
+            }))
+            cust_out = troot / "cust_cmp"
+            res_cust = self._run(
+                "circuit", "--circuit", str(custom_circuit), "--protein", str(custom_pwm),
+                "--reference", "TTTTACGACGGGG", "--variant", "TTTTACTTCGGGG",
+                "--output", str(cust_out),
+            )
+            self.assertEqual(res_cust.returncode, 0, res_cust.stderr)
+            cust = json.loads((cust_out / "compare.json").read_text())
+            self.assertEqual(cust["circuit"], "cli-custom-2")
+            self.assertEqual(cust["protein"], "CLI-PWM-5")
+            self.assertEqual(cust["genes"], ["X", "Y"])
+
 
 if __name__ == "__main__":
     unittest.main()

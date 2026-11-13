@@ -222,13 +222,22 @@ def _fit_kmer_baseline(rows: list[reg.Row], k: int, penalties: tuple[float, ...]
     return reg.fit(rows, k, best_penalty, scale), best_penalty
 
 
-def _target() -> dict:
+def _target(n_times: int = len(reg.TIMES)) -> dict:
     return target_artifact({
         "id": TARGET, "abi_major": 1, "opsets": [{"domain": DEV_DOMAIN, "version": 1}],
-        "unit_schemas": [{"id": "reporter-effect", "fields": [{"id": "effect", "type": {"dtype": "f64", "shape": [len(reg.TIMES)]},
+        "unit_schemas": [{"id": "reporter-effect", "fields": [{"id": "effect", "type": {"dtype": "f64", "shape": [n_times]},
           "unit": None, "mutability": "constant", "numeric": {"kind": "float"}}]}],
         "edge_schemas": [], "rules": [], "ports": [],
     })
+
+
+def _clean_dna_file(path: Path, min_bases: int, max_bases: int = 16384) -> str:
+    raw = read_regular_file(path, maximum_bytes=max_bases * 2 + 1024).decode("ascii")
+    lines = [line.strip() for line in raw.splitlines() if not line.startswith(">")]
+    seq = "".join("".join(lines).split()).upper()
+    if not min_bases <= len(seq) <= max_bases or set(seq) - set("ACGT"):
+        raise ValueError(f"prediction requires {min_bases}..{max_bases} unambiguous ACGT bases")
+    return seq
 
 
 def compile_prediction(model_dir: Path, reference_path: Path, variant_path: Path, output: Path) -> list[float]:
@@ -238,10 +247,9 @@ def compile_prediction(model_dir: Path, reference_path: Path, variant_path: Path
     if hashlib.sha256(coef_bytes).hexdigest() != model.get("coefficients_sha256"):
         raise ValueError("coefficients.npy identity mismatch")
     coefficients = np.load(model_dir / "coefficients.npy", allow_pickle=False)
-    reference = read_regular_file(reference_path, maximum_bytes=reg.BASES).decode("ascii")
-    variant = read_regular_file(variant_path, maximum_bytes=reg.BASES).decode("ascii")
-    if len(reference) != reg.BASES or len(variant) != reg.BASES:
-        raise ValueError("prediction requires two 171-base inserts")
+    min_bases = int(model.get("k", 5))
+    reference = _clean_dna_file(reference_path, min_bases)
+    variant = _clean_dna_file(variant_path, min_bases)
     effect = [float(x) for x in predict_rows(model, coefficients, [{"reference": reference, "sequence": variant}])[0]]
 
     output.mkdir()
@@ -254,7 +262,7 @@ def compile_prediction(model_dir: Path, reference_path: Path, variant_path: Path
     tensors = [
         {"id": name, "type": {"dtype": dtype, "shape": shape}, "unit": None,
          "axes": [None] * len(shape), "storage": inline_storage(pack(dtype, values))}
-        for name, dtype, shape, values in (("count", "u64", [], [1]), ("effect", "f64", [len(reg.TIMES)], effect))
+        for name, dtype, shape, values in (("count", "u64", [], [1]), ("effect", "f64", [len(effect)], effect))
     ]
     identity = {"kind": "content-sha256", "value": hashlib.sha256(model_bytes + coef_bytes).hexdigest()}
     manifest = seal({
@@ -271,7 +279,7 @@ def compile_prediction(model_dir: Path, reference_path: Path, variant_path: Path
         "request_artifact_sha256": request["artifact_sha256"],
         "provider": manifest["provider"], "model_identity": identity, "outputs": tensors,
     }), output / "response.json")
-    target_contract = _target()
+    target_contract = _target(len(effect))
     save(target_contract, output / "target.json")
     policy = policy_artifact(
         TARGET, {"id": TARGET, "abi_major": 1, "contract_sha256": target_contract["contract_sha256"]},
@@ -296,21 +304,22 @@ def load_prediction(directory: Path) -> list[float]:
         raise ValueError(f"prediction artifact validation failed: {validation}")
     _, artifacts = load_development_bundle_directory(directory / "development")
     model_bytes = read_regular_file(directory / "model.json", maximum_bytes=2 * 1024 * 1024)
+    model = load_json_object(model_bytes, "motif-temporal model")
+    n_times = len(model.get("times_hours", reg.TIMES))
     coef_bytes = read_regular_file(directory / "coefficients.npy", maximum_bytes=2 * 1024 * 1024)
     expected_id = hashlib.sha256(model_bytes + coef_bytes).hexdigest()
     if artifacts["provider_manifest"]["model_identity"]["value"] != expected_id:
         raise ValueError("prediction model identity mismatch")
-    if artifacts["target_contract"] != _target():
+    if artifacts["target_contract"] != _target(n_times):
         raise ValueError("unsupported prediction target")
-    lines = read_regular_file(directory / "pair.fasta", maximum_bytes=2 * reg.BASES + 64).decode("ascii").splitlines()
+    lines = read_regular_file(directory / "pair.fasta", maximum_bytes=65536).decode("ascii").splitlines()
     if len(lines) != 4 or lines[0] != ">reference" or lines[2] != ">variant":
         raise ValueError("unsupported prediction source layout")
     module = artifacts["development_module"]["module"]
     tensors = {t["id"]: base64.b64decode(t["storage"]["data"], validate=True) for t in module["tensors"]}
     if struct.unpack("<Q", tensors["count"]) != (1,):
         raise ValueError("expected one perturbation effect")
-    effect = list(struct.unpack("<7d", tensors["effect"]))
-    model = load_json_object(model_bytes, "motif-temporal model")
+    effect = list(struct.unpack(f"<{n_times}d", tensors["effect"]))
     if hashlib.sha256(coef_bytes).hexdigest() != model.get("coefficients_sha256"):
         raise ValueError("coefficients.npy identity mismatch")
     coefficients = np.load(directory / "coefficients.npy", allow_pickle=False)

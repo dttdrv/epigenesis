@@ -48,6 +48,19 @@ def predict(args):
     return run(*cmd)
 
 
+def _circuit_opts(args):
+    extra = []
+    if getattr(args, 'circuit', None) is not None:
+        extra += ['--circuit', args.circuit]
+    if getattr(args, 'protein', None) is not None:
+        extra += ['--protein', args.protein]
+    if getattr(args, 'target', None) is not None:
+        extra += ['--target', args.target]
+    if getattr(args, 'signal', None) is not None:
+        extra += ['--signal', args.signal]
+    return extra
+
+
 def scan(args):
     out = args.output or (OUT / 'enhancer-scan')
     if out.exists() and args.output is not None:
@@ -55,8 +68,7 @@ def scan(args):
     while out.exists():
         out = out.parent / f'{out.name}-next'
     OUT.mkdir(exist_ok=True)
-    cmd = [EX / 'neural-circuit' / 'circuit.py', 'scan', '--fasta', args.fasta,
-           '--protein', args.protein, '--target', args.target, '--signal', args.signal, '--output', out]
+    cmd = [EX / 'neural-circuit' / 'circuit.py', 'scan', '--fasta', args.fasta, *_circuit_opts(args), '--output', out]
     rc = run(*cmd)
     if rc == 0:
         print(f'\nScan output: {out / "scan.json"}')
@@ -64,24 +76,29 @@ def scan(args):
 
 
 def circuit(args):
+    script = EX / 'neural-circuit' / 'circuit.py'
+    if args.list_circuits:
+        return run(script, 'list-circuits')
+    if args.list_motifs:
+        return run(script, 'list-motifs')
     out = args.output or (OUT / 'neural-circuit')
     if out.exists() and args.output is not None:
         sys.exit(f'{out} already exists; delete it or choose another --output.')
     while out.exists():
         out = out.parent / f'{out.name}-next'
     OUT.mkdir(exist_ok=True)
-    script = EX / 'neural-circuit' / 'circuit.py'
+    opts = _circuit_opts(args)
     if args.benchmark:
-        return run(script, 'benchmark', '--protein', args.protein, '--target', args.target,
-                   '--signal', args.signal, '--output', out)
+        return run(script, 'benchmark', *opts, '--output', out)
     if bool(args.reference) != bool(args.variant):
         p.error('circuit requires both --reference and --variant')
     if args.reference and args.variant:
         subcmd = 'bridge' if args.with_construction else 'compare'
-        return run(script, subcmd, '--reference', args.reference, '--variant', args.variant,
-                   '--protein', args.protein, '--target', args.target, '--signal', args.signal, '--output', out)
-    cmd = [script, 'demo', '--locus', args.locus, '--target', args.target,
-           '--signal', args.signal, '--protein', args.protein, '--output', out]
+        cmd = [script, subcmd, '--reference', args.reference, '--variant', args.variant, *opts, '--output', out]
+        if args.with_construction and args.mapping is not None:
+            cmd += ['--mapping', args.mapping]
+        return run(*cmd)
+    cmd = [script, 'demo', '--locus', args.locus, *opts, '--output', out]
     if args.with_construction:
         cmd.append('--with-construction')
     rc = run(*cmd)
@@ -98,21 +115,26 @@ p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDes
 sub = p.add_subparsers(dest='cmd')
 sub.add_parser('evidence', help='open a report of 109 published CHE-1 measurements traced to DNA edits')
 sub.add_parser('patterning', help='explore an Nkx2.2 enhancer edit in a developmental model')
-cc = sub.add_parser('circuit', help='scan a human enhancer through Boltzmann GLI affinity and the neural-tube ODE')
+cc = sub.add_parser('circuit', help='scan an enhancer through Boltzmann TF affinity and an N-gene regulatory ODE')
+cc.add_argument('--circuit', help='circuit preset (neural-tube, mutual-toggle, tri-lineage-switch) or JSON spec path')
 cc.add_argument('--locus', default='chr15:90936956-90937127')
-cc.add_argument('--target', choices=('Nkx2.2', 'Olig2', 'Both'), default='Nkx2.2')
-cc.add_argument('--protein', choices=('GLI2', 'GLI3'), default='GLI2')
-cc.add_argument('--signal', type=float, default=0.20)
+cc.add_argument('--target')
+cc.add_argument('--protein')
+cc.add_argument('--signal', type=float)
 cc.add_argument('--reference')
 cc.add_argument('--variant')
+cc.add_argument('--mapping', type=Path)
 cc.add_argument('--with-construction', action='store_true')
 cc.add_argument('--benchmark', action='store_true')
+cc.add_argument('--list-circuits', action='store_true')
+cc.add_argument('--list-motifs', action='store_true')
 cc.add_argument('--output', type=Path)
-sc = sub.add_parser('scan', help='scan a FASTA enhancer across single-base GLI substitutions')
+sc = sub.add_parser('scan', help='scan a FASTA enhancer across single-base substitutions')
 sc.add_argument('--fasta', type=Path, required=True)
-sc.add_argument('--protein', choices=('GLI2', 'GLI3'), default='GLI2')
-sc.add_argument('--target', choices=('Nkx2.2', 'Olig2', 'Both'), default='Nkx2.2')
-sc.add_argument('--signal', type=float, default=0.20)
+sc.add_argument('--circuit')
+sc.add_argument('--protein')
+sc.add_argument('--target')
+sc.add_argument('--signal', type=float)
 sc.add_argument('--output', type=Path)
 sub.add_parser('construction', help='compile a 480-bp developmental recipe and run the CX3D + LIF assay')
 q = sub.add_parser('predict', help='score reporter DNA edits with Huber-linear (default) or Kreimer 0-72h (needs numpy)')
