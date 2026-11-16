@@ -1,0 +1,9 @@
+{
+  "frozen_at_utc": "2026-11-16T11:45:29Z",
+  "plan_sha256": "2e40059e48fbbfe67a9e188d9532ba1ac7f902eb2ecc5656c7a97926a0ce0815",
+  "thermo_sha256": "cca96c4d15727d5be58e603290fa481449f5e7f4e9ae015e1125ead64c6eb6ed",
+  "sites_sha256": "082c8e1b35340de2f196e4a35de60594ec3b7edeb05e787c87f5d0ad85ef40bf",
+  "confirm_sha256": "0737d667e3e18edfa8a5228b654212b9cb6864d3fdd174b5613ba6b11ea26601",
+  "selection_sha256": "a81dce95850c598103108b614f13d07662d2bbbe264734d57245312dce55e2a8",
+  "note": "selection.json was produced by `thermo.py select` (train->validation only). Selection used lambda-path warm starts; a cold start of the chosen configuration reproduces validation MSE 0.343471 (warm 0.343482). Test labels had not been scored by any thermodynamic model at freeze time."
+}
