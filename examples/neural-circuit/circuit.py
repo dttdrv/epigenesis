@@ -41,6 +41,8 @@ from brainc.v2 import inline_storage, make_development_request, pack, policy_art
 from brainc.v2._common import seal
 from brainc.v2.target import DEV_DOMAIN, OP_UNIT_CREATE
 from brainc.validator_development import load_development_bundle_directory, validate_development_paths
+from brainc.validator_variant import validate_variant_paths
+from brainc.variant import compile_variants, load_variant_collection
 import patterning as pat
 
 
@@ -1247,8 +1249,40 @@ def compile_circuit_bundle(
                          [{"id": t["id"], "from_output": t["id"]} for t in tensors], ops), output / "policy.json")
     compile_development(source, output / "manifest.json", output / "request.json",
                         output / "response.json", output / "policy.json", output / "target.json").save(output / "development")
+    if reference != variant:
+        start, end, ref_slice, alt_slice = _minimal_edit_span(reference, variant)
+        compile_variants(
+            output / "source",
+            [
+                {
+                    "id": "circuit-edit",
+                    "record_id": "reference",
+                    "start": start,
+                    "end": end,
+                    "ref": ref_slice,
+                    "alt": alt_slice,
+                }
+            ],
+        ).save(output / "variants.json")
     verify_circuit_bundle(output, receipt)
     return receipt
+
+
+def _minimal_edit_span(reference: str, variant: str) -> tuple[int, int, str, str]:
+    start = 0
+    limit = min(len(reference), len(variant))
+    while start < limit and reference[start] == variant[start]:
+        start += 1
+    suffix = 0
+    while (
+        suffix < (len(reference) - start)
+        and suffix < (len(variant) - start)
+        and reference[len(reference) - 1 - suffix] == variant[len(variant) - 1 - suffix]
+    ):
+        suffix += 1
+    end = len(reference) - suffix
+    var_end = len(variant) - suffix
+    return start, end, reference[start:end], variant[start:var_end]
 
 
 def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
@@ -1270,6 +1304,24 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
     reference, variant = lines[1], lines[3]
     if len(reference) != contract["reference_length"] or len(variant) != contract["variant_length"]:
         raise ValueError("pair.fasta lengths disagree with circuit contract")
+    variant_sha: str | None = None
+    vrs_allele_id: str | None = None
+    variants_path = directory / "variants.json"
+    if reference != variant:
+        if not variants_path.is_file():
+            raise ValueError("missing sealed variants.json for non-identical reference/variant pair")
+        v_report = validate_variant_paths(directory / "source", variants_path)
+        if not v_report["valid"]:
+            raise ValueError(f"variant collection validation failed: {v_report}")
+        vc_obj = load_variant_collection(variants_path)
+        vc_entries = vc_obj.to_dict()["variants_ir"]["variants"]
+        if len(vc_entries) != 1 or vc_entries[0]["record_id"] != "reference":
+            raise ValueError("variants.json must contain exactly 1 variant targeting 'reference'")
+        expected_mut_sha = hashlib.sha256(variant.encode("ascii")).hexdigest()
+        if vc_entries[0]["mutated_sequence_sha256"] != expected_mut_sha:
+            raise ValueError("variants.json mutated_sequence_sha256 disagrees with pair.fasta variant")
+        variant_sha = v_report["variant_artifact_sha256"]
+        vrs_allele_id = v_report["summary"]["vrs_allele_ids"][0]
     module = artifacts["development_module"]["module"]
     tensors = {t["id"]: base64.b64decode(t["storage"]["data"], validate=True) for t in module["tensors"]}
     if tensors["reference_nucleotides"] != pack("u64", list(reference.encode("ascii"))) or tensors["variant_nucleotides"] != pack("u64", list(variant.encode("ascii"))):
@@ -1286,6 +1338,8 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
             "contract_sha256": expected_receipt,
             "bundle_sha256": bundle["artifact_sha256"],
             "development_sha256": artifacts["development_module"]["artifact_sha256"],
+            "variant_artifact_sha256": variant_sha,
+            "vrs_allele_id": vrs_allele_id,
             "affinity_ratio": stored_q,
             "background_floor": eff_floor,
             "length": len(reference),
@@ -1324,6 +1378,8 @@ def verify_circuit_bundle(directory: Path, expected_receipt: str) -> dict:
         "contract_sha256": expected_receipt,
         "bundle_sha256": bundle["artifact_sha256"],
         "development_sha256": artifacts["development_module"]["artifact_sha256"],
+        "variant_artifact_sha256": variant_sha,
+        "vrs_allele_id": vrs_allele_id,
         "affinity_ratio": stored_q,
         "affinity_ratios": dict(zip(proteins, stored_vec)),
         "background_floor": eff_floor,

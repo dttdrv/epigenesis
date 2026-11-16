@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epigenesis.org/schemas/brainc.variant-collection.v1.schema.json",
+  "title": "brainc.variant-collection/v1",
+  "description": "Closed contract schema for sealed GA4GH VRS 2.x reference-bound variant collections.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "vrs_version",
+    "producer",
+    "source",
+    "variants_ir",
+    "variants_ir_sha256",
+    "artifact_sha256"
+  ],
+  "properties": {
+    "format": { "const": "brainc.variant-collection" },
+    "version": { "const": 1 },
+    "vrs_version": { "const": "2.x" },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "passes"],
+      "properties": {
+        "name": { "const": "brainc-variant" },
+        "version": { "const": "1.0.0" },
+        "passes": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "version",
+        "profile",
+        "source_ir_sha256",
+        "artifact_sha256",
+        "records"
+      ],
+      "properties": {
+        "format": { "const": "brainc.source-descriptor" },
+        "version": { "const": 1 },
+        "profile": { "type": "string", "minLength": 1 },
+        "source_ir_sha256": { "$ref": "#/$defs/sha256" },
+        "artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "records": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/recordRef" }
+        }
+      }
+    },
+    "variants_ir": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variants"],
+      "properties": {
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": { "$ref": "#/$defs/variantEntry" }
+        }
+      }
+    },
+    "variants_ir_sha256": { "$ref": "#/$defs/sha256" },
+    "artifact_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "refgetSeqId": {
+      "type": "string",
+      "pattern": "^SQ\\.[A-Za-z0-9_-]{32}$"
+    },
+    "vrsDigest": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{32}$"
+    },
+    "iupacNonEmpty": {
+      "type": "string",
+      "pattern": "^[ACGTRYSWKMBDHVN]+$"
+    },
+    "iupacAny": {
+      "type": "string",
+      "pattern": "^[ACGTRYSWKMBDHVN]*$"
+    },
+    "recordRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "bases", "sequence_sha256", "refget_id"],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "bases": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "sequence_sha256": { "$ref": "#/$defs/sha256" },
+        "refget_id": { "$ref": "#/$defs/refgetSeqId" }
+      }
+    },
+    "sequenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "refgetAccession"],
+      "properties": {
+        "type": { "const": "SequenceReference" },
+        "refgetAccession": { "$ref": "#/$defs/refgetSeqId" }
+      }
+    },
+    "sequenceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "sequenceReference", "start", "end"],
+      "properties": {
+        "type": { "const": "SequenceLocation" },
+        "sequenceReference": { "$ref": "#/$defs/sequenceReference" },
+        "start": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "end": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "identifiedSequenceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "digest", "sequenceReference", "start", "end"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^ga4gh:SL\\.[A-Za-z0-9_-]{32}$" },
+        "type": { "const": "SequenceLocation" },
+        "digest": { "$ref": "#/$defs/vrsDigest" },
+        "sequenceReference": { "$ref": "#/$defs/sequenceReference" },
+        "start": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "end": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "literalState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "sequence"],
+      "properties": {
+        "type": { "const": "LiteralSequenceExpression" },
+        "sequence": { "$ref": "#/$defs/iupacAny" }
+      }
+    },
+    "identifiedAllele": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "digest", "location", "state"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^ga4gh:VA\\.[A-Za-z0-9_-]{32}$" },
+        "type": { "const": "Allele" },
+        "digest": { "$ref": "#/$defs/vrsDigest" },
+        "location": { "$ref": "#/$defs/identifiedSequenceLocation" },
+        "state": { "$ref": "#/$defs/literalState" }
+      }
+    },
+    "variantEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinal",
+        "id",
+        "record_id",
+        "refget_id",
+        "sequence_sha256",
+        "edit_kind",
+        "ref",
+        "alt",
+        "location",
+        "state",
+        "vrs_location_id",
+        "vrs_allele_id",
+        "vrs_allele",
+        "mutated_bases",
+        "mutated_sequence_sha256",
+        "mutated_refget_id"
+      ],
+      "properties": {
+        "ordinal": { "type": "integer", "minimum": 0, "maximum": 99999 },
+        "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "refget_id": { "$ref": "#/$defs/refgetSeqId" },
+        "sequence_sha256": { "$ref": "#/$defs/sha256" },
+        "edit_kind": { "enum": ["snv", "mnv", "insertion", "deletion", "delins"] },
+        "ref": { "$ref": "#/$defs/iupacAny" },
+        "alt": { "$ref": "#/$defs/iupacAny" },
+        "location": { "$ref": "#/$defs/sequenceLocation" },
+        "state": { "$ref": "#/$defs/literalState" },
+        "vrs_location_id": { "type": "string", "pattern": "^ga4gh:SL\\.[A-Za-z0-9_-]{32}$" },
+        "vrs_allele_id": { "type": "string", "pattern": "^ga4gh:VA\\.[A-Za-z0-9_-]{32}$" },
+        "vrs_allele": { "$ref": "#/$defs/identifiedAllele" },
+        "mutated_bases": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "mutated_sequence_sha256": { "$ref": "#/$defs/sha256" },
+        "mutated_refget_id": { "$ref": "#/$defs/refgetSeqId" }
+      }
+    }
+  }
+}

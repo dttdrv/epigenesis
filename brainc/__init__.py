@@ -17,6 +17,7 @@ __all__ = [
     "DevelopmentBundle",
     "DevelopmentBundleError",
     "EXTERNAL_PROFILE",
+    "ExportError",
     "FASTA_PROFILE",
     "GFF3_PROFILE",
     "GenBankArtifact",
@@ -40,6 +41,10 @@ __all__ = [
     "SequenceCompilerError",
     "SourceBundle",
     "SourceError",
+    "VariantCollectionArtifact",
+    "VariantError",
+    "VariantValidationError",
+    "apply_variant_to_sequence",
     "compile_development",
     "compile_external_source",
     "compile_external_source_executable",
@@ -47,6 +52,9 @@ __all__ = [
     "compile_program",
     "compile_insdc_graph",
     "compile_source",
+    "compile_variants",
+    "export_omex",
+    "export_rocrate",
     "load_manifest",
     "load_genbank_artifact",
     "load_insdc_graph_bundle_directory",
@@ -57,8 +65,10 @@ __all__ = [
     "load_sequence_artifact",
     "load_sequence_collection",
     "load_source_bundle",
+    "load_variant_collection",
     "make_development_request",
     "make_request",
+    "revert_variant",
     "validate_binding",
     "validate_chain",
     "validate_genbank",
@@ -69,6 +79,12 @@ __all__ = [
     "validate_insdc_graph_report",
     "validate_source_bundle",
     "validate_source_descriptor",
+    "validate_variant_collection",
+    "validate_variant_paths",
+    "vrs_allele",
+    "vrs_allele_digest",
+    "vrs_location_digest",
+    "vrs_sequence_location",
 ]
 
 def __getattr__(name: str) -> Any:
@@ -151,6 +167,27 @@ def __getattr__(name: str) -> Any:
         "validate_source_descriptor",
     }:
         from . import source as module
+    elif name in {
+        "VariantCollectionArtifact",
+        "VariantError",
+        "apply_variant_to_sequence",
+        "compile_variants",
+        "load_variant_collection",
+        "revert_variant",
+        "vrs_allele",
+        "vrs_allele_digest",
+        "vrs_location_digest",
+        "vrs_sequence_location",
+    }:
+        from . import variant as module
+    elif name in {
+        "VariantValidationError",
+        "validate_variant_collection",
+        "validate_variant_paths",
+    }:
+        from . import validator_variant as module
+    elif name in {"ExportError", "export_omex", "export_rocrate"}:
+        from . import export as module
     elif name == "validate_chain":
         from . import validator as module
     elif name == "make_development_request":

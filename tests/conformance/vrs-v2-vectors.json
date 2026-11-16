@@ -1,0 +1,47 @@
+{
+  "format": "brainc.conformance-vectors",
+  "version": 1,
+  "vrs_version": "2.x",
+  "ga4gh_apoe_vector": {
+    "refgetAccession": "SQ.IIB53T8CNeJJdUqzn9V_JnRtQadwWCbl",
+    "start": 44908821,
+    "end": 44908822,
+    "state_sequence": "T",
+    "expected_location_digest": "wIlaGykfwHIpPY2Fcxtbx4TINbbODFVz",
+    "expected_location_id": "ga4gh:SL.wIlaGykfwHIpPY2Fcxtbx4TINbbODFVz",
+    "expected_allele_digest": "0AePZIWZUNsUlQTamyLrjm2HWUw2opLt",
+    "expected_allele_id": "ga4gh:VA.0AePZIWZUNsUlQTamyLrjm2HWUw2opLt"
+  },
+  "j02482_variant_collection": {
+    "source_profile": "fasta-dna/v1",
+    "source_path": "tests/data/J02482.1.fasta",
+    "parameters": { "wrapper": "identity" },
+    "inputs": [
+      { "id": "j02482-snv-0", "record_id": "J02482.1", "start": 0, "end": 1, "ref": "G", "alt": "T" },
+      { "id": "j02482-ins-4", "record_id": "J02482.1", "start": 4, "end": 4, "ref": "", "alt": "AC" },
+      { "id": "j02482-del-8", "record_id": "J02482.1", "start": 8, "end": 10, "ref": "TC", "alt": "" }
+    ],
+    "expected_variants_ir_sha256": "272343aa107a8ab440d15899f50c9180dbc5206d44207f8e7d03925e5aaad99d",
+    "expected_artifact_sha256": "7eb19e3614a9a529504a500805d1f64b1f3746050ea72f8484893dd0641d6ea6",
+    "expected_entries": [
+      {
+        "id": "j02482-snv-0",
+        "edit_kind": "snv",
+        "vrs_location_id": "ga4gh:SL.pNhQn5oNa81hk-geVf2fHxLzz-HQ39Tx",
+        "vrs_allele_id": "ga4gh:VA.oA6GNwVkqBlVMTtKO2hFEreC_kxRulI9"
+      },
+      {
+        "id": "j02482-ins-4",
+        "edit_kind": "insertion",
+        "vrs_location_id": "ga4gh:SL.8UcJfY0y823Qey_jEme4A5mY-VC-qT4H",
+        "vrs_allele_id": "ga4gh:VA.7VfrM1nHReyFkDbXLGi3VxCBFiFwMCc4"
+      },
+      {
+        "id": "j02482-del-8",
+        "edit_kind": "deletion",
+        "vrs_location_id": "ga4gh:SL.jm9NpVQznciNF9Ia6YLpHpZt4QQk7jVG",
+        "vrs_allele_id": "ga4gh:VA.MGM3RpHCwPSjpG0B9mZV5TeTdYzYnJwk"
+      }
+    ]
+  }
+}

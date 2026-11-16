@@ -1,0 +1,8 @@
+[package]
+name = "epigenesis-validate-rs"
+version = "1.0.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Independent zero-dependency Rust replay validator for Epigenesis Development Modules and VRS 2.x variant collections"
+
+[workspace]

@@ -1,6 +1,6 @@
 # Standards and format trace
 
-Epigenesis 1.5 treats each accepted biological format as an explicitly selected
+Epigenesis 1.7 treats each accepted biological format as an explicitly selected
 source profile with defined grammar, identity rules, limits, and versioned IR.
 Built-in raw DNA, FASTA, reference FASTA, GenBank, and bounded structural GFF3
 frontends feed one source-descriptor contract. The GenBank profile carries a
@@ -123,12 +123,13 @@ A source frontend qualifies for this architecture when it provides:
 
 ## Shipped and external-profile formats
 
-| Source family | Primary authority or basis | Status in 1.0 | Compiler treatment |
+| Source family | Primary authority or basis | Status in 1.7 | Compiler treatment |
 |---|---|---|---|
 | Raw IUPAC DNA | [INSDC nucleotide base codes](https://www.insdc.org/submitting-standards/feature-table/) | Built-in project profile | One named sequence lowered to exact Sequence Collection IR |
 | FASTA | [NCBI nucleotide FASTA](https://www.ncbi.nlm.nih.gov/genbank/fastaformat) | Built-in Epigenesis grammar; NCBI is the format basis | Exact Sequence Collection route and streaming `fasta-reference-dna/v1` catalog route |
 | Physical GenBank | [NCBI Release 273.0](https://www.ncbi.nlm.nih.gov/genbank/release/current/) and [INSDC 11.4](https://www.insdc.org/submitting-standards/feature-table/) | Built-in, packaged-authority-pinned | Traditional physical-DNA records to Sequence Collection v2 and structural INSDC BioIR |
 | GFF3 plus sequence | [Sequence Ontology GFF3 1.26](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md) | Built-in bounded structural profile | Syntax, coordinates, attributes, relationships, and exact sequence closure; ontology claims remain opaque |
+| Reference-bound variants | [GA4GH VRS 2.x](https://vrs.ga4gh.org/) | Built-in variant collection layer (`brainc.variant-collection/v1`) | Normalizes SNV/MNV/indel edits against exact reference slices, computes `ga4gh:SL.` / `ga4gh:VA.` SHA-512/24URL digests over RFC 8785 JSON, and verifies apply/revert identity |
 | FASTQ reads | [Cock et al.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2847217/) and [HTS registry](https://samtools.github.io/hts-specs/) | External profile required | Pin one FASTQ dialect and quality convention; the HTS registry notes that FASTQ has no formal definition and has incompatible variants |
 | Physical EMBL/DDBJ records | [ENA EMBL flat file](https://ena-docs.readthedocs.io/en/latest/submit/fileprep/sequence-flatfile.html), [DDBJ flat file](https://www.ddbj.nig.ac.jp/ddbj/flat-file-e.html), and [INSDC 11.4](https://www.insdc.org/submitting-standards/feature-table/) | External profile required | Preserve each outer grammar while binding physical sequence and shared feature-table semantics |
 | SAM/BAM 1.6 or CRAM 3.1 | [HTS specifications](https://samtools.github.io/hts-specs/) | External composite profile required | Bind read/alignment semantics and exact sequences; records with `SEQ=*` require a separately bound DNA source |
@@ -141,6 +142,7 @@ Identity and transport remain separate from source parsing:
 |---|---:|---|
 | [GA4GH refget Sequences](https://ga4gh.github.io/refget/sequences/) | 2.0.0 | Content-derived sequence identity and optional retrieval |
 | [GA4GH refget Sequence Collections](https://ga4gh.github.io/refget/seqcols/) | 1.0.0 | Content-derived identity for ordered reference collections |
+| [GA4GH VRS](https://vrs.ga4gh.org/) | 2.x | Content-derived `SequenceLocation` (`ga4gh:SL.`) and `Allele` (`ga4gh:VA.`) variant identities |
 | [GA4GH htsget](https://samtools.github.io/hts-specs/htsget.html) | 1.3.1 | Transport for BAM/CRAM and VCF/BCF bytes that still enter a declared source profile |
 
 Wire-version boundaries remain explicit: GenBank emits Sequence Collection v2;
@@ -148,11 +150,12 @@ GFF3 and retained feature-graph paths consume Sequence Collection v1.
 
 ## Release statement
 
-Epigenesis 1.5 is a deterministic biological-source compiler. Its GenBank
-profile is packaged-authority-pinned; other built-ins use project-defined
-grammar versions; external profiles bind declared authorities and
-manifest-qualified caller attestations. The producer-isolated validator
-reparses built-in sources and verifies external source closures from exact
-bytes and attestation integrity.
+Epigenesis 1.7 is a deterministic biological-source and variant provenance
+compiler. Its GenBank profile is packaged-authority-pinned; other built-ins
+use project-defined grammar versions; external profiles bind declared
+authorities and manifest-qualified caller attestations. Producer-isolated
+validators reparse built-in sources, verify external source closures, and
+replay reference-bound variant collections from exact bytes and attestation
+integrity.
 
 Licensed under Apache-2.0.

@@ -31,6 +31,9 @@ sys.path.insert(0, str(REPO / "examples/neural-circuit"))
 sys.path.insert(0, str(REPO / "examples/neural-patterning"))
 
 from brainc._io import load_json_object, read_regular_file
+from brainc.source import load_source_bundle
+from brainc.validator_variant import validate_variant_paths
+from brainc.variant import apply_variant_to_sequence
 import circuit as nc
 import patterning as pat
 
@@ -1249,13 +1252,21 @@ def verify_causal_controls(
     checks = [
         {"name": "exact_allele_reversion_zero_diff", "passed": rev_max_diff == 0.0, "evidence": {"max_state_diff": rev_max_diff}},
         {"name": "passive_reporter_isolation", "passed": rep_max_diff == 0.0, "evidence": {"max_state_diff": rep_max_diff}},
-        {"name": "top_candidate_brainc_bundle_verified", "passed": bool(top_compiled.get("bundle_sha256")), "evidence": {"contract_sha256": top_compiled["contract_sha256"]}},
+        {"name": "top_candidate_brainc_bundle_verified", "passed": bool(top_compiled.get("bundle_sha256")), "evidence": {
+            "contract_sha256": top_compiled["contract_sha256"],
+            "variant_artifact_sha256": top_compiled.get("variant_artifact_sha256"),
+            "vrs_allele_id": top_compiled.get("vrs_allele_id"),
+        }},
     ]
     if cis_compiled is not None:
         checks.append({
             "name": "cis_rescue_brainc_bundle_verified",
             "passed": bool(cis_compiled.get("bundle_sha256")),
-            "evidence": {"contract_sha256": cis_compiled["contract_sha256"]},
+            "evidence": {
+                "contract_sha256": cis_compiled["contract_sha256"],
+                "variant_artifact_sha256": cis_compiled.get("variant_artifact_sha256"),
+                "vrs_allele_id": cis_compiled.get("vrs_allele_id"),
+            },
         })
 
     return {
@@ -1623,15 +1634,56 @@ def run_radar(
     return report
 
 
-def _load_variants_file(path: Path) -> list[dict]:
-    """Load targeted variant table from JSON, CSV, or TSV."""
-    raw = read_regular_file(path, maximum_bytes=4 * 1024 * 1024).decode("utf-8")
+def _parse_strict_json(raw_bytes: bytes, label: str) -> Any:
+    text = raw_bytes.decode("utf-8")
+
+    def _no_dups(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for k, v in pairs:
+            if k in out:
+                raise ValueError(f"duplicate JSON key in {label}: {k!r}")
+            out[k] = v
+        return out
+
+    def _no_const(val: str) -> None:
+        raise ValueError(f"non-finite JSON constant in {label}: {val}")
+
+    return json.loads(text, object_pairs_hook=_no_dups, parse_constant=_no_const)
+
+
+def _load_variants_file(path: Path, *, source_bundle: Path | None = None) -> list[dict]:
+    """Load targeted variant table from JSON, sealed brainc.variant-collection/v1, CSV, or TSV."""
+    raw_bytes = read_regular_file(path, maximum_bytes=16 * 1024 * 1024)
     suf = path.suffix.lower()
     if suf == ".json":
-        data = json.loads(raw)
+        data = _parse_strict_json(raw_bytes, str(path))
+        if isinstance(data, dict) and data.get("format") == "brainc.variant-collection":
+            from brainc.validator_variant import _extract_reference_sequences, _read_source_bundle_files, validate_variant_collection
+
+            src_dir = source_bundle if source_bundle is not None else (path.parent / "source")
+            if not src_dir.is_dir():
+                raise ValueError("sealed variant-collection JSON requires --source-bundle (or adjacent source/ directory)")
+            bundle_files = _read_source_bundle_files(src_dir)
+            report = validate_variant_collection(bundle_files, data)
+            if not report["valid"]:
+                raise ValueError(f"variant collection failed validation: {report.get('detail')}")
+            _, seqs = _extract_reference_sequences(bundle_files)
+            rows: list[dict] = []
+            for entry in data["variants_ir"]["variants"]:
+                ref_seq = seqs[entry["record_id"]]
+                var_seq = apply_variant_to_sequence(ref_seq, entry)
+                rows.append({
+                    "id": entry["id"],
+                    "reference": ref_seq,
+                    "sequence": var_seq,
+                    "vrs_allele_id": entry["vrs_allele_id"],
+                    "vrs_location_id": entry["vrs_location_id"],
+                })
+            return rows
         if not isinstance(data, list) or not data:
-            raise ValueError("variants JSON must be a non-empty list")
+            raise ValueError("variants JSON must be a non-empty list or brainc.variant-collection/v1 object")
         return data
+    raw = raw_bytes.decode("utf-8")
     delim = "\t" if suf == ".tsv" else ","
     reader = csv.DictReader(raw.splitlines(), delimiter=delim)
     rows = [dict(r) for r in reader]
@@ -1644,6 +1696,7 @@ def analyze_variant_table(
     variants_path: Path,
     output: Path,
     *,
+    source_bundle: Path | None = None,
     circuit: str | dict | Path | None = None,
     protein: str | dict | Path | None = None,
     target: str | list[str] | tuple[str, ...] | None = None,
@@ -1655,10 +1708,10 @@ def analyze_variant_table(
     duration: float = 40.0,
     include_sequence_models: bool = True,
 ) -> dict:
-    """Evaluate arbitrary SNV/MNV/insertion/deletion variants from a JSON/CSV/TSV table across the full signal regime."""
+    """Evaluate arbitrary SNV/MNV/insertion/deletion variants from a JSON/CSV/TSV table or sealed brainc.variant-collection/v1."""
     output.mkdir(parents=True, exist_ok=True)
     eff_floor = nc._resolve_background_floor(background_floor, epsilon)
-    rows = _load_variants_file(variants_path)
+    rows = _load_variants_file(variants_path, source_bundle=source_bundle)
     ctx = nc._resolve_context(circuit, protein, target, 0.5 * (signal_min + signal_max), None, None)
     signal_grid = _signal_grid(signal_min, signal_max, signal_steps)
     bindings = ctx["bindings"]
@@ -1668,8 +1721,12 @@ def analyze_variant_table(
 
     parsed = []
     seq_pairs = []
+    seen_ids: set[str] = set()
     for idx, row in enumerate(rows):
         eid = str(row.get("id") or f"var-{idx + 1}")
+        if eid in seen_ids:
+            raise ValueError(f"duplicate variant id in table: {eid!r}")
+        seen_ids.add(eid)
         ref = str(row.get("reference") or "").strip().upper()
         alt_seq = row.get("sequence") or row.get("variant")
         if not ref:
@@ -2010,7 +2067,8 @@ def main() -> int:
     _add_regime_args(s)
 
     v = sub.add_parser("variants", help="evaluate arbitrary SNV/MNV/indel variant table across the signaling regime")
-    v.add_argument("--variants", type=Path, required=True, help="JSON, CSV, or TSV table of variants")
+    v.add_argument("--variants", type=Path, required=True, help="JSON, sealed brainc.variant-collection/v1, CSV, or TSV table")
+    v.add_argument("--source-bundle", type=Path, default=None, help="source bundle directory when --variants is a sealed brainc.variant-collection/v1")
     _add_regime_args(v)
 
     b = sub.add_parser("benchmark", help="benchmark across curated GSE188264 loci + real measured CRE perturbations")
@@ -2073,7 +2131,7 @@ def main() -> int:
 
         if args.command == "variants":
             rep = analyze_variant_table(
-                args.variants, args.output, circuit=args.circuit, protein=args.protein, target=args.target,
+                args.variants, args.output, source_bundle=args.source_bundle, circuit=args.circuit, protein=args.protein, target=args.target,
                 signal_min=args.signal_min, signal_max=args.signal_max, signal_steps=args.steps,
                 background_floor=args.background_floor, include_sequence_models=seq_on,
             )

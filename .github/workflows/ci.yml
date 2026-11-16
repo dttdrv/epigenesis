@@ -34,6 +34,11 @@ jobs:
           java-version: "21"
       - name: Unit and integration tests
         run: python -m unittest discover -s tests -v
+      - name: Independent Rust replay validator (fail-closed)
+        run: |
+          cargo --version
+          cargo test --offline --manifest-path validators/rust/Cargo.toml
+          python -m unittest tests.test_rust_validator tests.test_differential_fuzz -v
       - name: Compiler-only boundary
         run: python tests/verify.py boundary
       - name: Research publication identities
@@ -127,6 +132,7 @@ jobs:
           python tests/verify.py neural-construction
           python tests/verify.py coding-consequences
           python tests/verify.py neural-binding
+          python tests/verify.py variant-layer
           python tests/verify.py contract-attacks
           python tests/verify.py resource-path-safety
       - name: Installed real-DNA compilation and replay

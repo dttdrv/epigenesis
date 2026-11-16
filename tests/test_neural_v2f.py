@@ -278,6 +278,43 @@ class NeuralV2FRadarTests(unittest.TestCase):
         self.assertEqual(res["unseen_test_loci"], 118)
         self.assertEqual(res["measured_test_variants_scored"], 1885)
 
+    def test_sealed_variant_collection_input_to_radar(self):
+        from brainc.source import FASTA_PROFILE, compile_source
+        from brainc.variant import compile_variants
+
+        ref = "ACTG" * 5 + "GACCACCCA" + "TGCA" * 5
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            fasta = root / "enh.fasta"
+            fasta.write_text(f">enh1\n{ref}\n", encoding="utf-8")
+            src_dir = root / "source"
+            vc_path = root / "variants.json"
+            compile_source(FASTA_PROFILE, {"sequence": fasta}, parameters={"wrapper": "identity"}).save(src_dir)
+            compile_variants(
+                src_dir,
+                [
+                    {"id": "enh-snv-core", "record_id": "enh1", "start": 22, "end": 23, "ref": "C", "alt": "A"},
+                    {"id": "enh-snv-flank", "record_id": "enh1", "start": 0, "end": 1, "ref": "A", "alt": "T"},
+                ],
+            ).save(vc_path)
+            rep = self.radar.analyze_variant_table(
+                vc_path,
+                root / "out",
+                source_bundle=src_dir,
+                signal_min=0.06,
+                signal_max=0.85,
+                signal_steps=9,
+                include_sequence_models=False,
+            )
+            self.assertEqual(rep["variants_tested"], 2)
+            self.assertTrue(rep["causal_controls"]["all_passed"])
+            top_ev = next(
+                c["evidence"]
+                for c in rep["causal_controls"]["checks"]
+                if c["name"] == "top_candidate_brainc_bundle_verified"
+            )
+            self.assertTrue((top_ev.get("vrs_allele_id") or "").startswith("ga4gh:VA."))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -396,6 +396,22 @@ class NeuralCircuitTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.cir.verify_circuit_bundle(out, receipt)
 
+    def test_circuit_bundle_binds_and_verifies_vrs_variant_collection(self):
+        ref = "ACTG" * 5 + "GACCACCCA" + "TGCA" * 5
+        var = "ACTG" * 5 + "GAACACCCA" + "TGCA" * 5
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "vrs_bundle"
+            receipt = self.cir.compile_circuit_bundle(ref, var, output=out)
+            self.assertTrue((out / "variants.json").is_file())
+            verified = self.cir.verify_circuit_bundle(out, receipt)
+            self.assertTrue(verified["vrs_allele_id"].startswith("ga4gh:VA."))
+            self.assertIsNotNone(verified["variant_artifact_sha256"])
+            vdata = json.loads((out / "variants.json").read_text(encoding="utf-8"))
+            vdata["variants_ir"]["variants"][0]["alt"] = "T"
+            (out / "variants.json").write_text(json.dumps(vdata), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                self.cir.verify_circuit_bundle(out, receipt)
+
 
 if __name__ == "__main__":
     unittest.main()
