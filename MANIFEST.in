@@ -31,7 +31,9 @@ recursive-include examples/coding-consequences/data *.gb *.prt *.xml *.tiff *.tx
 recursive-include examples/neural-binding/data *.gb *.rsd *.RData *.txt
 include examples/neural-binding/data/FamilyCode-LICENSE
 recursive-include brainc/standards *.json
+recursive-include brainc/schemas *.json
 recursive-include tests *.py
+recursive-include tests/conformance *.json
 recursive-exclude tests/data *
 include tests/data/J02482.1.fasta
 include tests/data/J02482.1.gff3
@@ -41,5 +43,7 @@ include tests/data/U49845.1.gb
 include tests/data/U49845.1.gb.source.json
 include tests/data/CP032762.1.source.json
 include tests/data/NeuralAttachmentProbe.java
+recursive-include validators/rust Cargo.toml *.rs
+prune validators/rust/target
 global-exclude __pycache__
 global-exclude *.py[cod]

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epigenesis.org/schemas/brainc.development-bundle.v1.schema.json",
+  "title": "brainc.development-bundle/v1",
+  "description": "Closed contract schema for reference-only Development Module bundle indexes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "profile",
+    "source",
+    "artifacts",
+    "blobs",
+    "artifact_sha256"
+  ],
+  "properties": {
+    "format": { "const": "brainc.development-bundle" },
+    "version": { "const": 1 },
+    "profile": { "const": "development-module/v1" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["descriptor", "native"],
+      "properties": {
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format", "version", "artifact_sha256", "ir_sha256"],
+          "properties": {
+            "format": { "const": "brainc.source-descriptor" },
+            "version": { "const": 1 },
+            "artifact_sha256": { "$ref": "#/$defs/sha256" },
+            "ir_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "native": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["format", "version", "artifact_sha256", "ir_sha256"],
+            "properties": {
+              "format": { "type": "string", "minLength": 1 },
+              "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              "artifact_sha256": { "$ref": "#/$defs/sha256" },
+              "ir_sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compilation_record",
+        "development_module",
+        "lowering_policy",
+        "prediction_request",
+        "prediction_response",
+        "provider_manifest",
+        "target_contract"
+      ],
+      "properties": {
+        "compilation_record": { "$ref": "#/$defs/childRef" },
+        "development_module": { "$ref": "#/$defs/childRef" },
+        "lowering_policy": { "$ref": "#/$defs/childRef" },
+        "prediction_request": { "$ref": "#/$defs/childRef" },
+        "prediction_response": { "$ref": "#/$defs/childRef" },
+        "provider_manifest": { "$ref": "#/$defs/childRef" },
+        "target_contract": { "$ref": "#/$defs/childRef" }
+      }
+    },
+    "blobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sha256", "byte_length"],
+        "properties": {
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "byte_length": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    "artifact_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "childRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "version", "artifact_sha256"],
+      "properties": {
+        "format": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "artifact_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

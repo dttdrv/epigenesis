@@ -98,6 +98,46 @@ class ValidatorImportIsolationTests(unittest.TestCase):
             text=True,
         )
 
+    def test_variant_validator_import_loads_no_producer_modules(self) -> None:
+        command = (
+            "import sys; "
+            f"sys.path.insert(0, {str(ROOT)!r}); "
+            "import brainc.validator_variant; "
+            "forbidden={'brainc.variant','brainc.source','brainc.source_scale',"
+            "'brainc.insdc','brainc.compiler','brainc._canonical','brainc._io',"
+            "'brainc.v2','brainc.v2.compiler'}; "
+            "loaded=sorted(forbidden.intersection(sys.modules)); "
+            "assert not loaded, loaded"
+        )
+        subprocess.run(
+            [sys.executable, "-I", "-c", command],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_lazy_public_variant_api(self) -> None:
+        command = (
+            "import sys; "
+            f"sys.path.insert(0, {str(ROOT)!r}); "
+            "from brainc import (VariantValidationError, validate_variant_collection, "
+            "validate_variant_paths); "
+            "assert VariantValidationError.__module__ == 'brainc.validator_variant'; "
+            "assert validate_variant_collection.__module__ == 'brainc.validator_variant'; "
+            "assert validate_variant_paths.__module__ == 'brainc.validator_variant'; "
+            "forbidden={'brainc.variant','brainc.source','brainc._canonical','brainc._io'}; "
+            "loaded=sorted(forbidden.intersection(sys.modules)); "
+            "assert not loaded, loaded"
+        )
+        subprocess.run(
+            [sys.executable, "-I", "-c", command],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

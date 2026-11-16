@@ -1,0 +1,46 @@
+{
+  "format": "brainc.negative-conformance-vectors",
+  "version": 1,
+  "invalid_compile_inputs": [
+    {
+      "name": "no-op-edit",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "noop", "record_id": "J02482.1", "start": 0, "end": 1, "ref": "G", "alt": "G" }
+    },
+    {
+      "name": "reference-slice-mismatch",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "badref", "record_id": "J02482.1", "start": 0, "end": 1, "ref": "A", "alt": "T" }
+    },
+    {
+      "name": "out-of-bounds-end",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "oob", "record_id": "J02482.1", "start": 5385, "end": 5387, "ref": "CC", "alt": "AA" }
+    },
+    {
+      "name": "inverted-interval",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "inv", "record_id": "J02482.1", "start": 5, "end": 4, "ref": "", "alt": "A" }
+    },
+    {
+      "name": "lowercase-iupac",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "lower", "record_id": "J02482.1", "start": 0, "end": 1, "ref": "G", "alt": "a" }
+    },
+    {
+      "name": "unknown-input-key",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "extra", "record_id": "J02482.1", "start": 0, "end": 1, "ref": "G", "alt": "T", "note": "x" }
+    },
+    {
+      "name": "boolean-start-coordinate",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "boolcoord", "record_id": "J02482.1", "start": true, "end": 2, "ref": "A", "alt": "C" }
+    },
+    {
+      "name": "insertion-nonempty-ref",
+      "expected_code": "VARIANT001",
+      "variant": { "id": "insref", "record_id": "J02482.1", "start": 4, "end": 4, "ref": "A", "alt": "T" }
+    }
+  ]
+}

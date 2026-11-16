@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epigenesis.org/schemas/brainc.source-descriptor.v1.schema.json",
+  "title": "brainc.source-descriptor/v1",
+  "description": "Closed contract schema for Epigenesis DNA source-descriptor artifacts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "producer",
+    "source_ir",
+    "source_ir_sha256",
+    "artifact_sha256"
+  ],
+  "properties": {
+    "format": {
+      "const": "brainc.source-descriptor"
+    },
+    "version": {
+      "const": 1
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "passes"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "passes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "source_ir": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "parameters", "inputs", "artifacts", "records"],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": [
+            "raw-iupac-dna/v1",
+            "fasta-dna/v1",
+            "fasta-reference-dna/v1",
+            "genbank-273-traditional-dna-physical-structural/v2",
+            "gff3-external-sequence/v1",
+            "external-dna-source/v1"
+          ]
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "inputs": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 64,
+          "additionalProperties": { "$ref": "#/$defs/inputRef" }
+        },
+        "artifacts": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 5,
+          "additionalProperties": false,
+          "properties": {
+            "sequence": { "$ref": "#/$defs/artifactRef" },
+            "reference": { "$ref": "#/$defs/artifactRef" },
+            "external": { "$ref": "#/$defs/artifactRef" },
+            "genbank": { "$ref": "#/$defs/artifactRef" },
+            "annotation": { "$ref": "#/$defs/artifactRef" }
+          }
+        },
+        "records": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/recordRef" }
+        }
+      }
+    },
+    "source_ir_sha256": { "$ref": "#/$defs/sha256" },
+    "artifact_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "refgetSeqId": {
+      "type": "string",
+      "pattern": "^SQ\\.[A-Za-z0-9_-]{32}$"
+    },
+    "inputRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "byte_length"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "byte_length": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "version", "artifact_sha256", "ir_sha256"],
+      "properties": {
+        "format": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "ir_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "recordRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "bases", "sequence_sha256", "refget_id"],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "bases": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "sequence_sha256": { "$ref": "#/$defs/sha256" },
+        "refget_id": { "$ref": "#/$defs/refgetSeqId" }
+      }
+    }
+  }
+}

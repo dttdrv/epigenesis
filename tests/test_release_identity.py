@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 
 import brainc
-from brainc import compiler, development_bundle, external_source, source, source_scale
+from brainc import compiler, development_bundle, external_source, source, source_scale, variant
 from brainc import validator_development, validator_external, validator_reference
 from brainc.v2 import compiler as tensor_compiler
 
@@ -29,6 +29,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             external_source.PRODUCER,
             external_source.EXECUTABLE_PRODUCER,
             development_bundle.PRODUCER,
+            variant.PRODUCER,
             validator_reference.PRODUCER,
             validator_external.CLOSURE_PRODUCER,
             validator_external.EXECUTABLE_CLOSURE_PRODUCER,

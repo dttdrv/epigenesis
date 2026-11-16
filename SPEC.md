@@ -446,6 +446,8 @@ Public compiler failures are normalized into stable domains:
 | `DEVB001` | development compilation or bundle linking |
 | `REFVAL001` | independent reference replay |
 | `DEVVAL001` | independent complete-compilation replay |
+| `VARIANT001` | variant normalization, VRS 2.x digest computation, or binding |
+| `VARVAL001` | independent variant-collection replay validation |
 
 Malformed user input MUST NOT escape as raw `TypeError`, `KeyError`,
 `AssertionError`, `MemoryError`, or traceback. Internal programming errors are
@@ -480,6 +482,21 @@ Package 1.0 retains these independently versioned paths:
 | Structural feature graph | `compile-feature-graph`, `validate-feature-graph` |
 | INSDC feature state | `compile-insdc-graph`, `brainc-validate-insdc-graph` |
 | Final source/development compiler | `compile-source`, `compile-external-source`, `compile-development`, `brainc-validate-development` |
+| Reference-bound VRS 2.x variant layer | `compile-variants`, `validate-variants`, `brainc-validate-variants` |
+| Provenance archive export | `export-rocrate`, `export-omex` |
+
+`brainc.variant-collection/v1` binds DNA edits (SNV, MNV, insertion, deletion,
+delins) to a verified `brainc.source-descriptor/v1` bundle, checks reference
+slice identity, assigns deterministic GA4GH VRS 2.x `SequenceLocation`
+(`ga4gh:SL.<sha512t24u>`) and `Allele` (`ga4gh:VA.<sha512t24u>`) identifiers,
+and supports byte-identical apply/revert roundtrips via
+`brainc.validator_variant`. Closed Draft 2020-12 JSON Schemas ship under
+`brainc/schemas/`. An independent zero-dependency Rust replay validator
+(`validators/rust/`) replays `brainc.source-descriptor/v1`,
+`brainc.development-bundle/v1`, and `brainc.variant-collection/v1` artifacts
+to identical RFC 8785 and GA4GH VRS 2.x digests. `export-rocrate` and
+`export-omex` package verified bundle closures as deterministic RO-Crate 1.1
+directories and COMBINE/OMEX archives.
 
 Package versions, producer versions, wire-format versions, frontend-profile
 versions, and cited standards versions are separate namespaces. A wire-format

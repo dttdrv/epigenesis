@@ -19,10 +19,11 @@ brainc-validate-bio-chain = "brainc.validator_bio_chain:main"
 brainc-validate-genbank = "brainc.validator_insdc:main"
 brainc-validate-insdc-graph = "brainc.validator_insdc_graph:main"
 brainc-validate-development = "brainc.validator_development:main"
+brainc-validate-variants = "brainc.validator_variant:main"
 
 [tool.setuptools]
 packages = ["brainc", "brainc.v2"]
 py-modules = ["epigenesis_cli"]
 
 [tool.setuptools.package-data]
-brainc = ["standards/*.json"]
+brainc = ["standards/*.json", "schemas/*.json"]

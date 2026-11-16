@@ -75,6 +75,9 @@ from .validator_v2 import (
     validate_source_artifact,
     validate_target_artifact,
 )
+from .validator_variant import validate_variant_paths
+from .variant import compile_variants, load_variant_inputs
+from .export import export_omex, export_rocrate
 
 
 def _role_path_argument(value: str) -> tuple[str, str]:
@@ -266,6 +269,43 @@ def _parser() -> argparse.ArgumentParser:
     development.add_argument("--target", required=True)
     development.add_argument("--blob-root")
     development.add_argument("-o", "--output", required=True)
+    compile_variants_cmd = sub.add_parser(
+        "compile-variants",
+        help="compile and seal reference-bound edits with GA4GH VRS 2.x identifiers",
+    )
+    compile_variants_cmd.add_argument("source_bundle")
+    compile_variants_cmd.add_argument("--variants", required=True)
+    compile_variants_cmd.add_argument(
+        "--source-input",
+        action="append",
+        type=_role_path_argument,
+        default=[],
+        metavar="ROLE=PATH",
+    )
+    compile_variants_cmd.add_argument("-o", "--output", required=True)
+    validate_variants_cmd = sub.add_parser(
+        "validate-variants",
+        help="independently replay and verify a sealed variant collection",
+    )
+    validate_variants_cmd.add_argument("source_bundle")
+    validate_variants_cmd.add_argument("variant_collection")
+    validate_variants_cmd.add_argument(
+        "--source-input",
+        action="append",
+        type=_role_path_argument,
+        default=[],
+        metavar="ROLE=PATH",
+    )
+    validate_variants_cmd.add_argument("-o", "--output", "--report", dest="report")
+    for exp_name, exp_help in (
+        ("export-rocrate", "export sealed bundle closure as an RO-Crate 1.1 directory"),
+        ("export-omex", "export sealed bundle closure as a COMBINE/OMEX archive"),
+    ):
+        exp_cmd = sub.add_parser(exp_name, help=exp_help)
+        exp_cmd.add_argument("development_bundle")
+        exp_cmd.add_argument("--source-bundle")
+        exp_cmd.add_argument("--variants")
+        exp_cmd.add_argument("-o", "--output", required=True)
     check = sub.add_parser("check", help="check one compiler artifact's closed schema and digest")
     check.add_argument("kind", choices=["sequence", "collection", "manifest", "request", "response", "policy", "program"]); check.add_argument("artifact")
     check_v2 = sub.add_parser(
@@ -707,6 +747,51 @@ def main(argv: list[str] | None = None) -> int:
                     sort_keys=True,
                 )
             )
+        elif args.command == "compile-variants":
+            source_inputs = _role_paths(args.source_input, "source input") if args.source_input else None
+            variant_inputs = load_variant_inputs(args.variants)
+            artifact = compile_variants(
+                args.source_bundle,
+                variant_inputs,
+                source_inputs=source_inputs,
+            )
+            saved_path = artifact.save(args.output)
+            print(
+                json.dumps(
+                    {
+                        "artifact_sha256": artifact.artifact_sha256,
+                        "output": str(saved_path),
+                        "variants_ir_sha256": artifact.variants_ir_sha256,
+                    },
+                    sort_keys=True,
+                )
+            )
+        elif args.command == "validate-variants":
+            source_inputs = _role_paths(args.source_input, "source input") if args.source_input else None
+            report = validate_variant_paths(
+                args.source_bundle,
+                args.variant_collection,
+                source_inputs=source_inputs,
+                report_path=args.report,
+            )
+            print(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False))
+            return 0 if report["valid"] else 1
+        elif args.command == "export-rocrate":
+            summary = export_rocrate(
+                args.development_bundle,
+                args.output,
+                source_bundle=args.source_bundle,
+                variant_collection=args.variants,
+            )
+            print(json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False))
+        elif args.command == "export-omex":
+            summary = export_omex(
+                args.development_bundle,
+                args.output,
+                source_bundle=args.source_bundle,
+                variant_collection=args.variants,
+            )
+            print(json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False))
         elif args.command == "check":
             _check(args.kind, args.artifact)
             print(json.dumps({"valid": True, "kind": args.kind, "artifact": args.artifact}, sort_keys=True))

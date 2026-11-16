@@ -507,6 +507,7 @@ class Circuit(unittest.TestCase):
             'circ_protein': dict(protein='GLI1'),
             'circ_target': dict(target='Pax6'),
             'circ_epsilon': dict(epsilon=1.5),
+            'circ_background_floor': dict(background_floor=-0.1),
             'circ_phases': dict(phases=[[0.0, 0.2]]),
             'circ_time': dict(phases=[[circuit.MAX_TIME + 1.0, 0.2]]),
             'circ_initial': dict(initial_state=dict(Pax6=0.1)),

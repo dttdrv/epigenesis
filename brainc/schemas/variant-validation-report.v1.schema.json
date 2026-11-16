@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epigenesis.org/schemas/brainc.variant-validation-report.v1.schema.json",
+  "title": "brainc.variant-validation-report/v1",
+  "description": "Closed contract schema for producer-isolated variant collection validation reports.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "validator",
+    "valid",
+    "code",
+    "detail",
+    "source_artifact_sha256",
+    "variant_artifact_sha256",
+    "checks",
+    "summary",
+    "report_sha256"
+  ],
+  "properties": {
+    "format": { "const": "brainc.variant-validation-report" },
+    "version": { "const": 1 },
+    "validator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "brainc-validator-variant" },
+        "version": { "const": "1.0.0" }
+      }
+    },
+    "valid": { "type": "boolean" },
+    "code": {
+      "anyOf": [
+        { "type": "null" },
+        { "const": "VARVAL001" }
+      ]
+    },
+    "detail": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1 }
+      ]
+    },
+    "source_artifact_sha256": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/sha256" }
+      ]
+    },
+    "variant_artifact_sha256": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "passed"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "passed": { "type": "boolean" }
+        }
+      }
+    },
+    "summary": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["variant_count", "vrs_version", "vrs_allele_ids"],
+          "properties": {
+            "variant_count": { "type": "integer", "minimum": 1, "maximum": 100000 },
+            "vrs_version": { "const": "2.x" },
+            "vrs_allele_ids": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "pattern": "^ga4gh:VA\\.[A-Za-z0-9_-]{32}$" }
+            }
+          }
+        }
+      ]
+    },
+    "report_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

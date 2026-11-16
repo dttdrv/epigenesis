@@ -1719,6 +1719,64 @@ def wheel() -> None:
         assert graph_report["result"]["units"] == 23
         assert graph_report["result"]["edges"] == 4
         assert json.loads(graph_report_path.read_text(encoding="utf-8")) == graph_report
+
+        variant_source_dir = root / "variant-source"
+        subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "compile-source",
+                "--profile", "fasta-dna/v1",
+                "--sequence", str(source_input),
+                "--wrapper", "identity",
+                "--output", str(variant_source_dir),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        variant_inputs = root / "variant-inputs.json"
+        variant_inputs.write_text(
+            json.dumps([{"id": "wheel-v1", "record_id": "J02482.1", "start": 0, "end": 1, "ref": "G", "alt": "T"}]),
+            encoding="utf-8",
+        )
+        variant_collection = root / "variant-collection.json"
+        subprocess.run(
+            [
+                sys.executable, "-m", "brainc", "compile-variants",
+                str(variant_source_dir), "--variants", str(variant_inputs), "-o", str(variant_collection),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        variant_validator = scripts / (
+            "brainc-validate-variants.exe" if os.name == "nt" else "brainc-validate-variants"
+        )
+        assert variant_validator.is_file(), variant_validator
+        variant_report_path = root / "variant-report.json"
+        subprocess.run(
+            [
+                str(variant_validator),
+                str(variant_source_dir),
+                str(variant_collection),
+                "-o",
+                str(variant_report_path),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        variant_report = json.loads(variant_report_path.read_text(encoding="utf-8"))
+        assert variant_report["valid"] is True
+        assert variant_report["summary"]["vrs_version"] == "2.x"
+        schema_check = subprocess.run(
+            [
+                sys.executable, "-c",
+                (
+                    "import pathlib, brainc; "
+                    "schemas = pathlib.Path(brainc.__file__).parent / 'schemas'; "
+                    "names = {p.name for p in schemas.glob('*.json')}; "
+                    "expected = {'source-descriptor.v1.schema.json', 'variant-collection.v1.schema.json', "
+                    "'variant-validation-report.v1.schema.json', 'development-bundle.v1.schema.json'}; "
+                    "assert expected <= names, names"
+                ),
+            ],
+            check=True, capture_output=True, text=True, cwd=root, env=environment,
+        )
+        assert schema_check.returncode == 0
     print("WHEEL-SMOKE-PASSED")
 
 
@@ -1926,6 +1984,15 @@ def sdist() -> None:
                 "brainc/validator_reference.py",
                 "brainc/validator_external.py",
                 "brainc/validator_development.py",
+                "brainc/variant.py",
+                "brainc/validator_variant.py",
+                "brainc/schemas/source-descriptor.v1.schema.json",
+                "brainc/schemas/variant-collection.v1.schema.json",
+                "brainc/schemas/variant-validation-report.v1.schema.json",
+                "brainc/schemas/development-bundle.v1.schema.json",
+                "tests/conformance/vrs-v2-vectors.json",
+                "tests/conformance/variant-negative-vectors.json",
+                "tests/test_variant_layer.py",
                 "tests/test_source_scale.py",
                 "tests/test_validator_reference.py",
                 "tests/test_external_profile.py",
@@ -2025,6 +2092,8 @@ def sdist() -> None:
             "compile-source",
             "compile-external-source",
             "compile-development",
+            "compile-variants",
+            "validate-variants",
         ):
             assert command in help_result.stdout, (command, help_result.stdout)
         subprocess.run(
@@ -2036,7 +2105,8 @@ def sdist() -> None:
                     "brainc.validator_insdc, brainc.source_scale, "
                     "brainc.external_profile, brainc.external_runtime, brainc.external_source, "
                     "brainc.development_bundle, brainc.validator_reference, "
-                    "brainc.validator_external, brainc.validator_development; "
+                    "brainc.validator_external, brainc.validator_development, "
+                    "brainc.variant, brainc.validator_variant; "
                     "assert brainc.__version__ == '1.7.0'"
                 ),
             ],
@@ -2374,6 +2444,14 @@ def neural_circuit() -> None:
     print("Boltzmann partition sum, cryptic bifurcation detection, and brainc compilation controls passed; organism phenotype is NOT ESTABLISHED.")
 
 
+def neural_v2f() -> None:
+    result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_v2f","-v"],cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("NEURAL-V2F-SOFTWARE-PASSED")
+    print("Tipping-point sweep, cis/trans rescue search, dinucleotide null controls, and brainc verification passed; biological phenotype is NOT ESTABLISHED.")
+
+
 def neural_regulation_motif() -> None:
     result = subprocess.run([sys.executable,"-m","unittest","tests.test_neural_regulation_motif","-v"],cwd=ROOT)
     if result.returncode != 0:
@@ -2382,10 +2460,19 @@ def neural_regulation_motif() -> None:
     print("Retrospective GSE188264 motif-temporal fit and bundled Studio Kreimer checkpoint match; biological development acceptance remains FALSE.")
 
 
+def variant_layer() -> None:
+    result = subprocess.run([sys.executable, "-m", "unittest", "tests.test_variant_layer", "-v"], cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("VARIANT-LAYER-PASSED")
+
+
 COMMANDS = {
     "coding-consequences": coding_consequences,
     "neural-binding": neural_binding,
     "neural-circuit": neural_circuit,
+    "neural-v2f": neural_v2f,
+    "variant-layer": variant_layer,
     "boundary": boundary,
     "canonical": canonical,
     "contract-attacks": contract_attacks,
