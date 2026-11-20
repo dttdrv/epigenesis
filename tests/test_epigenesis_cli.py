@@ -27,8 +27,24 @@ class EpigenesisCliTests(unittest.TestCase):
     def test_help_lists_all_unified_commands(self):
         res = self._run("--help")
         self.assertEqual(res.returncode, 0, res.stderr)
-        for cmd in ("studio", "circuit", "scan", "radar", "predict", "evidence", "patterning", "construction", "check"):
+        for cmd in ("develop", "studio", "circuit", "scan", "radar", "predict", "evidence", "patterning", "construction", "check"):
             self.assertIn(cmd, res.stdout)
+
+    def test_develop_demo_fast_mode_and_partial_flag_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "dev_out"
+            res = self._run("develop", "--skip-cx3d", "--output", str(out))
+            self.assertEqual(res.returncode, 0, res.stderr)
+            report = json.loads((out / "pipeline_report.json").read_text())
+            self.assertEqual(report["format"], "epigenesis.developmental-pipeline/v1")
+            self.assertTrue(report["provenance"]["variants_valid"])
+            self.assertTrue(report["provenance"]["development_valid"])
+            self.assertTrue(report["controls"]["reversion_exact"])
+            self.assertTrue(report["controls"]["closed_chromatin_cis_exact"])
+            self.assertFalse(report["biological_acceptance"])
+
+            bad = self._run("develop", "--fasta", str(out / "reference.fasta"))
+            self.assertEqual(bad.returncode, 2)
 
     def test_missing_repo_fails_cleanly_when_isolated(self):
         with tempfile.TemporaryDirectory() as tmp:

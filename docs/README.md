@@ -2,6 +2,7 @@
 
 | Folder | Contents |
 |---|---|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Three-layer architecture (Provenance Core → Unified Developmental Engine → Quarantined Exploratory Research) and honest scientific roadmap. |
 | [`paper/`](paper/) | The technical paper, as PDF in [English](paper/epigenesis-technical-paper.pdf) and [Bulgarian](paper/epigenesis-technical-paper.bg.pdf); the LaTeX sources sit beside them, and `build.py` regenerates the PDFs with [Tectonic](https://tectonic-typesetting.org) (Palatino and Menlo fonts, as on macOS). Start here for the scientific claims and the evidence for them. |
 | [`reference/`](reference/) | [Standards and format trace](reference/STANDARDS.md); [prior art and scientific position](reference/PRIOR_ART.md). |
 | [`research/`](research/) | The [predictor roadmap](research/NEURAL_PREDICTOR_ROADMAP.md) (running lab record); the [acceptance protocol](research/NEURAL_MECHANISM_ACCEPTANCE.md); the [CRX binding audit](research/CRX_BINDING_AUDIT.md); the [neuroscience presentation guide](research/NEUROSCIENCE_PRESENTATION.md). |

@@ -1,5 +1,8 @@
 # Replayable MPRA Variant-Effect Reanalysis (`GSE188264`)
 
+> [!NOTE]
+> **Exploratory Provenance Demonstration (`biological_acceptance = false`).** This module sits in Layer 3 of [Epigenesis's architecture](../../docs/ARCHITECTURE.md). It demonstrates sealing variant-calling parameter sensitivity using the repository's bundled Kreimer et al. (2022) `GSE188264` summary `alphas.csv.gz` under two declared calling thresholds; it does **not** yet ingest raw IGVF barcode count tables or establish a biological discovery.
+
 This example addresses the MPRA reproducibility gap highlighted in Rosen et al. (2026) (*Genome Research* 36:1940–1951): pipelines standardize processing, while Epigenesis seals **exact source bytes, GA4GH VRS 2.x variant identities, declared calling parameters, and computed variant calls** into independently replayable bundles.
 
 ## Pipeline

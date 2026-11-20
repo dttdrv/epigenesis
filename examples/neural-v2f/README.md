@@ -1,5 +1,8 @@
 # Variant-to-Function (V2F) Tipping-Point & Rescue Radar
 
+> [!NOTE]
+> **Exploratory Research Module (`biological_acceptance = false`).** This module sits in Layer 3 (exploratory experiments) of [Epigenesis's architecture](../../docs/ARCHITECTURE.md). While software determinism, dinucleotide/scrambled-PWM null controls, and sealed `brainc` replay pass, the frozen held-out test on 1,885 unseen `GSE188264` alleles ([`heldout-freeze/RESULTS.md`](heldout-freeze/RESULTS.md)) measured near-zero empirical MPRA concordance (`Pearson r = 0.012`, `0 / 7` predicted cryptic alleles empirically silent). Do not treat outputs as validated biological or clinical predictions.
+
 Detects **passive-reporter-silent, endogenous-circuit tipping** non-coding variants across full developmental signaling regimes—explaining why standard linear/MPRA constructs or single-dose assays can miss causal enhancers shifts, quantifying exact morphogen tipping-point shifts ($\Delta S_{\mathrm{crit}}$), proposing **dual cis/trans rescues**, and falsifying claims against **exact Altschul–Erickson dinucleotide shuffles** and **column-scrambled motif PWMs**.
 
 ## Plain-English Summary: What Problem Does This Solve?

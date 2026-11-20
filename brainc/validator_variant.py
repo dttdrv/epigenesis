@@ -521,6 +521,22 @@ def _extract_reference_sequences(
     if set(bundle_files) != expected_file_closure[profile]:
         raise _fail(f"source bundle files {sorted(bundle_files)} do not match profile {profile!r}")
 
+    if source_inputs is not None:
+        inputs_meta = source_ir.get("inputs")
+        if type(inputs_meta) is not dict:
+            raise _fail("source_ir.inputs must be an object")
+        for role, inp_path in source_inputs.items():
+            if role not in inputs_meta:
+                if profile == EXTERNAL_PROFILE and role == "sequence":
+                    continue
+                raise _fail(f"unexpected source_input role {role!r} not in source_ir.inputs")
+            inp_ref = inputs_meta[role]
+            if type(inp_ref) is not dict or type(inp_ref.get("sha256")) is not str or type(inp_ref.get("byte_length")) is not int:
+                raise _fail(f"source_ir.inputs.{role} invalid")
+            raw_inp = _read_regular_file(inp_path, f"source input {role}", maximum_bytes=MAX_SEQUENCE_INPUT_BYTES)
+            if hashlib.sha256(raw_inp).hexdigest() != inp_ref["sha256"] or len(raw_inp) != inp_ref["byte_length"]:
+                raise _fail(f"source input {role!r} SHA-256 or byte_length disagrees with source.json")
+
     sequences: dict[str, str] = {}
     if profile in {RAW_PROFILE, FASTA_PROFILE, GFF3_PROFILE}:
         seq_obj = _verify_bundle_child(

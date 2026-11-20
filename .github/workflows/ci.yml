@@ -133,6 +133,7 @@ jobs:
           python tests/verify.py coding-consequences
           python tests/verify.py neural-binding
           python tests/verify.py variant-layer
+          python tests/verify.py developmental-pipeline
           python tests/verify.py contract-attacks
           python tests/verify.py resource-path-safety
       - name: Installed real-DNA compilation and replay

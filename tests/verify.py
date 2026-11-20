@@ -2467,8 +2467,17 @@ def variant_layer() -> None:
     print("VARIANT-LAYER-PASSED")
 
 
+def developmental_pipeline() -> None:
+    result = subprocess.run([sys.executable, "-m", "unittest", "tests.test_developmental_pipeline", "-v"], cwd=ROOT)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    print("DEVELOPMENTAL-PIPELINE-SOFTWARE-PASSED")
+    print("Composable DNA -> VRS -> chromatin/GRN uncertainty -> CX3D+LIF controls passed; biological phenotype is NOT ESTABLISHED.")
+
+
 COMMANDS = {
     "coding-consequences": coding_consequences,
+    "developmental-pipeline": developmental_pipeline,
     "neural-binding": neural_binding,
     "neural-circuit": neural_circuit,
     "neural-v2f": neural_v2f,

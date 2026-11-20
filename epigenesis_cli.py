@@ -54,6 +54,37 @@ def _run_py(cmd: list[str | Path], *, cwd: Path | None = None) -> int:
     return subprocess.call([sys.executable, *[str(part) for part in cmd]], cwd=cwd)
 
 
+def _cmd_develop(args: argparse.Namespace) -> int:
+    repo = _find_repo(args.repo)
+    script = repo / "examples/developmental-pipeline/pipeline.py"
+    custom_flags = (args.fasta is not None, args.spec is not None, args.variants is not None)
+    if any(custom_flags) and not all(custom_flags):
+        print("develop requires --fasta, --spec, and --variants together for custom runs", file=sys.stderr)
+        return 2
+    out = _resolve_out(args.output, "developmental-pipeline")
+    common: list[str | Path] = ["--output", out, "--cx3d-duration", str(args.cx3d_duration), "--cx3d-seed", str(args.cx3d_seed)]
+    if args.skip_cx3d:
+        common.append("--skip-cx3d")
+    if args.export_bundles:
+        common.append("--export-bundles")
+    if all(custom_flags):
+        cmd: list[str | Path] = [
+            script, "run",
+            "--fasta", args.fasta,
+            "--spec", args.spec,
+            "--variants", args.variants,
+            *common,
+        ]
+        if args.observations is not None:
+            cmd.extend(["--observations", args.observations])
+    else:
+        cmd = [script, "demo", "--preset", args.preset, *common]
+    rc = _run_py(cmd)
+    if rc == 0:
+        print(f"\nOpen {out / 'index.html'} in your browser.")
+    return rc
+
+
 def _cmd_studio(args: argparse.Namespace) -> int:
     try:
         from epigenesis_studio import server
@@ -305,6 +336,8 @@ def _cmd_check(args: argparse.Namespace) -> int:
     ]
     if args.full:
         steps.extend([
+            [repo / "tests/verify.py", "developmental-pipeline"],
+            [repo / "tests/verify.py", "variant-layer"],
             [repo / "tests/verify.py", "neural-circuit"],
             [repo / "tests/verify.py", "neural-v2f"],
             [repo / "tests/verify.py", "neural-construction"],
@@ -330,6 +363,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="epigenesis", description=__doc__)
     parser.add_argument("--repo", type=Path, help="optional path to Epigenesis repository root")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    dv = sub.add_parser("develop", help="run the unified composable DNA -> VRS -> chromatin/GRN uncertainty -> 3D CX3D+LIF pipeline")
+    dv.add_argument("--preset", default="neural-tube-multi-locus", choices=("neural-tube-multi-locus", "tri-lineage-chromatin"), help="built-in multi-locus demo preset")
+    dv.add_argument("--fasta", type=Path, help="custom multi-locus reference DNA FASTA")
+    dv.add_argument("--spec", type=Path, help="custom developmental program JSON (epigenesis.developmental-program/v1)")
+    dv.add_argument("--variants", type=Path, help="custom reference-bound variants JSON list")
+    dv.add_argument("--observations", type=Path, help="optional empirical observations JSON for mechanism falsification")
+    dv.add_argument("--skip-cx3d", action="store_true", help="skip 3D CX3D morphogenesis + LIF stage (pure Python fast mode)")
+    dv.add_argument("--cx3d-duration", type=float, default=2.0, help="CX3D simulation duration")
+    dv.add_argument("--cx3d-seed", type=int, default=7, help="CX3D deterministic seed")
+    dv.add_argument("--export-bundles", action="store_true", help="export RO-Crate 1.1 and COMBINE/OMEX archives")
+    dv.add_argument("--output", type=Path, help="output directory (auto-generated under ./epigenesis-out/ if omitted)")
 
     st = sub.add_parser("studio", help="launch the local Epigenesis Studio web workbench")
     st.add_argument("file", nargs="?", type=Path, help="optional FASTA, edit table, receipt JSON, or folder")
@@ -362,7 +407,7 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("--background-floor", type=float, help="non-specific partition floor Z_ns >= 0 (default 2e-4)")
     sc.add_argument("--output", type=Path, help="output directory")
 
-    rd = sub.add_parser("radar", help="run V2F tipping-point, dual rescue, and null-control radar for silent non-coding variants")
+    rd = sub.add_parser("radar", help="[exploratory] run V2F tipping-point, dual rescue, and null-control radar (biological_acceptance=False)")
     rd.add_argument("--locus", default="chr15:90936956-90937127", help="GSE188264 reference enhancer locus for demo")
     rd.add_argument("--fasta", type=Path, help="optional FASTA enhancer to scan across full signaling regime")
     rd.add_argument("--variants", type=Path, help="optional JSON/CSV/TSV table of targeted variants (SNVs, MNVs, indels)")
@@ -414,6 +459,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     dispatch = {
+        "develop": _cmd_develop,
         "studio": _cmd_studio,
         "circuit": _cmd_circuit,
         "scan": _cmd_scan,
