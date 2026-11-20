@@ -35,7 +35,10 @@ python3.11 epigenesis_cli.py develop --skip-cx3d --output /tmp/epigenesis-dev-fa
 # 2. Full end-to-end developmental run including 3D CX3D morphogenesis, LIF spiking, and RO-Crate/OMEX export (JDK 21)
 python3.11 epigenesis_cli.py develop --export-bundles --output /tmp/epigenesis-dev-full
 
-# 3. Other unified CLI entry points
+# 3. Out-of-sample 532-TF Boltzmann biophysical discovery on real human GSE188264 data (requires NumPy; r=0.3439, 93.2% top-decile direction accuracy)
+python3.11 epigenesis_cli.py discover --output /tmp/epigenesis-discover
+
+# 4. Other unified CLI entry points
 python3.11 epigenesis_cli.py circuit --list-circuits
 python3.11 epigenesis_cli.py circuit --circuit tri-lineage-switch --target All
 python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta --protein MA0069.1

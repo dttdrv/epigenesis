@@ -47,6 +47,9 @@ python3.11 epigenesis_cli.py develop \
 
 # Release verification gate
 python3.11 tests/verify.py developmental-pipeline
+
+# Out-of-sample 532-TF biophysical mechanism discovery on real human GSE188264 data (requires NumPy)
+python3.11 epigenesis_cli.py discover --output /tmp/epigenesis-discover
 ```
 
 ## Scientific Scope

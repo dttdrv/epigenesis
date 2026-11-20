@@ -85,6 +85,21 @@ def _cmd_develop(args: argparse.Namespace) -> int:
     return rc
 
 
+def _cmd_discover(args: argparse.Namespace) -> int:
+    repo = _find_repo(args.repo)
+    script = repo / "examples/developmental-pipeline/discover.py"
+    out = _resolve_out(args.output, "biophysical-discovery")
+    cmd: list[str | Path] = [script, "--output", out, "--bootstraps", str(args.bootstraps)]
+    if args.skip_cx3d:
+        cmd.append("--skip-cx3d")
+    if args.no_export:
+        cmd.append("--no-export")
+    rc = _run_py(cmd)
+    if rc == 0:
+        print(f"\nDiscovery report: {out / 'discovery_report.json'}")
+    return rc
+
+
 def _cmd_studio(args: argparse.Namespace) -> int:
     try:
         from epigenesis_studio import server
@@ -376,6 +391,12 @@ def build_parser() -> argparse.ArgumentParser:
     dv.add_argument("--export-bundles", action="store_true", help="export RO-Crate 1.1 and COMBINE/OMEX archives")
     dv.add_argument("--output", type=Path, help="output directory (auto-generated under ./epigenesis-out/ if omitted)")
 
+    ds = sub.add_parser("discover", help="run out-of-sample 532-TF Boltzmann biophysical discovery on GSE188264 and compile top hit via develop (requires NumPy)")
+    ds.add_argument("--bootstraps", type=int, default=1000, help="family bootstrap resamples for 95% CIs (default 1000)")
+    ds.add_argument("--skip-cx3d", action="store_true", help="skip 3D CX3D morphogenesis stage on top hit")
+    ds.add_argument("--no-export", action="store_true", help="skip RO-Crate/OMEX export")
+    ds.add_argument("--output", type=Path, help="output directory (auto-generated under ./epigenesis-out/ if omitted)")
+
     st = sub.add_parser("studio", help="launch the local Epigenesis Studio web workbench")
     st.add_argument("file", nargs="?", type=Path, help="optional FASTA, edit table, receipt JSON, or folder")
     st.add_argument("--port", type=int, help="loopback port (default 8765)")
@@ -460,6 +481,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     dispatch = {
         "develop": _cmd_develop,
+        "discover": _cmd_discover,
         "studio": _cmd_studio,
         "circuit": _cmd_circuit,
         "scan": _cmd_scan,
