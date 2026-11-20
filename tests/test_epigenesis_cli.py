@@ -27,7 +27,7 @@ class EpigenesisCliTests(unittest.TestCase):
     def test_help_lists_all_unified_commands(self):
         res = self._run("--help")
         self.assertEqual(res.returncode, 0, res.stderr)
-        for cmd in ("develop", "discover", "studio", "circuit", "scan", "radar", "predict", "evidence", "patterning", "construction", "check"):
+        for cmd in ("develop", "synthesize", "discover", "studio", "circuit", "scan", "radar", "predict", "evidence", "patterning", "construction", "check"):
             self.assertIn(cmd, res.stdout)
 
     def test_develop_demo_fast_mode_and_partial_flag_validation(self):

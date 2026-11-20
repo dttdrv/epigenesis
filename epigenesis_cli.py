@@ -85,6 +85,32 @@ def _cmd_develop(args: argparse.Namespace) -> int:
     return rc
 
 
+def _cmd_synthesize(args: argparse.Namespace) -> int:
+    repo = _find_repo(args.repo)
+    script = repo / "examples/developmental-pipeline/synthesize.py"
+    out = _resolve_out(args.output, f"synthesize-{args.goal}")
+    cmd: list[str | Path] = [script, args.goal, "--output", out]
+    if args.skip_cx3d:
+        cmd.append("--skip-cx3d")
+    if args.no_export:
+        cmd.append("--no-export")
+    if args.goal in ("reprogram", "rescue"):
+        if args.fasta is not None:
+            cmd.extend(["--fasta", args.fasta])
+        else:
+            cmd.extend(["--locus", args.locus])
+        cmd.extend(["--circuit", args.circuit, "--protein", args.protein, "--target-gene", args.target_gene, "--signal", str(args.signal), "--samples", str(args.samples)])
+        if args.goal == "reprogram":
+            cmd.extend(["--target-fate", args.target_fate])
+        else:
+            cmd.extend(["--breaking-edit", args.breaking_edit])
+    rc = _run_py(cmd)
+    if rc == 0:
+        fname = "headline_benchmark.json" if args.goal == "benchmark" else "synthesis_report.json"
+        print(f"\nSynthesis report: {out / fname}")
+    return rc
+
+
 def _cmd_discover(args: argparse.Namespace) -> int:
     repo = _find_repo(args.repo)
     script = repo / "examples/developmental-pipeline/discover.py"
@@ -391,6 +417,21 @@ def build_parser() -> argparse.ArgumentParser:
     dv.add_argument("--export-bundles", action="store_true", help="export RO-Crate 1.1 and COMBINE/OMEX archives")
     dv.add_argument("--output", type=Path, help="output directory (auto-generated under ./epigenesis-out/ if omitted)")
 
+    sy = sub.add_parser("synthesize", help="inverse developmental compiler: synthesize minimal VRS 2.x DNA edits for fate reprogramming, epistatic 3D rescue, or wet-lab benchmark")
+    sy.add_argument("goal", choices=("reprogram", "rescue", "benchmark"), help="compilation goal")
+    sy.add_argument("--locus", default="chr18:56475717-56475888", help="human GSE188264 enhancer locus")
+    sy.add_argument("--fasta", type=Path, help="optional custom FASTA enhancer")
+    sy.add_argument("--target-fate", default="Olig2", help="desired target fate for 'reprogram'")
+    sy.add_argument("--breaking-edit", default="165:G>T", help="primary breaking edit 'POS:REF>ALT' for 'rescue'")
+    sy.add_argument("--circuit", default="neural-tube")
+    sy.add_argument("--protein", default="GLI2")
+    sy.add_argument("--target-gene", default="Nkx2.2")
+    sy.add_argument("--signal", type=float, default=0.20)
+    sy.add_argument("--samples", type=int, default=24)
+    sy.add_argument("--skip-cx3d", action="store_true")
+    sy.add_argument("--no-export", action="store_true")
+    sy.add_argument("--output", type=Path, help="output directory (auto-generated under ./epigenesis-out/ if omitted)")
+
     ds = sub.add_parser("discover", help="run out-of-sample 532-TF Boltzmann biophysical discovery on GSE188264 and compile top hit via develop (requires NumPy)")
     ds.add_argument("--bootstraps", type=int, default=1000, help="family bootstrap resamples for 95% CIs (default 1000)")
     ds.add_argument("--skip-cx3d", action="store_true", help="skip 3D CX3D morphogenesis stage on top hit")
@@ -481,6 +522,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     dispatch = {
         "develop": _cmd_develop,
+        "synthesize": _cmd_synthesize,
         "discover": _cmd_discover,
         "studio": _cmd_studio,
         "circuit": _cmd_circuit,

@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "examples/developmental-pipeline"))
 
 import pipeline as dp  # noqa: E402
+import synthesize as syn  # noqa: E402
 from brainc.validator_development import DevelopmentValidationError, validate_development_paths  # noqa: E402
 from brainc.validator_variant import validate_variant_paths  # noqa: E402
 
@@ -218,6 +219,44 @@ class DevelopmentalPipelineTests(unittest.TestCase):
             for branch in ("reference", "variant", "allele_rescue"):
                 self.assertTrue(morph["branches"][branch]["compiled_valid"])
                 self.assertTrue(morph["branches"][branch]["activity"]["transmission_controls_pass"])
+
+    def test_inverse_compiler_epistatic_rescue_and_reprogram(self) -> None:
+        seq18 = syn._load_gse_locus("chr18:56475717-56475888")
+        with tempfile.TemporaryDirectory() as tmp:
+            troot = Path(tmp)
+            rep_reprog = syn.synthesize_reprogram(
+                seq18,
+                "Olig2",
+                troot / "reprog",
+                record_id="chr18",
+                ensemble_samples=6,
+                run_cx3d=False,
+                export_bundles=False,
+            )
+            self.assertEqual(rep_reprog["synthesized_edit"]["nominal_variant_fate"], "Olig2")
+            self.assertTrue(rep_reprog["synthesized_edit"]["vrs_allele_id"].startswith("ga4gh:VA."))
+            self.assertTrue(rep_reprog["controls"]["reversion_exact"])
+            self.assertFalse(rep_reprog["biological_acceptance"])
+
+            rep_rescue = syn.synthesize_epistatic_rescue(
+                seq18,
+                "165:G>T",
+                troot / "rescue",
+                record_id="chr18",
+                ensemble_samples=6,
+                run_cx3d=bool(shutil.which("javac") and shutil.which("java")),
+                cx3d_duration=1.2,
+                export_bundles=True,
+            )
+            esc = rep_rescue["synthesized_epistatic_rescue"]
+            self.assertTrue(esc["primary_kept_intact"])
+            self.assertEqual(esc["restored_nominal_fate"], "Nkx2.2")
+            self.assertGreaterEqual(esc["ensemble_wt_fate_concordance"], 0.99)
+            self.assertLess(esc["rescue_vs_wt_max_gene_delta"], 1e-5)
+            self.assertEqual(len(esc["vrs_allele_ids"]), 2)
+            if rep_rescue["cx3d_3d_restoration"]["executed"]:
+                self.assertGreater(rep_rescue["cx3d_3d_restoration"]["neurite_morphology_recovery_pct"], 99.9)
+                self.assertTrue(rep_rescue["cx3d_3d_restoration"]["all_lif_transmission_controls_pass"])
 
 
 if __name__ == "__main__":
