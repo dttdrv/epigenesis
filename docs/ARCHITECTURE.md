@@ -13,9 +13,10 @@ To prevent exploratory experiments from compromising core software trust—and t
 │   examples/mpra-replay/ (GSE188264 provenance demo), neural-predictor/     │
 │   Rule: biological_acceptance = false; negative results reported verbatim. │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Layer 2: Unified Composable Developmental Engine                           │
-│   examples/developmental-pipeline/ (`epigenesis develop`), neural-circuit, │
-│   coding-consequences, neural-construction (CX3D + LIF), Studio            │
+│ Layer 2: Native Desktop App & Unified Composable Developmental Engine      │
+│   desktop/ (macOS .dmg/.app; Linux & Windows coming soon™), studio/ 0.3.0, │
+│   examples/developmental-pipeline/ (develop/synthesize/discover),          │
+│   neural-circuit, coding-consequences, neural-construction (CX3D + LIF)    │
 │   Rule: Composes DNA + VRS edits → chromatin/TF/coding → GRN uncertainty   │
 │         → 3D neural morphogenesis & spiking through sealed brainc bundles. │
 ├────────────────────────────────────────────────────────────────────────────┤

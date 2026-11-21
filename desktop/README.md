@@ -1,36 +1,40 @@
-# Epigenesis Dedicated Desktop Application
+# Epigenesis for macOS (`.dmg`)
 
-Epigenesis ships a dedicated, utilitarian laboratory desktop program built **macOS-first** (native Swift/AppKit/WKWebView `.app` bundle) with clean **Windows** and **Linux** desktop launchers — zero Electron bloat and zero third-party GUI dependencies.
+Epigenesis is designed to be used primarily as a **dedicated native macOS desktop program** (`Epigenesis.app`, packaged as **`Epigenesis-1.7.0-macOS.dmg`**) — built with native Swift, AppKit, and WKWebView with zero Electron bloat and a calm, utilitarian laboratory/office interface.
 
-## Quick Launch (All Platforms)
+| Platform | Status | Distribution |
+|---|---|---|
+| **macOS 12+ (Apple Silicon & Intel)** | **Available now** | Native **`Epigenesis-1.7.0-macOS.dmg`** (drag `Epigenesis.app` into `Applications`) |
+| **Linux** | **Coming soon™** | Native desktop installer planned (use local `epigenesis-studio` in the meantime) |
+| **Windows** | **Coming soon™** | Native desktop installer planned (use local `epigenesis-studio` in the meantime) |
 
-From the repository checkout:
+## Install & Open on macOS
+
+### Option 1 — Build & Open the `.dmg` Installer (Recommended)
+
+Requires macOS 12+ with Xcode Command Line Tools (`swiftc`, `iconutil`, `hdiutil`) and the local Studio Python environment (`uv tool install --editable studio --with-editable .`):
 
 ```sh
-python3 epigenesis_cli.py app
-# Or open a specific FASTA, edit table, or receipt directly:
-python3 epigenesis_cli.py app studio/epigenesis_studio/example-edits.json
+python3 desktop/build_desktop.py
+open dist/Epigenesis-1.7.0-macOS.dmg
 ```
 
-## Build & Install Dedicated Packages
+Drag **`Epigenesis.app`** onto **`Applications`** inside the mounted disk image, then open **Epigenesis** from Spotlight or Finder.
+
+### Option 2 — Build & Install Directly to `~/Applications`
 
 ```sh
-# macOS (builds native dist/Epigenesis.app and installs into ~/Applications/Epigenesis.app):
-python3 desktop/build_desktop.py --platform macos --install
-
-# Build for all three platforms (macOS .app + Linux .desktop + Windows .bat/.vbs/.ico):
-python3 desktop/build_desktop.py --platform all
+python3 desktop/build_desktop.py --install
+open -a ~/Applications/Epigenesis.app
 ```
 
-### Platform Details
+## What's Inside the Native macOS App
 
-- **macOS (Primary — `dist/Epigenesis.app`):**
-  - Native Swift + AppKit + WKWebView binary (`~150 KB`, arm64/Apple Silicon & Intel).
-  - Standard macOS menu bar (`Epigenesis`, `File → Open ⌘O`, `Edit` Cut/Copy/Paste, `View` Zoom/Full Screen, `Window`), native macOS `NSSavePanel` for exporting CSVs and cryptographic receipts, and automatic clean shutdown of the local `127.0.0.1` engine on Quit (`⌘Q`).
-  - Double-click `dist/Epigenesis.app` in Finder or install into `~/Applications` with `--install`.
-- **Windows (`dist/windows/`):**
-  - Double-click **`Epigenesis.vbs`** (silent windowless launcher) or **`Epigenesis.bat`**.
-  - Starts the local loopback engine and opens a dedicated frameless desktop window via Edge/Chrome `--app=` mode (falling back cleanly to the default browser).
-- **Linux (`dist/linux/`):**
-  - Run **`epigenesis-desktop`** or copy **`epigenesis.desktop`** into `~/.local/share/applications/` for your desktop application menu.
-  - Opens a dedicated Chromium/Chrome/Edge/Brave `--app=` desktop window and terminates the loopback engine on close.
+- **Native macOS chrome & shortcuts:** Standard macOS menu bar (`Epigenesis`, `File → Open ⌘O`, `Edit` Cut/Copy/Paste, `View` Zoom/Full Screen, `Window`), Retina `.icns` app icon, Finder "Open With" for `.fasta`/`.fa`/`.csv`/`.json` files, native `NSSavePanel` for saving CSVs and receipts, and automatic clean shutdown of the local `127.0.0.1` engine on Quit (`⌘Q`).
+- **All Epigenesis capabilities in one window (English & Bulgarian, automatic Light/Dark mode):**
+  1. **Develop Pipeline** — Multi-locus DNA + GA4GH VRS 2.x → chromatin/coding → GRN uncertainty ensembles → 3D CX3D + LIF with sealed Python + Rust replay verification.
+  2. **Inverse Compiler** — Synthesize minimal epistatic rescue edits, fate-reprogramming edits, or run out-of-sample 532-TF biophysical discovery on `GSE188264`.
+  3. **Simulate** — Interactive 9-bp GLI regulatory site patterning & reversion controls.
+  4. **Enhancer Circuit** — Arbitrary enhancer Boltzmann TF scanning (GLI2/GLI3/532 JASPAR 2024 motifs), cryptic cell-fate bifurcations, and second-site rescues.
+  5. **Scan & Edits** — Fast Siraj Huber-linear and Kreimer 0–72h temporal variant scoring.
+  6. **Verify Receipts** — Offline cryptographic replay & tamper verification for saved `.json` receipts.

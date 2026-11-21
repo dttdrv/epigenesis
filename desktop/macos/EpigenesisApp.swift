@@ -246,16 +246,36 @@ final class EpigenesisAppDelegate: NSObject, NSApplicationDelegate, NSWindowDele
     // MARK: - Backend Python Server Lifecycle
 
     private func loadRuntimeConfig() -> (python: String, repo: String) {
+        let fm = FileManager.default
+        let env = ProcessInfo.processInfo.environment
+        let home = fm.homeDirectoryForCurrentUser.path
+        var py = ""
+        var repo = ""
+
         if let cfgURL = Bundle.main.url(forResource: "runtime", withExtension: "json"),
            let data = try? Data(contentsOf: cfgURL),
-           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: String],
-           let py = obj["python"], let repo = obj["repo"] {
-            return (py, repo)
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+            if let p = obj["python"], fm.isExecutableFile(atPath: p) { py = p }
+            if let r = obj["repo"], fm.fileExists(atPath: "\(r)/studio/epigenesis_studio/server.py") { repo = r }
         }
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let uvPy = "\(home)/.local/share/uv/tools/epigenesis-studio/bin/python"
-        let py = FileManager.default.isExecutableFile(atPath: uvPy) ? uvPy : "/usr/bin/env"
-        let repo = FileManager.default.currentDirectoryPath
+        if py.isEmpty {
+            let candidates = [
+                "\(home)/.local/share/uv/tools/epigenesis-studio/bin/python",
+                repo.isEmpty ? "" : "\(repo)/.venv/bin/python",
+                "/opt/homebrew/bin/python3",
+                "/usr/local/bin/python3",
+                "/usr/bin/python3",
+            ]
+            py = candidates.first(where: { !$0.isEmpty && fm.isExecutableFile(atPath: $0) }) ?? "/usr/bin/python3"
+        }
+        if repo.isEmpty {
+            let repoCandidates = [
+                env["EPIGENESIS_HOME"] ?? "",
+                "\(home)/Projects/epigenesis",
+                fm.currentDirectoryPath,
+            ]
+            repo = repoCandidates.first(where: { !$0.isEmpty && fm.fileExists(atPath: "\($0)/studio/epigenesis_studio/server.py") }) ?? fm.currentDirectoryPath
+        }
         return (py, repo)
     }
 

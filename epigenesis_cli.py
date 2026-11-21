@@ -419,9 +419,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo", type=Path, help="optional path to Epigenesis repository root")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    ap = sub.add_parser("app", help="launch the dedicated Epigenesis desktop application (native macOS .app, or Windows/Linux desktop window)")
+    ap = sub.add_parser("app", help="launch the native Epigenesis desktop app (macOS .app/.dmg; Linux & Windows coming soon)")
     ap.add_argument("file", nargs="?", type=Path, help="optional DNA FASTA, edit table, or receipt file to open")
-    ap.add_argument("--no-native", action="store_true", help="skip macOS native .app and open standalone browser window")
+    ap.add_argument("--no-native", action="store_true", help="skip macOS native .app and open in local browser")
 
     dv = sub.add_parser("develop", help="run the unified composable DNA -> VRS -> chromatin/GRN uncertainty -> 3D CX3D+LIF pipeline")
     dv.add_argument("--preset", default="neural-tube-multi-locus", choices=("neural-tube-multi-locus", "tri-lineage-chromatin"), help="built-in multi-locus demo preset")

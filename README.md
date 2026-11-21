@@ -1,82 +1,88 @@
 # Epigenesis
 
-Epigenesis is a **DNA-to-development simulation and compiler toolkit**. It compiles DNA sources and reference-bound genetic edits under explicit biological interpretations into sealed Development Modules, composes them into multi-layer developmental simulations (chromatin-gated transcription-factor regulation, multi-gene dynamics with parameter uncertainty, and 3D neural morphogenesis), and lets independent Python and Rust validators replay every compilation byte for byte.
+Epigenesis is a **native macOS desktop application (`.dmg`)** and **DNA-to-development simulation and compiler platform**. It compiles DNA sources and reference-bound genetic edits under explicit biological interpretations into sealed Development Modules, composes them into multi-layer developmental simulations (chromatin-gated transcription-factor regulation, multi-gene dynamics with parameter uncertainty, inverse DNA synthesis, and 3D neural morphogenesis), and lets independent Python and Rust validators replay every compilation byte for byte.
+
+> **Desktop Application First:** Use the dedicated native **macOS `.dmg` application** (`Epigenesis-1.7.0-macOS.dmg` → drag `Epigenesis.app` into `Applications`) for all everyday laboratory simulation, inverse DNA synthesis, enhancer circuit analysis, and cryptographic receipt verification. **Linux and Windows native installers are coming soon™.** Command-line tools (`epigenesis`, `brainc`) remain available below for scripting, batch pipelines, and CI verification.
 
 To keep biological ambition honest and core software rock-solid, Epigenesis separates three strict layers ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
 
 1. **Provenance Compiler Core (`brainc/`, `SPEC.md`, `validators/rust/`, `brainc/schemas/`):** Zero-dependency universal DNA translation compiler, GA4GH VRS 2.x reference-bound variant collections, RFC 8785 canonical seals, RO-Crate 1.1 / COMBINE OMEX export, and independent Python + Rust replay validators.
-2. **Unified Composable Developmental Engine (`examples/developmental-pipeline/`, `epigenesis develop`, `neural-circuit`, `neural-construction`, `studio/`):** End-to-end multi-locus **DNA + VRS edits → chromatin-gated TF binding & coding translation → N-gene GRN dynamics with parameter-uncertainty ensembles → 3D CX3D morphogenesis & LIF spiking**, with built-in causal controls (exact allele reversion, closed-chromatin cis null, passive reporter isolation) and empirical falsification hooks.
+2. **Desktop Application & Unified Developmental Engine (`desktop/`, `studio/`, `examples/developmental-pipeline/`, `neural-circuit`, `neural-construction`):** Native macOS desktop app (`Epigenesis.app` / `.dmg`, Studio `0.3.0`) driving the end-to-end multi-locus **DNA + VRS edits → chromatin-gated TF binding & coding translation → N-gene GRN dynamics with parameter-uncertainty ensembles → inverse DNA compilation → 3D CX3D morphogenesis & LIF spiking**, with built-in causal controls (exact allele reversion, closed-chromatin cis null, passive reporter isolation) and empirical falsification hooks.
 3. **Exploratory Research & Honest Negative-Result Ledger (`research/`, `neural-v2f`, `mpra-replay`, `neural-predictor`, `neural-regulation`):** Clearly quarantined research prototypes (`biological_acceptance = false`) and thirteen frozen cross-study predictive tests that report null and negative results verbatim.
 
 In the works reviewed in [Prior art](docs/reference/PRIOR_ART.md), no other system combines these boundaries; that is a scoped comparison of the cited corpus, not a benchmark against other simulators.
 
-**Status.** Version 1.7 pairs the universal DNA translation compiler (with GA4GH VRS 2.x variant collections, independent Rust replay validation, and RO-Crate/OMEX export) with the **Unified Composable Developmental Pipeline** (`epigenesis develop`), Epigenesis Studio `0.2.0`, and the single `epigenesis` CLI. Software provenance, determinism, and mechanistic causal controls pass; *in vivo* biological phenotype and cross-study sequence prediction remain unestablished (`biological_acceptance = false`): thirteen frozen cross-study sequence tests (Siraj SK-N-SH, 19–20 October 2026) measured mean external correlation `0.049`, and the exploratory V2F radar's frozen held-out test (`1,885` unseen `GSE188264` alleles) measured `Pearson r = 0.012`. [The architecture guide](docs/ARCHITECTURE.md), [technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)), and [1.7 release notes](docs/releases/RELEASE-1.7.md) state what is and is not established.
+**Status.** Version 1.7 ships the native **macOS desktop application (`.dmg`)** powered by Epigenesis Studio `0.3.0`, backed by the universal DNA translation compiler (GA4GH VRS 2.x variant collections, independent Rust replay validation, RO-Crate/OMEX export), the **Unified Composable Developmental Pipeline** (`develop`), the **Inverse Developmental DNA Compiler** (`synthesize`), and out-of-sample 532-TF biophysical discovery (`discover`). Software provenance, determinism, and mechanistic causal controls pass; *in vivo* biological phenotype and cross-study sequence prediction remain unestablished (`biological_acceptance = false`): thirteen frozen cross-study sequence tests (Siraj SK-N-SH, 19–20 October 2026) measured mean external correlation `0.049`, and the exploratory V2F radar's frozen held-out test (`1,885` unseen `GSE188264` alleles) measured `Pearson r = 0.012`. [The architecture guide](docs/ARCHITECTURE.md), [technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)), and [1.7 release notes](docs/releases/RELEASE-1.7.md) state what is and is not established.
 
 ## Contents
 
 | Path | Layer | What it holds |
 |---|---|---|
+| [`desktop/`](desktop/README.md) | App | **Native macOS desktop application** (`EpigenesisApp.swift`, `build_desktop.py` → `Epigenesis-1.7.0-macOS.dmg` & `Epigenesis.app`; Linux & Windows coming soon™) |
+| [`studio/`](studio/README.md) | App | Epigenesis Studio `0.3.0`: local laboratory workbench engine (English and Bulgarian) powering Develop Pipeline, Inverse Compiler, Simulate, Enhancer Circuit, Scan, Edits, and Receipt Verification |
+| [`examples/developmental-pipeline/`](examples/developmental-pipeline/README.md) | Engine | Unified composable multi-locus DNA → VRS → chromatin/coding → GRN uncertainty → inverse DNA compiler (`synthesize`) → 532-TF discovery (`discover`) → 3D CX3D + LIF |
 | `brainc/`, [`SPEC.md`](SPEC.md), `validators/rust/` | Core | Universal DNA compiler, GA4GH VRS 2.x variant layer, Draft 2020-12 schemas, RO-Crate/OMEX export, and independent Python + Rust replay validators |
-| [`examples/developmental-pipeline/`](examples/developmental-pipeline/README.md) | Engine | Unified composable multi-locus DNA → VRS → chromatin/coding → GRN uncertainty → 3D CX3D + LIF pipeline (`epigenesis develop`) |
-| [`studio/`](studio/README.md) | Engine | Epigenesis Studio `0.2.0`: desktop application (English and Bulgarian) for DNA-site simulation, enhancer-circuit exploration, edit scoring, and receipt verification |
-| [`epigenesis_cli.py`](epigenesis_cli.py) | Engine | Standard-library unified CLI (`epigenesis`) across `develop`, `studio`, `circuit`, `scan`, `predict`, `evidence`, `patterning`, `construction`, exploratory `radar`, and `check` |
+| [`epigenesis_cli.py`](epigenesis_cli.py) | CLI | Optional standard-library CLI (`epigenesis`) for scripting, batch runs, and automated verification |
 | [`docs/`](docs/README.md), [`docs/paper/`](docs/paper/) | Docs | [Architecture & roadmap](docs/ARCHITECTURE.md), standards trace, prior art, release contracts, and technical papers (English, Bulgarian) |
 | [`research/`](research/README.md), [`examples/`](examples/) | Exploratory | Frozen negative-result ledger (13 tests + hash checker) and individual mechanistic/exploratory examples (each with its own README and scope) |
-| `tests/`, `studio/tests/` | Verification | Compiler, Rust replay, developmental pipeline, experiment, and Studio tests; release gates in `tests/verify.py` |
+| `tests/`, `studio/tests/` | Verification | Compiler, Rust replay, desktop `.app`/`.dmg`, developmental pipeline, experiment, and Studio (`33`) tests; release gates in `tests/verify.py` |
 
-## Quick start
+## Quick start — Epigenesis Desktop App (macOS `.dmg`)
 
-### Dedicated Desktop Application (macOS-first, Windows & Linux)
-
-Launch the dedicated local desktop program with one command (no browser clutter, runs 100% locally on `127.0.0.1`):
+The native macOS desktop program is the primary way to use Epigenesis. It runs **100% locally** (`127.0.0.1`), has standard macOS menus and native file open/save panels, and exposes every simulation, inverse-compiler, and verification workflow in a clean office/laboratory interface (English & Bulgarian, automatic Light/Dark mode).
 
 ```sh
-# Launch directly (on macOS, compiles & opens native Swift/AppKit Epigenesis.app automatically;
-# on Windows/Linux, opens a dedicated standalone desktop window)
-python3.11 epigenesis_cli.py app
+# 1. Install the local Studio runtime once (requires Python 3.11+ and uv)
+uv tool install --editable studio --with-editable .
 
-# Build & install native macOS Epigenesis.app into ~/Applications (plus Linux/Windows bundles):
-python3.11 desktop/build_desktop.py --platform macos --install
-python3.11 desktop/build_desktop.py --platform all
+# 2. Build the native macOS installer disk image (dist/Epigenesis-1.7.0-macOS.dmg)
+python3 desktop/build_desktop.py
+
+# 3. Open the .dmg and drag Epigenesis.app into Applications
+open dist/Epigenesis-1.7.0-macOS.dmg
 ```
 
-See [`desktop/README.md`](desktop/README.md) and [`studio/README.md`](studio/README.md) for platform launchers (`Epigenesis.app`, `Epigenesis.vbs`/`.bat`, `epigenesis.desktop`).
-
-### Command-Line Engine
-
-Python 3.11 or later. Run the unified composable developmental pipeline directly from the checkout with standard-library Python 3.11+ (no installation, GPU, or network needed for pure-Python mode; add Java 21 to run 3D CX3D morphogenesis + LIF spiking):
+To install directly to `~/Applications` without mounting the `.dmg`:
 
 ```sh
-# 1. Unified composable pipeline (fast pure-Python multi-locus DNA -> VRS -> chromatin/coding -> GRN uncertainty)
-python3.11 epigenesis_cli.py develop --skip-cx3d --output /tmp/epigenesis-dev-fast
+python3 desktop/build_desktop.py --install
+open -a ~/Applications/Epigenesis.app
+```
 
-# 2. Full end-to-end developmental run including 3D CX3D morphogenesis, LIF spiking, and RO-Crate/OMEX export (JDK 21)
+- **macOS 12+ (Apple Silicon & Intel):** Native `.dmg` available now — see [`desktop/README.md`](desktop/README.md).
+- **Linux & Windows:** Native desktop installers are **coming soon™**. Until then, Linux and Windows users can run the same workbench locally via `epigenesis-studio` ([Studio guide](studio/README.md)).
+
+Inside the app:
+- **Develop Pipeline** — Run composable multi-locus DNA + VRS 2.x simulations with chromatin gating, coding truncation, GRN uncertainty ensembles, causal controls, and optional 3D CX3D + LIF.
+- **Inverse Compiler** — Synthesize minimal epistatic rescue edits, fate-reprogramming edits, or run out-of-sample 532-TF biophysical discovery on `GSE188264`.
+- **Simulate & Enhancer Circuit** — Explore the 9-bp GLI binding site and arbitrary enhancers (`9–500` bp) across `neural-tube`, `mutual-toggle`, and `tri-lineage-switch` with GLI2/GLI3 or any of 532 JASPAR 2024 motifs.
+- **Scan, Edits & Verify** — Score variants with Siraj Huber-linear or Kreimer 0–72h prototypes and cryptographically replay any saved receipt.
+
+<details>
+<summary>Advanced: Command-Line Interface (for scripting, batch jobs, and CI)</summary>
+
+Python 3.11+ standard library only (add Java 21 for 3D CX3D morphogenesis + LIF spiking; NumPy for `discover` and `predict`):
+
+```sh
+# Launch the desktop app from terminal
+python3.11 epigenesis_cli.py app
+
+# Unified composable developmental pipeline (fast pure-Python or full 3D CX3D + RO-Crate/OMEX)
+python3.11 epigenesis_cli.py develop --skip-cx3d --output /tmp/epigenesis-dev-fast
 python3.11 epigenesis_cli.py develop --export-bundles --output /tmp/epigenesis-dev-full
 
-# 3. Inverse developmental compiler: synthesize minimal VRS 2.x DNA edits for epistatic 3D rescue or fate reprogramming
+# Inverse developmental compiler & 532-TF biophysical discovery
 python3.11 epigenesis_cli.py synthesize benchmark --output /tmp/epigenesis-headline
-
-# 4. Out-of-sample 532-TF Boltzmann biophysical discovery on real human GSE188264 data (requires NumPy; r=0.3439, 93.2% top-decile direction accuracy)
 python3.11 epigenesis_cli.py discover --output /tmp/epigenesis-discover
 
-# 5. Other unified CLI entry points
+# Enhancer circuits, predictors, and verification
 python3.11 epigenesis_cli.py circuit --list-circuits
-python3.11 epigenesis_cli.py circuit --circuit tri-lineage-switch --target All
 python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta --protein MA0069.1
 python3.11 epigenesis_cli.py predict --kreimer --input studio/epigenesis_studio/example-edits.json --output /tmp/kreimer.json
 python3.11 epigenesis_cli.py check --full
 ```
 
-Open `index.html` in the output directory to inspect the sealed provenance digests, chromatin/coding effects, parameter-uncertainty intervals, causal controls, and 3D CX3D summary.
-
-For the interactive desktop workbench, install Epigenesis Studio with [uv](https://docs.astral.sh/uv/):
-
-```sh
-uv tool install --editable studio --with-editable .
-epigenesis-studio
-```
-
-Start with **Simulate** to change the 9-bp GLI binding site, or **Enhancer Circuit** to scan enhancers (`9–500` bp in Studio) across built-in presets (`neural-tube`, `mutual-toggle`, `tri-lineage-switch`), wire **GLI2**, **GLI3**, or any of the **532 JASPAR 2024 motifs** onto target genes, compare SNV/MNV/indel alleles, and test epistatic rescues. **Scan** and **Edits** score sequences with the Siraj Huber-linear or Kreimer 0–72h prototypes; **Receipts** replays saved results. Available in English and Bulgarian ([Studio guide](studio/README.md)).
+</details>
 
 ## The compiler
 
@@ -215,7 +221,7 @@ PIP_NO_INDEX=1 python3.11 tests/verify.py sdist
 python3.11 research/check_freeze.py
 ```
 
-The [CI workflow](.github/workflows/ci.yml) defines the complete release checks, including independent source replay, contract attacks, resource and path safety, real-DNA compilation, all release gates, and the Studio suite (`32` tests in `studio/tests/`). Package checks need the declared build tooling. The predictors and their feature extractors need NumPy and, for some archived models, PyTorch; each example README lists its requirements.
+The [CI workflow](.github/workflows/ci.yml) defines the complete release checks, including independent source replay, contract attacks, resource and path safety, real-DNA compilation, macOS `.app`/`.dmg` desktop packaging, all release gates, and the Studio suite (`33` tests in `studio/tests/`). Package checks need the declared build tooling. The predictors and their feature extractors need NumPy and, for some archived models, PyTorch; each example README lists its requirements.
 
 ## Foundations and sources
 

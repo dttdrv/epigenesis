@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Cross-platform dedicated desktop application launcher for Epigenesis Studio.
+"""Launch the native Epigenesis desktop application (macOS-first; Linux & Windows coming soon).
 
-- macOS (primary): Launches the native Swift/AppKit/WKWebView `Epigenesis.app` bundle
-  (building it automatically if `swiftc` is available and not yet built), with clean
-  fallback to standalone app-mode window if needed.
-- Windows & Linux: Starts the local loopback `epigenesis_studio` server on an ephemeral
-  port and opens a dedicated standalone desktop window (Chrome/Edge/Chromium/Brave
-  `--app=` mode with no browser tabs or toolbar, falling back to default browser) and
-  terminates the local server cleanly when closed.
+- macOS (Primary): Opens the installed native Swift/AppKit/WKWebView `Epigenesis.app`
+  (checking `/Applications`, `~/Applications`, and `dist/Epigenesis.app`, and building
+  it automatically if Xcode Command Line Tools `swiftc` is present).
+- Linux & Windows (Coming Soon™): Falls back cleanly to starting the local `127.0.0.1`
+  Epigenesis Studio workbench in an app-mode window or default browser.
 """
 
 from __future__ import annotations
@@ -54,43 +52,19 @@ def find_studio_python(repo: Path) -> Path:
     return Path(sys.executable)
 
 
-def _find_chromium_app_browser() -> list[str] | None:
-    system = platform.system()
-    if system == "Windows":
-        program_files = [
-            Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")),
-            Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")),
-            Path(os.environ.get("LOCALAPPDATA", "")),
-        ]
-        rel_paths = [
-            "Microsoft/Edge/Application/msedge.exe",
-            "Google/Chrome/Application/chrome.exe",
-            "BraveSoftware/Brave-Browser/Application/brave.exe",
-        ]
-        for base in program_files:
-            for rel in rel_paths:
-                cand = base / rel
-                if cand.is_file():
-                    return [str(cand)]
-    elif system == "Linux":
-        for name in ("chromium", "chromium-browser", "google-chrome", "microsoft-edge", "brave-browser"):
-            found = shutil.which(name)
-            if found:
-                return [found]
-    elif system == "Darwin":
-        for app_bin in (
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-            "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        ):
-            if Path(app_bin).is_file():
-                return [app_bin]
+def _find_installed_macos_app(repo: Path) -> Path | None:
+    for cand in (
+        Path("/Applications/Epigenesis.app"),
+        Path.home() / "Applications" / "Epigenesis.app",
+        repo / "dist" / "Epigenesis.app",
+    ):
+        if (cand / "Contents" / "MacOS" / "Epigenesis").is_file():
+            return cand
     return None
 
 
-def launch_cross_platform_window(repo: Path, *, target_file: Path | None = None, port: int = 0) -> int:
-    """Start loopback Epigenesis Studio and open a dedicated standalone window."""
+def launch_local_workbench(repo: Path, *, target_file: Path | None = None, port: int = 0) -> int:
+    """Fallback local workbench launcher for non-macOS systems while native apps are coming soon."""
     py = find_studio_python(repo)
     env = dict(os.environ)
     py_parts = [str(repo), str(repo / "studio")]
@@ -127,17 +101,11 @@ def launch_cross_platform_window(repo: Path, *, target_file: Path | None = None,
             print(f"epigenesis-desktop: backend failed to start:\n{err}", file=sys.stderr)
             return 1
 
-        browser_cmd = _find_chromium_app_browser()
-        if browser_cmd is not None:
-            win_proc = subprocess.Popen(
-                [*browser_cmd, f"--app={url}", "--window-size=1280,860"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            win_proc.wait()
-            return 0
-
-        print(f"Epigenesis Studio running at {url} (Ctrl+C to stop)", flush=True)
+        print(
+            f"Epigenesis Studio running locally at {url} "
+            "(native Linux/Windows desktop installers coming soon; Ctrl+C to stop)",
+            flush=True,
+        )
         webbrowser.open(url)
         proc.wait()
         return 0
@@ -156,24 +124,29 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", nargs="?", type=Path, help="optional DNA FASTA, edit table, or receipt to open")
     parser.add_argument("--repo", type=Path, default=REPO, help="Epigenesis repository root")
-    parser.add_argument("--port", type=int, default=0, help="loopback port (default: automatic free port)")
-    parser.add_argument("--no-native", action="store_true", help="skip macOS native .app bundle and use standalone browser window")
+    parser.add_argument("--port", type=int, default=0, help="loopback port for fallback mode")
+    parser.add_argument("--no-native", action="store_true", help="skip macOS native .app and open in local browser")
     args = parser.parse_args(argv)
     repo = args.repo.resolve()
 
     if platform.system() == "Darwin" and not args.no_native:
-        app_bundle = repo / "dist" / "Epigenesis.app"
-        if not (app_bundle / "Contents" / "MacOS" / "Epigenesis").is_file() and shutil.which("swiftc"):
+        app_bundle = _find_installed_macos_app(repo)
+        if app_bundle is None and shutil.which("swiftc"):
             build_script = repo / "desktop" / "build_desktop.py"
             if build_script.is_file():
-                subprocess.run([sys.executable, str(build_script), "--platform", "macos"], cwd=repo, check=False)
-        if (app_bundle / "Contents" / "MacOS" / "Epigenesis").is_file():
+                subprocess.run(
+                    [sys.executable, str(build_script), "--platform", "macos", "--no-dmg"],
+                    cwd=repo,
+                    check=False,
+                )
+            app_bundle = _find_installed_macos_app(repo)
+        if app_bundle is not None:
             open_cmd = ["open", "-a", str(app_bundle)]
             if args.file is not None:
                 open_cmd.append(str(args.file.resolve()))
             return subprocess.call(open_cmd)
 
-    return launch_cross_platform_window(repo, target_file=args.file, port=args.port)
+    return launch_local_workbench(repo, target_file=args.file, port=args.port)
 
 
 if __name__ == "__main__":
