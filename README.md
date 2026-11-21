@@ -26,6 +26,24 @@ In the works reviewed in [Prior art](docs/reference/PRIOR_ART.md), no other syst
 
 ## Quick start
 
+### Dedicated Desktop Application (macOS-first, Windows & Linux)
+
+Launch the dedicated local desktop program with one command (no browser clutter, runs 100% locally on `127.0.0.1`):
+
+```sh
+# Launch directly (on macOS, compiles & opens native Swift/AppKit Epigenesis.app automatically;
+# on Windows/Linux, opens a dedicated standalone desktop window)
+python3.11 epigenesis_cli.py app
+
+# Build & install native macOS Epigenesis.app into ~/Applications (plus Linux/Windows bundles):
+python3.11 desktop/build_desktop.py --platform macos --install
+python3.11 desktop/build_desktop.py --platform all
+```
+
+See [`desktop/README.md`](desktop/README.md) and [`studio/README.md`](studio/README.md) for platform launchers (`Epigenesis.app`, `Epigenesis.vbs`/`.bat`, `epigenesis.desktop`).
+
+### Command-Line Engine
+
 Python 3.11 or later. Run the unified composable developmental pipeline directly from the checkout with standard-library Python 3.11+ (no installation, GPU, or network needed for pure-Python mode; add Java 21 to run 3D CX3D morphogenesis + LIF spiking):
 
 ```sh

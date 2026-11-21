@@ -1,6 +1,6 @@
 # Epigenesis Studio
 
-A local desktop application for working with DNA changes. Its workflows simulate a regulatory DNA binding site in a published four-gene neural-development model, scan an entire arbitrary enhancer sequence through Boltzmann GLI partition physics to expose cryptic cell-fate bifurcations, score edits with either the frozen Siraj Huber-linear checkpoint or the experimental Kreimer 0–72h neural-induction temporal predictor, and export receipts that anyone with the same installation can replay. The interface is in English and Bulgarian (the switch is in the sidebar).
+A local laboratory desktop application for DNA-to-development simulation, inverse DNA compilation, and variant scoring. Run it as a dedicated native desktop program (`epigenesis app`, or build native macOS/Windows/Linux packages with [`desktop/build_desktop.py`](../desktop/build_desktop.py)) or directly via `epigenesis-studio`. Its workflows run the unified multi-locus developmental pipeline (**Develop Pipeline**), compile epistatic rescue / fate-reprogramming edits and 532-TF discovery scans (**Inverse Compiler**), simulate a regulatory DNA binding site in a four-gene neural-development model (**Simulate**), scan enhancers for cryptic cell-fate bifurcations (**Enhancer Circuit**), score edits with Siraj or Kreimer 0–72h predictors (**Scan** / **Edits**), and export receipts that anyone with the same installation can replay (**Verify**). The interface is in English and Bulgarian (the switch is in the sidebar).
 
 ## Simulate a DNA change
 
@@ -60,6 +60,8 @@ The server listens on 127.0.0.1 only and rejects requests whose Host header is n
 
 | Mode | Input | Output |
 |---|---|---|
+| Develop Pipeline | Composable multi-locus preset (`neural-tube-multi-locus`, `tri-lineage-chromatin`), chromatin accessibility, ensemble samples, optional coding truncation and 3D CX3D + LIF | Sealed VRS 2.x + `brainc` v2/v3 bundle, Rust validator check, causal controls, GRN table with 90% CIs, receipt |
+| Inverse Compiler | Mode (`Epistatic Rescue`, `Fate Reprogram`, or `532-TF Discovery`), human enhancer locus, breaking edit or target fate, optional 3D CX3D verification | Top compiled compensatory/reprogramming DNA edits or out-of-sample `GSE188264` 532-TF biophysical discovery metrics, receipt |
 | Simulate | A site substitution, a GLI protein, a signal protocol and an optional starting state | Trajectories for reference, variant and reversion, controls, assumptions, CSV, receipt |
 | Enhancer Circuit | A FASTA or ACGT enhancer of 9 to 500 bases, GLI2/GLI3, pseudocount, signal phases | Cryptic bifurcation scatter, trajectory & spatial P3/GliR controls, brainc receipt |
 | Scan | One FASTA record or plain sequence of 5 to 1,000 bases (ACGT only; several records are refused); Siraj or Kreimer 0–72h | Heatmap of all 3 changes at every position, temporal 0–72h profile (Kreimer), CSV, receipt |

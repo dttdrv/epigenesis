@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "epigenesis-studio"
-version = "0.2.0"
-description = "Local app for DNA-site simulations, enhancer circuit scans, edit prediction and result replay"
+version = "0.3.0"
+description = "Dedicated desktop workbench for DNA-to-development simulation, inverse DNA synthesis, edit prediction and cryptographic replay"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "epigenesis-compiler>=1.7"]

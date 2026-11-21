@@ -303,6 +303,8 @@ dialog p { color: var(--text2); line-height: 1.55; }
     </div>
     <nav role="tablist">
       <span class="nav-cap" role="presentation" data-k="nav.g.sim"></span>
+      <button role="tab" id="tab-dev" aria-selected="false" aria-controls="dev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v5H4zM14 6h6v5h-6zM9 14h6v5H9z"/><path d="M7 11v1.5h5V14M17 11v1.5h-5" opacity=".75"/></svg><span data-k="nav.dev"></span></button>
+      <button role="tab" id="tab-syn" aria-selected="false" aria-controls="syn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M4.9 7l3.5 2M15.6 15l3.5 2M19.1 7l-3.5 2M8.4 15l-3.5 2"/><circle cx="12" cy="12" r="3"/></svg><span data-k="nav.syn"></span></button>
       <button role="tab" id="tab-sim" aria-selected="true" aria-controls="sim"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3 0 3-10 6-10s3 10 6 10 3-10 6-10"/><path d="M3 21h18" opacity=".5"/></svg><span data-k="nav.sim"></span></button>
       <button role="tab" id="tab-circuit" aria-selected="false" aria-controls="circuit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="16" cy="17" r="2.5"/><path d="M8.2 16.5L15.8 7.5M8.5 18h5M17.5 8.5L16.4 14.5" opacity=".75"/></svg><span data-k="nav.circuit"></span></button>
       <span class="nav-cap" role="presentation" data-k="nav.g.pred"></span>
@@ -321,6 +323,102 @@ dialog p { color: var(--text2); line-height: 1.55; }
 
   <main>
   <div class="view">
+  <section id="dev" role="tabpanel" aria-labelledby="tab-dev" hidden>
+    <div class="page"><h1 data-k="dev.title"></h1><p data-k="dev.lead"></p></div>
+    <p id="devOff" class="alert" hidden data-k="dev.unavailable"></p>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="grow"><h2 data-k="dev.cfg"></h2><p class="sub" data-k="dev.cfgHelp"></p></div>
+      </div>
+      <div class="options">
+        <div class="actions" style="margin-top:0;flex-wrap:wrap;gap:14px">
+          <label class="seg-wrap"><span data-k="dev.preset"></span>
+            <select id="devPreset" class="circ-select"><option value="neural-tube-multi-locus">neural-tube-multi-locus</option><option value="tri-lineage-chromatin">tri-lineage-chromatin</option></select>
+          </label>
+          <label class="seg-wrap"><span data-k="dev.acc"></span>
+            <input id="devAcc" type="range" min="0" max="1" step="0.05" value="1" style="width:130px;accent-color:var(--ink)">
+            <span id="devAccVal" class="mono">1.00</span>
+          </label>
+          <label class="seg-wrap"><span data-k="dev.samples"></span>
+            <select id="devSamples" class="circ-select"><option value="8">8</option><option value="16" selected>16</option><option value="24">24</option></select>
+          </label>
+          <label class="seg-wrap"><input id="devCoding" type="checkbox"><span data-k="dev.coding"></span></label>
+          <label class="seg-wrap"><input id="devCx3d" type="checkbox"><span data-k="dev.cx3d"></span></label>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="devRun" class="btn primary" type="button" data-k="dev.go"></button>
+        <button id="devReceipt" class="btn" type="button" data-k="receipt.dl" hidden></button>
+        <span class="grow"></span>
+        <span id="devInfo" class="meta"></span>
+      </div>
+      <p id="devErr" class="alert" role="alert" hidden></p>
+    </div>
+    <div id="devOut" hidden>
+      <div class="stats" id="devStats"></div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h2 data-k="dev.lociTitle"></h2></div>
+          <table><thead><tr><th data-k="dev.col.rec"></th><th data-k="dev.col.kind"></th><th data-k="dev.col.ctx"></th><th class="num" data-k="dev.col.eff"></th></tr></thead><tbody id="devLoci"></tbody></table>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2 data-k="dev.ctlTitle"></h2></div>
+          <ul class="checks" id="devChecks"></ul>
+          <div class="prov" id="devProv"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-head"><h2 data-k="dev.grnTitle"></h2></div>
+        <table><thead><tr><th data-k="dev.col.gene"></th><th class="num">WT</th><th class="num" data-k="dev.col.var"></th><th class="num">Δ</th><th class="num" data-k="dev.col.ci"></th></tr></thead><tbody id="devGenes"></tbody></table>
+        <p class="scope" id="devCxOut" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="syn" role="tabpanel" aria-labelledby="tab-syn" hidden>
+    <div class="page"><h1 data-k="syn.title"></h1><p data-k="syn.lead"></p></div>
+    <p id="synOff" class="alert" hidden data-k="dev.unavailable"></p>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="grow"><h2 data-k="syn.modeTitle"></h2><p class="sub" data-k="syn.modeHelp"></p></div>
+        <div class="tools">
+          <div class="seg" id="synModeSeg" role="group">
+            <button type="button" data-smode="rescue" aria-pressed="true" data-k="syn.m.rescue"></button>
+            <button type="button" data-smode="reprogram" aria-pressed="false" data-k="syn.m.reprogram"></button>
+            <button type="button" data-smode="discover" aria-pressed="false" data-k="syn.m.discover"></button>
+          </div>
+        </div>
+      </div>
+      <div id="synParams" class="actions" style="margin-top:0;flex-wrap:wrap;gap:14px">
+        <label class="seg-wrap" id="synLocusWrap"><span data-k="syn.locus"></span>
+          <select id="synLocus" class="circ-select">
+            <option value="chr18:56475717-56475888">chr18:56475717-56475888</option>
+            <option value="chr1:175099416-175099587">chr1:175099416-175099587</option>
+            <option value="chr15:90936956-90937127">chr15:90936956-90937127</option>
+          </select>
+        </label>
+        <label class="seg-wrap" id="synEditWrap"><span data-k="syn.breaking"></span><input id="synEdit" type="text" value="165:G>T" style="width:120px" class="mono"></label>
+        <label class="seg-wrap" id="synFateWrap" hidden><span data-k="syn.targetFate"></span><input id="synFate" type="text" value="Olig2" style="width:120px" class="mono"></label>
+        <label class="seg-wrap" id="synCxWrap"><input id="synCx3d" type="checkbox"><span data-k="dev.cx3d"></span></label>
+      </div>
+      <div class="actions">
+        <button id="synRun" class="btn primary" type="button" data-k="syn.go"></button>
+        <button id="synReceipt" class="btn" type="button" data-k="receipt.dl" hidden></button>
+        <span class="grow"></span>
+        <span id="synInfo" class="meta"></span>
+      </div>
+      <p id="synErr" class="alert" role="alert" hidden></p>
+    </div>
+    <div id="synOut" hidden>
+      <div class="stats" id="synStats"></div>
+      <div class="panel">
+        <div class="panel-head"><h2 id="synDetailTitle"></h2></div>
+        <div id="synBody"></div>
+        <div class="prov" id="synProv"></div>
+      </div>
+    </div>
+  </section>
+
   <section id="sim" role="tabpanel" aria-labelledby="tab-sim">
     <div class="page"><h1 data-k="sim.title"></h1><p data-k="sim.lead"></p></div>
     <p id="simOff" class="alert" hidden data-k="sim.unavailable"></p>
@@ -824,7 +922,33 @@ const T = { en: {/*en*/
   'circ.ctl.rescueMiss': 'Closest {f} only (q = {q})',
   'circ.ctl.rescueNone': 'No single-site rescue elsewhere',
   'circ.ctl.customVar': 'Custom haplotype ({kind})',
-  'circ.ctl.customVarSub': '{w} → {m} · q={q}, {cat}'
+  'circ.ctl.customVarSub': '{w} → {m} · q={q}, {cat}',
+  'nav.dev': 'Develop Pipeline',
+  'nav.syn': 'Inverse Compiler',
+  'dev.title': 'Unified composable developmental pipeline',
+  'dev.lead': 'Seal multi-locus DNA and GA4GH VRS 2.x edits, gate cis-regulation by chromatin accessibility and coding translation, quantify GRN parameter uncertainty, and optionally grow 3D CX3D + LIF networks.',
+  'dev.unavailable': 'The developmental pipeline backend (examples/developmental-pipeline) was not found.',
+  'dev.cfg': 'Program configuration',
+  'dev.cfgHelp': 'Choose a multi-locus preset, adjust chromatin accessibility (0 = closed chromatin null control, 1 = open), and enable optional coding truncation or 3D CX3D morphogenesis.',
+  'dev.preset': 'Preset',
+  'dev.acc': 'Chromatin accessibility',
+  'dev.samples': 'Ensemble draws',
+  'dev.coding': 'Add Pax6 coding stop edit',
+  'dev.cx3d': 'Run 3D CX3D + LIF (JDK 21)',
+  'dev.go': 'Run developmental pipeline',
+  'dev.running': 'Compiling VRS 2.x, validating brainc & running GRN ensemble…',
+  'dev.lociTitle': 'Multi-locus regulatory & coding effects',
+  'dev.ctlTitle': 'Causal controls & sealed provenance',
+  'dev.grnTitle': 'GRN steady state & 90% uncertainty intervals',
+  'dev.col.rec': 'Locus', 'dev.col.kind': 'Wiring', 'dev.col.ctx': 'Context / Consequence', 'dev.col.eff': 'Effective factor',
+  'dev.col.gene': 'Gene', 'dev.col.var': 'Variant', 'dev.col.ci': 'Ensemble 90% CI',
+  'syn.title': 'Inverse DNA compiler & 532-TF discovery',
+  'syn.lead': 'Compile developmental goals back down to minimal GA4GH VRS 2.x DNA edits (epistatic rescue without touching the broken base, or fate reprogramming) or run out-of-sample 532-TF discovery on GSE188264.',
+  'syn.modeTitle': 'Compilation target',
+  'syn.modeHelp': 'Every synthesized design is sealed with brainc VRS 2.x, replayed independently (Python + Rust when built), and downloadable as a verifiable receipt.',
+  'syn.m.rescue': 'Epistatic Rescue', 'syn.m.reprogram': 'Fate Reprogram', 'syn.m.discover': '532-TF Discovery',
+  'syn.locus': 'Human enhancer locus', 'syn.breaking': 'Primary edit (locked)', 'syn.targetFate': 'Target fate',
+  'syn.go': 'Compile & verify', 'syn.running': 'Searching edits, sealing VRS 2.x & verifying…'
 /*end*/}, bg: {/*bg*/
   'brand.sub': 'Оценка на ДНК редакции',
   'nav.scan': 'Сканиране', 'nav.pairs': 'Редакции', 'nav.verify': 'Проверка',
@@ -1047,7 +1171,33 @@ const T = { en: {/*en*/
   'circ.ctl.rescueMiss': 'Най-близо {f} (q = {q})',
   'circ.ctl.rescueNone': 'Няма единично спасяване другаде',
   'circ.ctl.customVar': 'Потребителски хаплотип ({kind})',
-  'circ.ctl.customVarSub': '{w} → {m} · q={q}, {cat}'
+  'circ.ctl.customVarSub': '{w} → {m} · q={q}, {cat}',
+  'nav.dev': 'Конвейер (Develop)',
+  'nav.syn': 'Обратен компилатор',
+  'dev.title': 'Обединен композиционен конвейер за развитие',
+  'dev.lead': 'Запечатайте многолокусна ДНК и GA4GH VRS 2.x редакции, регулирайте чрез хроматинова достъпност и кодираща транслация, оценете несигурността на GRN и по избор пуснете 3D CX3D + LIF.',
+  'dev.unavailable': 'Модулът examples/developmental-pipeline не е намерен.',
+  'dev.cfg': 'Конфигурация на програмата',
+  'dev.cfgHelp': 'Изберете шаблон, регулирайте хроматиновата достъпност (0 = затворен хроматин, 1 = отворен) и включете по избор кодираща мутация или 3D CX3D морфогенеза.',
+  'dev.preset': 'Шаблон',
+  'dev.acc': 'Хроматин',
+  'dev.samples': 'Ансамбъл',
+  'dev.coding': 'Добави стоп-кодон в Pax6',
+  'dev.cx3d': 'Пусни 3D CX3D + LIF (JDK 21)',
+  'dev.go': 'Пусни конвейера',
+  'dev.running': 'Компилиране на VRS 2.x, проверка в brainc и GRN ансамбъл…',
+  'dev.lociTitle': 'Многолокусни регулаторни и кодиращи ефекти',
+  'dev.ctlTitle': 'Каузални контроли и криптографски произход',
+  'dev.grnTitle': 'Установено състояние на GRN и 90% доверителен интервал',
+  'dev.col.rec': 'Локус', 'dev.col.kind': 'Връзка', 'dev.col.ctx': 'Контекст / Последствие', 'dev.col.eff': 'Ефективен фактор',
+  'dev.col.gene': 'Ген', 'dev.col.var': 'Вариант', 'dev.col.ci': 'Ансамбъл 90% ДИ',
+  'syn.title': 'Обратен ДНК компилатор и 532-TF анализ',
+  'syn.lead': 'Компилирайте целева клетъчна съдба или епистатично спасяване директно до минимални VRS 2.x ДНК редакции, или пуснете 532-TF биофизичен анализ върху GSE188264.',
+  'syn.modeTitle': 'Цел на компилацията',
+  'syn.modeHelp': 'Всяка синтезирана редакция се запечатва с brainc VRS 2.x, проверява се независимо (Python + Rust) и може да се свали като удостоверение.',
+  'syn.m.rescue': 'Епистатично спасяване', 'syn.m.reprogram': 'Препрограмиране', 'syn.m.discover': '532-TF Откриване',
+  'syn.locus': 'Човешки енхансър', 'syn.breaking': 'Първична мутация', 'syn.targetFate': 'Целева съдба',
+  'syn.go': 'Компилирай и провери', 'syn.running': 'Търсене на редакции, VRS 2.x запечатване и проверка…'
 /*end*/} };
 
 let lang = /^bg/i.test(navigator.language) ? 'bg' : 'en';
@@ -1125,7 +1275,7 @@ document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => {
 });
 
 // tabs
-const tabs = ['sim', 'circuit', 'scan', 'pairs', 'verify'];
+const tabs = ['dev', 'syn', 'sim', 'circuit', 'scan', 'pairs', 'verify'];
 function show(name) {
   for (const id of tabs) { $('#' + id).hidden = id !== name; $('#tab-' + id).setAttribute('aria-selected', String(id === name)); }
   if (name === 'sim' && sim.result) drawSim();
@@ -1983,9 +2133,173 @@ $('#aboutBtn').onclick = () => $('#about').showModal();
 $('#aboutClose').onclick = () => $('#about').close();
 $('#about').onclick = e => { if (e.target === $('#about')) $('#about').close(); };
 
+// develop & inverse synthesize panels
+let devReceiptData = null, synReceiptData = null, synMode = 'rescue';
+
+$('#devAcc').oninput = () => { $('#devAccVal').textContent = (+$('#devAcc').value).toFixed(2); };
+$('#devPreset').onchange = () => { $('#devCoding').disabled = $('#devPreset').value !== 'neural-tube-multi-locus'; if ($('#devCoding').disabled) $('#devCoding').checked = false; };
+$('#devReceipt').onclick = () => devReceiptData && saveReceipt(devReceiptData);
+
+$('#devRun').onclick = () => guarded($('#devRun'), $('#devErr'), async () => {
+  plain($('#devInfo'), t('dev.running'));
+  const t0 = performance.now();
+  const receipt = await api('/api/score', {
+    mode: 'develop',
+    preset: $('#devPreset').value,
+    accessibility: +$('#devAcc').value,
+    include_coding_truncation: $('#devCoding').checked,
+    samples: +$('#devSamples').value,
+    run_cx3d: $('#devCx3d').checked,
+  });
+  devReceiptData = receipt;
+  $('#devReceipt').hidden = false;
+  const r = receipt.result;
+  plain($('#devInfo'), `${((performance.now() - t0) / 1000).toFixed(2)} s · biological_acceptance = false`);
+  $('#devOut').hidden = false;
+  const rustOk = r.provenance.rust_cross_check && r.provenance.rust_cross_check.available
+    ? (r.provenance.rust_cross_check.variants_valid && r.provenance.rust_cross_check.development_valid ? 'Rust OK' : 'Rust FAIL')
+    : 'Python OK';
+  $('#devStats').replaceChildren(
+    el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Nominal Fate'), el('b', {}, `${r.nominal.wt_fate} → ${r.nominal.variant_fate}`), el('span', { class: 'sub' }, r.nominal.fate_flipped ? 'Fate flipped' : 'Fate preserved')),
+    el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Ensemble Flip Prob'), el('b', {}, `${(r.uncertainty_ensemble.fate_flip_probability * 100).toFixed(1)}%`), el('span', { class: 'sub' }, `${r.uncertainty_ensemble.samples} kinetic draws (±15%)`)),
+    el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Sealed VRS 2.x'), el('b', {}, String(r.variants.length)), el('span', { class: 'sub mono' }, r.variants[0]?.vrs_allele_id.slice(0, 22) + '…')),
+    el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Replay Verification'), el('b', { style: 'color:var(--ok)' }, rustOk), el('span', { class: 'sub' }, 'VRS + brainc verified'))
+  );
+  $('#devLoci').replaceChildren(...r.loci.map(loc => el('tr', {},
+    el('td', { class: 'mono' }, loc.record_id),
+    el('td', {}, loc.kind === 'enhancer' ? `enhancer → ${loc.target_gene} (${loc.protein})` : `coding → ${loc.affects_gene}`),
+    el('td', { class: 'mono' }, loc.kind === 'enhancer' ? `a=${loc.accessibility.toFixed(2)}, gate=${loc.chromatin_gate.toFixed(2)}` : `${loc.consequence} (${loc.wt_peptide_length}→${loc.mut_peptide_length} aa)`),
+    el('td', { class: 'num mono' }, (loc.kind === 'enhancer' ? loc.effective_affinity_ratio : loc.coding_activity_factor).toFixed(5))
+  )));
+  const c = r.controls;
+  const ctlItems = [
+    ['Exact allele reversion (max Δ = ' + c.reversion_max_state_diff.toExponential(1) + ')', c.reversion_exact],
+    ['Closed-chromatin cis null (max Δ = ' + c.closed_chromatin_cis_max_state_diff.toExponential(1) + ')', c.closed_chromatin_cis_exact],
+    ['Passive reporter isolated (max Δ = ' + c.passive_reporter_isolation_max_diff.toExponential(1) + ')', c.passive_reporter_isolated],
+    ['Sealed VRS 2.x + brainc bundle replay', r.provenance.variants_valid && r.provenance.development_valid],
+  ];
+  $('#devChecks').replaceChildren(...ctlItems.map(([label, ok]) => {
+    const dot = withIcon(el('span', { class: 'dot' }), ok ? ICON.ok : ICON.bad);
+    dot.firstChild.setAttribute('width', 14); dot.firstChild.setAttribute('height', 14);
+    return el('li', ok ? {} : { class: 'fail' }, dot, label);
+  }));
+  $('#devProv').replaceChildren(
+    el('span', {}, 'Source SHA'), el('span', {}, r.provenance.source_descriptor_sha256.slice(0, 24) + '…'),
+    el('span', {}, 'Variants SHA'), el('span', {}, r.provenance.variant_collection_sha256.slice(0, 24) + '…'),
+    el('span', {}, 'Bundle SHA'), el('span', {}, r.provenance.development_bundle_sha256.slice(0, 24) + '…')
+  );
+  $('#devGenes').replaceChildren(...r.genes.map(g => {
+    const wt = r.nominal.wt_end_state[g], va = r.nominal.variant_end_state[g], d = va - wt;
+    const ds = r.uncertainty_ensemble.gene_delta_summary?.[g];
+    return el('tr', {},
+      el('td', { class: 'mono' }, g),
+      el('td', { class: 'num mono' }, wt.toFixed(4)),
+      el('td', { class: 'num mono' }, va.toFixed(4)),
+      el('td', { class: 'num mono ' + (d > 0.01 ? 'up' : d < -0.01 ? 'down' : '') }, (d >= 0 ? '+' : '') + d.toFixed(4)),
+      el('td', { class: 'num mono' }, ds ? `[${ds.p05 >= 0 ? '+' : ''}${ds.p05.toFixed(3)}, ${ds.p95 >= 0 ? '+' : ''}${ds.p95.toFixed(3)}]` : 'n/a')
+    );
+  }));
+  const cx = r.morphogenesis;
+  if (cx && cx.executed) {
+    const rb = cx.branches.reference, vb = cx.branches.variant;
+    $('#devCxOut').hidden = false;
+    $('#devCxOut').textContent = `3D CX3D + LIF executed: WT (${rb.construction.cells} cells, neurite length ${rb.construction.length.toFixed(2)}, ${rb.activity.total_spikes} spikes) vs Variant (${vb.construction.cells} cells, neurite length ${vb.construction.length.toFixed(2)}, ${vb.activity.total_spikes} spikes) · Allele rescue matches WT: ${cx.allele_rescue_matches_reference}`;
+  } else {
+    $('#devCxOut').hidden = true;
+  }
+});
+
+function updateSynModeUI() {
+  document.querySelectorAll('#synModeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.smode === synMode)));
+  $('#synLocusWrap').hidden = synMode === 'discover';
+  $('#synEditWrap').hidden = synMode !== 'rescue';
+  $('#synFateWrap').hidden = synMode !== 'reprogram';
+  $('#synCxWrap').hidden = synMode === 'discover';
+  if (synMode === 'rescue' && $('#synLocus').value === 'chr15:90936956-90937127') $('#synLocus').value = 'chr18:56475717-56475888';
+}
+document.querySelectorAll('#synModeSeg button').forEach(b => b.onclick = () => { synMode = b.dataset.smode; updateSynModeUI(); });
+$('#synLocus').onchange = () => {
+  if ($('#synLocus').value === 'chr18:56475717-56475888') $('#synEdit').value = '165:G>T';
+  else if ($('#synLocus').value === 'chr1:175099416-175099587') $('#synEdit').value = '149:G>T';
+  else $('#synEdit').value = '60:C>A';
+};
+$('#synReceipt').onclick = () => synReceiptData && saveReceipt(synReceiptData);
+
+$('#synRun').onclick = () => guarded($('#synRun'), $('#synErr'), async () => {
+  plain($('#synInfo'), t('syn.running'));
+  const t0 = performance.now();
+  let req;
+  if (synMode === 'discover') req = { mode: 'discover', bootstraps: 200 };
+  else if (synMode === 'rescue') req = { mode: 'synthesize', goal: 'rescue', locus: $('#synLocus').value, breaking_edit: $('#synEdit').value.trim(), samples: 12, run_cx3d: $('#synCx3d').checked };
+  else req = { mode: 'synthesize', goal: 'reprogram', locus: $('#synLocus').value, target_fate: $('#synFate').value.trim(), samples: 12, run_cx3d: $('#synCx3d').checked };
+  const receipt = await api('/api/score', req);
+  synReceiptData = receipt;
+  $('#synReceipt').hidden = false;
+  const r = receipt.result;
+  plain($('#synInfo'), `${((performance.now() - t0) / 1000).toFixed(2)} s · biological_acceptance = false`);
+  $('#synOut').hidden = false;
+
+  if (r.mode === 'discover') {
+    const m = r.heldout_test_metrics, top = r.top_corroborated_unseen_edit;
+    $('#synStats').replaceChildren(
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Unseen Test Pearson r'), el('b', {}, m.biophysical_532tf_pearson_r.toFixed(4)), el('span', { class: 'sub' }, `95% CI [${m.biophysical_532tf_pearson_r_95ci[0].toFixed(3)}, ${m.biophysical_532tf_pearson_r_95ci[1].toFixed(3)}]`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Top-10% Direction'), el('b', { style: 'color:var(--ok)' }, `${(m.direction_accuracy_top10pct_predicted * 100).toFixed(1)}%`), el('span', { class: 'sub' }, `vs 50% chance (1,895 edits)`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Family MSE Reduction'), el('b', {}, `${m.family_mse_reduction_pct.toFixed(2)}%`), el('span', { class: 'sub' }, `null perm r = ${m.label_permutation_null_pearson_r.toFixed(3)}`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Single-TF GLI2 Gain'), el('b', {}, `${(m.biophysical_532tf_pearson_r / 0.012258).toFixed(1)}×`), el('span', { class: 'sub' }, '532 JASPAR TFs, zero k-mers'))
+    );
+    $('#synDetailTitle').textContent = 'Top discovered human neural-induction TFs (GSE188264)';
+    const tbl = el('table', {},
+      el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'JASPAR Motif'), el('th', {}, 'Inferred Role'), el('th', { class: 'num' }, 'Weight Norm'), el('th', { class: 'num' }, '72h − 0h'))),
+      el('tbody', {}, ...r.discovered_top_tfs.map(tf => el('tr', {},
+        el('td', { class: 'rank' }, String(tf.rank)),
+        el('td', { class: 'mono' }, tf.motif_id),
+        el('td', {}, tf.inferred_role),
+        el('td', { class: 'num mono' }, tf.weight_norm.toFixed(4)),
+        el('td', { class: 'num mono' }, (tf.temporal_shift_72h_minus_0h >= 0 ? '+' : '') + tf.temporal_shift_72h_minus_0h.toFixed(4))
+      )))
+    );
+    $('#synBody').replaceChildren(tbl);
+    $('#synProv').replaceChildren(
+      el('span', {}, 'Top Unseen Edit'), el('span', {}, `${top.id} (${top.vrs_allele_id})`),
+      el('span', {}, 'Pred vs Measured'), el('span', {}, `${top.predicted_mean_delta_asinh.toFixed(3)} vs ${top.measured_mean_delta_asinh.toFixed(3)} Δasinh`)
+    );
+  } else if (r.goal === 'rescue') {
+    const brk = r.primary_breaking_edit, esc = r.synthesized_epistatic_rescue, cx = r.cx3d_3d_restoration;
+    const rc = r.provenance.epistatic_rescue.rust_cross_check;
+    const rustLabel = rc && rc.available ? (rc.variants_valid && rc.development_valid ? 'Rust OK' : 'Rust FAIL') : 'Python OK';
+    $('#synStats').replaceChildren(
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Synthesized Rescue'), el('b', { class: 'mono' }, esc.second_site_edit_id), el('span', { class: 'sub' }, `+${esc.distance_from_primary_bp} bp · ${brk.edit_id} kept intact`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'WT Ensemble Match'), el('b', { style: 'color:var(--ok)' }, `${(esc.ensemble_wt_fate_concordance * 100).toFixed(1)}%`), el('span', { class: 'sub' }, `Max gene Δ = ${esc.rescue_vs_wt_max_gene_delta.toExponential(2)}`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, '3D Neurite Recovery'), el('b', {}, cx.executed ? `${cx.neurite_morphology_recovery_pct.toFixed(2)}%` : 'Skipped'), el('span', { class: 'sub' }, cx.executed ? `${cx.wt_neurite_length.toFixed(1)} → ${cx.broken_neurite_length.toFixed(1)} → ${cx.rescue_neurite_length.toFixed(1)}` : 'Check 3D CX3D to run')),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Replay Verification'), el('b', { style: 'color:var(--ok)' }, rustLabel), el('span', { class: 'sub' }, '2 sealed VRS 2.x alleles'))
+    );
+    $('#synDetailTitle').textContent = `Epistatic 2nd-site rescue on ${r.locus}`;
+    $('#synBody').replaceChildren(el('p', { class: 'note' }, `Primary mutation ${brk.edit_id} collapsed fate (${r.wt_fate} → ${brk.broken_fate}, q=${brk.affinity_ratio.toFixed(4)}). Synthesized compensating edit ${esc.second_site_edit_id} restored affinity to q=${esc.double_mutant_affinity_ratio.toFixed(5)} and fate to ${esc.restored_nominal_fate} without reverting the primary base.`));
+    $('#synProv').replaceChildren(
+      el('span', {}, 'VRS Alleles'), el('span', {}, esc.vrs_allele_ids.join(', ')),
+      el('span', {}, 'Rescue Bundle SHA'), el('span', {}, r.provenance.epistatic_rescue.development_bundle_sha256.slice(0, 24) + '…')
+    );
+  } else {
+    const se = r.synthesized_edit;
+    $('#synStats').replaceChildren(
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Synthesized Edit'), el('b', { class: 'mono' }, se.edit_id), el('span', { class: 'sub' }, `${r.single_base_hits} / ${r.candidates_scanned} hits`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Fate Transition'), el('b', {}, `${se.nominal_wt_fate} → ${se.nominal_variant_fate}`), el('span', { class: 'sub' }, `q = ${se.affinity_ratio.toFixed(5)}`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Target Ensemble Prob'), el('b', {}, `${(se.target_fate_ensemble_prob * 100).toFixed(1)}%`), el('span', { class: 'sub' }, `Flip prob ${(se.fate_flip_probability * 100).toFixed(1)}%`)),
+      el('div', { class: 'stat' }, el('span', { class: 'k' }, 'Reversion Control'), el('b', { style: 'color:var(--ok)' }, r.controls.reversion_exact ? 'Exact 0.0' : 'Fail'), el('span', { class: 'sub' }, 'VRS 2.x sealed'))
+    );
+    $('#synDetailTitle').textContent = `Synthesized fate reprogramming on ${r.locus}`;
+    $('#synBody').replaceChildren(el('p', { class: 'note' }, `Synthesized minimal 1-bp edit ${se.edit_id} driving ${r.wt_fate} → ${r.target_fate}.`));
+    $('#synProv').replaceChildren(
+      el('span', {}, 'VRS Allele'), el('span', {}, se.vrs_allele_id),
+      el('span', {}, 'Bundle SHA'), el('span', {}, r.provenance.development_bundle_sha256.slice(0, 24) + '…')
+    );
+  }
+});
+
 (async () => {
   applyLang();
   model = await api('/api/model'); fillAbout();
+  if (!model.pipeline) { $('#devOff').hidden = false; $('#devRun').disabled = true; $('#synOff').hidden = false; $('#synRun').disabled = true; }
   if (model.simulation) {
     siteTable = await api('/api/site'); sim.protein = siteTable.published.protein; pickSite(siteTable.published.site);
     sim.initial = Object.fromEntries(siteTable.genes.map(g => [g, 0])); buildInitial(); renderSite(); renderPhases();

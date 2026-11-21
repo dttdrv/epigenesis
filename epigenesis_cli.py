@@ -54,6 +54,20 @@ def _run_py(cmd: list[str | Path], *, cwd: Path | None = None) -> int:
     return subprocess.call([sys.executable, *[str(part) for part in cmd]], cwd=cwd)
 
 
+def _cmd_app(args: argparse.Namespace) -> int:
+    repo = _find_repo(args.repo)
+    script = repo / "desktop/epigenesis_desktop.py"
+    if not script.is_file():
+        print("desktop launcher not found; run `epigenesis studio` instead", file=sys.stderr)
+        return 1
+    cmd: list[str | Path] = [script, "--repo", repo]
+    if args.file is not None:
+        cmd.append(args.file)
+    if args.no_native:
+        cmd.append("--no-native")
+    return _run_py(cmd)
+
+
 def _cmd_develop(args: argparse.Namespace) -> int:
     repo = _find_repo(args.repo)
     script = repo / "examples/developmental-pipeline/pipeline.py"
@@ -405,6 +419,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo", type=Path, help="optional path to Epigenesis repository root")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    ap = sub.add_parser("app", help="launch the dedicated Epigenesis desktop application (native macOS .app, or Windows/Linux desktop window)")
+    ap.add_argument("file", nargs="?", type=Path, help="optional DNA FASTA, edit table, or receipt file to open")
+    ap.add_argument("--no-native", action="store_true", help="skip macOS native .app and open standalone browser window")
+
     dv = sub.add_parser("develop", help="run the unified composable DNA -> VRS -> chromatin/GRN uncertainty -> 3D CX3D+LIF pipeline")
     dv.add_argument("--preset", default="neural-tube-multi-locus", choices=("neural-tube-multi-locus", "tri-lineage-chromatin"), help="built-in multi-locus demo preset")
     dv.add_argument("--fasta", type=Path, help="custom multi-locus reference DNA FASTA")
@@ -521,6 +539,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     dispatch = {
+        "app": _cmd_app,
         "develop": _cmd_develop,
         "synthesize": _cmd_synthesize,
         "discover": _cmd_discover,

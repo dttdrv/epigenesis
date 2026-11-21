@@ -8,6 +8,7 @@ recursive-include docs/paper *.pdf *.tex *.csv *.py
 recursive-include research *.md *.json *.py
 recursive-include studio *.md *.toml *.py *.html *.json *.npz
 include studio/epigenesis_studio/model/LICENSE
+recursive-include desktop *.md *.py *.swift
 recursive-include tools *.md *.py
 recursive-include examples *.fasta *.fastq *.json *.md *.py
 recursive-include examples/neural-predictor/data *.npz

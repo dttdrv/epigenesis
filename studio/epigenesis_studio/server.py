@@ -23,7 +23,7 @@ sys.path.insert(0, str(HERE/'model'))
 import predict  # frozen inference code; model/model.json pins its digest
 from brainc import _canonical as canonical  # the compiler's RFC 8785 digests
 
-from . import circuit, kreimer, simulate
+from . import circuit, kreimer, pipeline_api, simulate
 from .refusal import Refusal
 
 MANIFEST_BYTES = (HERE/'model/model.json').read_bytes()
@@ -96,6 +96,12 @@ def normalize(request):
         return simulate.normalize(request)
     if mode == 'circuit':
         return circuit.normalize(request)
+    if mode == 'develop':
+        return pipeline_api.normalize_develop(request)
+    if mode == 'synthesize':
+        return pipeline_api.normalize_synthesize(request)
+    if mode == 'discover':
+        return pipeline_api.normalize_discover(request)
     if mode == 'scan' and {'mode', 'sequence'} <= set(request) <= {'mode', 'sequence', 'model'}:
         normalized = dict(mode='scan', sequence=fasta_sequence(request['sequence']))
         if 'model' in request:
@@ -136,6 +142,12 @@ def run(request):
         return simulate.run(request)
     if request['mode'] == 'circuit':
         return circuit.run(request)
+    if request['mode'] == 'develop':
+        return pipeline_api.run_develop(request)
+    if request['mode'] == 'synthesize':
+        return pipeline_api.run_synthesize(request)
+    if request['mode'] == 'discover':
+        return pipeline_api.run_discover(request)
     engine = kreimer if request.get('model') == 'kreimer' else predict
     if request['mode'] == 'scan':
         reference = request['sequence']
@@ -157,6 +169,12 @@ def identity(mode, model=None):
         return simulate.IDENTITY
     if mode == 'circuit':
         return circuit.IDENTITY
+    if mode == 'develop':
+        return pipeline_api.DEVELOP_IDENTITY
+    if mode == 'synthesize':
+        return pipeline_api.SYNTH_IDENTITY
+    if mode == 'discover':
+        return pipeline_api.DISCOVER_IDENTITY
     if model == 'kreimer':
         return kreimer.IDENTITY
     return dict(model=MANIFEST['format'], manifest_sha256=MANIFEST_SHA256, endpoint=MANIFEST['endpoint'])
@@ -258,7 +276,7 @@ def open_file(name):
 def model_info():
     return dict(format=MANIFEST['format'], endpoint=MANIFEST['endpoint'], scope=MANIFEST['biological_scope'],
                 status=MANIFEST['status'], manifest_sha256=MANIFEST_SHA256, simulation=simulate.available(),
-                circuit=circuit.available(), motifs=len(MANIFEST['motif_ids']),
+                circuit=circuit.available(), pipeline=pipeline_api.available(), motifs=len(MANIFEST['motif_ids']),
                 motif_source=MANIFEST['motif_source']['license'], radius=RADIUS, max_scan=MAX_SCAN,
                 max_rows=MAX_ROWS, max_bases=MAX_BASES,
                 kreimer=dict(format=kreimer.MANIFEST['format'], endpoint=kreimer.MANIFEST['endpoint'],
@@ -305,6 +323,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, simulate.site_table())
             if path == '/api/circuit-example':
                 return self.send(200, circuit.example_enhancer())
+            if path == '/api/pipeline-presets':
+                return self.send(200, pipeline_api.presets_info())
             if path == '/api/files':
                 return self.send(200, dict(folder=str(FOLDER), files=folder_files()))
             if path == '/api/file':

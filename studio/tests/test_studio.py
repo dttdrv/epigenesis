@@ -542,5 +542,37 @@ class Page(unittest.TestCase):
             self.assertIn(family, keys)
 
 
+class PipelineAndInverseStudioTests(unittest.TestCase):
+    def test_develop_and_synthesize_receipts_replay_identically(self):
+        self.assertTrue(server.model_info()['pipeline'])
+        presets = server.pipeline_api.presets_info()
+        self.assertIn('neural-tube-multi-locus', presets['develop_presets'])
+
+        dev_receipt = server.score(dict(
+            mode='develop',
+            preset='neural-tube-multi-locus',
+            accessibility=0.5,
+            include_coding_truncation=True,
+            samples=6,
+            run_cx3d=False,
+        ))
+        self.assertTrue(dev_receipt['result']['controls']['reversion_exact'])
+        self.assertTrue(dev_receipt['result']['controls']['closed_chromatin_cis_exact'])
+        self.assertTrue(server.verify(dev_receipt)['ok'])
+
+        syn_receipt = server.score(dict(
+            mode='synthesize',
+            goal='rescue',
+            locus='chr18:56475717-56475888',
+            breaking_edit='165:G>T',
+            samples=6,
+            run_cx3d=False,
+        ))
+        esc = syn_receipt['result']['synthesized_epistatic_rescue']
+        self.assertTrue(esc['primary_kept_intact'])
+        self.assertEqual(esc['restored_nominal_fate'], 'Nkx2.2')
+        self.assertTrue(server.verify(syn_receipt)['ok'])
+
+
 if __name__ == '__main__':
     unittest.main()
