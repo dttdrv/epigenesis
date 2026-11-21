@@ -11,6 +11,12 @@ HERE = Path(__file__).resolve().parent
 tectonic = os.environ.get("TECTONIC") or shutil.which("tectonic") or str(HERE.parents[1] / "build/tools/tectonic/tectonic")
 if not Path(tectonic).is_file() and not shutil.which(tectonic):
     sys.exit("tectonic not found; set TECTONIC")
-for name in ("epigenesis-technical-paper", "epigenesis-technical-paper.bg"):
-    subprocess.run([tectonic, "-X", "compile", f"{name}.tex"], cwd=HERE, check=True)
-    print(f"built {name}.pdf")
+for name in (
+    "epigenesis-technical-paper",
+    "epigenesis-technical-paper.bg",
+    "epigenesis-v2f-grand-challenge",
+    "epigenesis-v2f-grand-challenge.bg",
+):
+    if (HERE / f"{name}.tex").is_file():
+        subprocess.run([tectonic, "-X", "compile", f"{name}.tex"], cwd=HERE, check=True)
+        print(f"built {name}.pdf")

@@ -11,8 +11,10 @@
 
 <p align="center">
   <a href="https://github.com/dttdrv/epigenesis/releases"><strong>Download Desktop App</strong></a> &middot;
-  <a href="docs/paper/epigenesis-technical-paper.pdf">Technical Paper (EN PDF)</a> &middot;
-  <a href="docs/paper/epigenesis-technical-paper.bg.pdf">Технически доклад (BG PDF)</a> &middot;
+  <a href="docs/paper/epigenesis-technical-paper.pdf">Technical Paper (EN)</a> &middot;
+  <a href="docs/paper/epigenesis-technical-paper.bg.pdf">Технически доклад (BG)</a> &middot;
+  <a href="docs/paper/epigenesis-v2f-grand-challenge.pdf">V2F Grand Challenge Paper (EN)</a> &middot;
+  <a href="docs/paper/epigenesis-v2f-grand-challenge.bg.pdf">V2F Доклад (BG)</a> &middot;
   <a href="docs/ARCHITECTURE.md">Architecture</a> &middot;
   <a href="SPEC.md">Compiler Spec</a>
 </p>

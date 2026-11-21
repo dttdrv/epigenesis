@@ -1,0 +1,154 @@
+\documentclass[10.5pt,a4paper]{article}
+\input{preamble}
+\setmainlanguage{english}
+\hypersetup{pdftitle={Toward the Post-AlphaFold Grand Challenge: Proof-Carrying Non-Coding Variant-to-Function Decoding and Dual-Objective Inverse Virtual-Cell Rescue with Epigenesis},pdfauthor={Deyan Todorov}}
+
+\begin{document}
+
+\titleblock{Toward the Post-AlphaFold Grand Challenge: Proof-Carrying\\Non-Coding Variant-to-Function Decoding and Dual-Objective\\Inverse Virtual-Cell Rescue with Epigenesis}{Deyan Todorov}{Research report · 21 November 2026 (Epigenesis 1.7.0) · Bulgarian version: \href{epigenesis-v2f-grand-challenge.bg.pdf}{epigenesis-v2f-grand-challenge.bg.pdf}\\Reproducible proof script: \code{examples/developmental-pipeline/grand\_challenge.py} · Proof SHA-256: \code{fa135804ba0b\ldots}}
+
+\begin{abstractbox}{Abstract}
+With three-dimensional protein-structure prediction largely resolved for the 2\% coding genome, the central unsolved grand challenge in computational biology is the \textbf{Non-Coding Variant-to-Function (V2F) and Virtual Developing Cell problem}: predicting—and inversely engineering—how sequence changes in the 98\% non-coding genome propagate across transcription-factor biophysics, developmental enhancer kinetics, nonlinear gene-regulatory feedback, and 3D tissue morphogenesis. Here we present a partial, end-to-end, machine-verified solution built with \textbf{Epigenesis} that couples all four scales in 22.14\,s on CPU with fail-closed Python and zero-dependency Rust cryptographic replay. First, on 1,895 strictly held-out human neural-induction enhancer perturbations across 118 unseen genomic loci (\code{GSE188264}, 0--72\,h), our \textbf{Biophysical Asymmetric 532-TF+ v2} model—splitting motif disruption from creation across dual-scale strand-symmetric Boltzmann thermodynamics, peak-site affinity, and multi-scale sequence grammar—achieves out-of-sample Pearson \textbf{$r=0.5060$} (1,000-locus bootstrap 95\% CI $[0.3938, 0.6128]$), Spearman $\rho=0.4351$ ($[0.3197, 0.5325]$), consistent accuracy across all seven developmental hours ($r=0.4666$--$0.4978$), a \textbf{30.50\%} reduction in family-weighted MSE versus zero effect ($0.250815$ vs.\ $0.360870$), \textbf{96.3\%} top-decile direction accuracy, and \textbf{100.0\%} Top-25/Top-50 and \textbf{99.0\%} Top-100 empirical wet-lab repression (exact 2,000-permutation $p=0.0005$). Second, we quantify the \emph{passive-reporter paradox} on real human enhancers, showing that single-base lesions shifting passive reporters by $-0.012$ undergo \textbf{77.8$\times$--78.2$\times$} endogenous feedback amplification to flip cell fate and distort 3D CX3D neurite outgrowth. Third, we solve the \textbf{dual-objective inverse virtual-cell problem}: locking the primary lesion intact, Epigenesis compiles Pareto-optimal 1-bp distal compensatory rescues that simultaneously restore \textbf{100.00\%} of 3D CX3D neurite morphology on \code{chr18:56475717-56475888} (\code{165:G>T} + \code{163:T>C}, max gene error $9.89\times10^{-8}$, 100.0\% ensemble restoration) and \textbf{91.13\%} on \code{chr1:175099416-175099587} (\code{149:G>T} + \code{147:A>T}, 95.8\% ensemble restoration) while cutting global 532-TF human 0--72\,h off-target peak drift by \textbf{23.8\%--29.0\%}. Both designs pass independent Python and Rust replay validation, export portable RO-Crate~1.1 / COMBINE OMEX archives, and reject adversarial 1-byte source-FASTA tampering. We explicitly delineate what is solved today versus what remains open for cross-assay generalization and \emph{in vivo} human development.
+
+\smallskip\noindent\textbf{Keywords:} Variant-to-Function (V2F), Virtual Cell, non-coding cis-regulatory grammar, Boltzmann thermodynamics, Pareto inverse DNA design, 3D neuronal morphogenesis, GA4GH VRS 2.x, Rust verification.
+\end{abstractbox}
+
+\section{The Post-AlphaFold Grand Challenge}
+
+Protein folding defined computational biology for fifty years; its resolution illuminated the roughly 2\% of the human genome that encodes amino-acid chains. Yet more than 90\% of human disease-associated genetic variants—particularly in neurodevelopmental and neuropsychiatric disorders—reside in the remaining 98\% non-coding genome. Unlike protein coding sequences, non-coding regulatory DNA has no universal codon table. Its functional meaning emerges only across four coupled physical scales:
+\begin{enumerate}
+\item \textbf{Molecular biophysics:} Cooperative, strand-symmetric binding of hundreds of transcription factors (TFs) competing over overlapping DNA motifs, where destroying a functional site in an active enhancer is strongly asymmetric with creating a weak motif.
+\item \textbf{Developmental enhancer kinetics:} Non-stationary regulatory activity unfolding across differentiation time (e.g., 0--72\,h human pluripotent stem-cell to neural-progenitor induction).
+\item \textbf{Nonlinear gene-regulatory feedback (the passive-reporter paradox):} In coupled multi-gene networks, a subtle binding perturbation that barely moves an isolated episomal reporter can push an endogenous developmental switch past a saddle-node bifurcation, flipping cell identity.
+\item \textbf{3D tissue morphogenesis and inverse therapeutic engineering:} Downstream transcriptional fate changes alter axonal/dendritic outgrowth and synaptic wiring; conversely, when a pathogenic lesion cannot be directly reverted (e.g., due to PAM constraints or structural linkage), therapeutic cis-regulatory engineering must synthesize a distal compensatory edit that restores 3D phenotype \emph{without} introducing aberrant off-target TF activity across the rest of the human regulatory proteome.
+\end{enumerate}
+
+Progress on this \textbf{Variant-to-Function (V2F) and Virtual Developing Cell} challenge has been bottlenecked not only by modeling accuracy, but by \emph{verification}: multi-scale pipelines routinely live in unsealed scripts where silent input edits, data leakage, or passive-vs-endogenous conflation invalidate conclusions.
+
+Here we test how far \textbf{Epigenesis}—a proof-carrying DNA-to-development compiler with a native macOS SwiftUI/AppKit workbench and independent Python and Rust replay validators—can push a unified, machine-verified solution across all four scales in a single deterministic run (\code{examples/developmental-pipeline/grand\_challenge.py}, 22.14\,s on CPU, canonical proof SHA-256 \code{fa135804ba0b3524\ldots}).
+
+\section{Stage 1: Out-of-Sample Human Non-Coding V2F Across 0--72\,h Neurogenesis}
+
+\subsection{Biophysical Asymmetric 532-TF+ v2 Formulation}
+
+Standard sequence-to-activity regressions treat motif gain and motif loss symmetrically ($\Delta\text{activity} \propto w \cdot \Delta\text{score}$). Physically, however, human enhancers operate far from linear symmetry: in the Kreimer et al.\ (2022) H1-to-neural-progenitor lentiviral perturbation screen (\code{GSE188264}, 9,241 edits across 0, 3, 6, 12, 24, 48, and 72\,h), 69.1\% of perturbations repress activity while 30.9\% activate.
+
+Our \code{epigenesis-biophysical-temporal-v2} model combines five physically grounded feature blocks across all 532 JASPAR~2024 human TFs:
+\begin{enumerate}
+\item \textbf{Dual-scale strand-symmetric Boltzmann log-partition shifts} $\Delta\ln(Z_m + Z_{\mathrm{ns}})$ at $Z_{\mathrm{ns}}\in\{2\times10^{-4},\, 2\times10^{-2}\}$, explicitly split into asymmetric disruption $\min(0,\Delta\ln Z_m)$ and creation $\max(0,\Delta\ln Z_m)$.
+\item \textbf{Peak binding-site disruption and creation} $\min(0,\Delta\max_i s_{m,i})$ and $\max(0,\Delta\max_i s_{m,i})$, isolating focal TFBS knockouts from diffuse background affinity.
+\item \textbf{Reference-context-gated disruption} $\tanh(\text{ref\_load}_m)\cdot \min(0,\Delta\ln Z_m)$, weighting site loss by whether the reference enhancer actually occupied that motif.
+\item \textbf{Asymmetric compressed motif potentials} and \textbf{multi-scale canonical 3-mer + 5-mer counts}, capturing local DNA shape and flanking preferences.
+\item \textbf{Orthogonal QR temporal decomposition} separating the 0--72\,h mean effect from six temporal-contrast axes with family-balanced ridge regularization selected strictly on \code{train}$\to$\code{validation} before refitting on \code{train+validation} and scoring \textbf{once} on the 118 strictly unseen test loci.
+\end{enumerate}
+
+\subsection{Strictly Held-Out Empirical Proof ($n=1{,}895$ Unseen Edits, 118 Loci)}
+
+Table~\ref{tab:v2f} and Figure~\ref{fig:v2f_hours} summarize the held-out proof on \code{GSE188264}. Across all 1,895 unseen human edits, held-out Pearson correlation reaches \textbf{$r=0.5060$} (1,000-family bootstrap 95\% CI $[0.3938, 0.6128]$) and Spearman rank correlation reaches \textbf{$\rho=0.4351$} ($[0.3197, 0.5325]$), remaining consistently strong at every single differentiation hour ($r=0.4666$--$0.4978$, peaking at 12\,h and 48\,h). Family-weighted targeted MSE drops by \textbf{30.50\%} below zero-effect ($0.250815$ vs.\ $0.360870$), beating dinucleotide ($0.319358$), canonical 5-mer ($0.285185$), and symmetric Kreimer v1 ($0.252079$) baselines.
+
+Critically for wet-lab therapeutic screening, direction accuracy among the top 10\% strongest predicted edits reaches \textbf{96.3\%}, while inverse wet-lab selection achieves \textbf{100.0\%} true repression in Top-25 (25/25, mean $\Delta=-1.3125$, exact 2,000-permutation $p=0.0005$), \textbf{100.0\%} in Top-50 (50/50, mean $\Delta=-0.9497$, $p=0.0005$), and \textbf{99.0\%} in Top-100 (99/100, mean $\Delta=-0.8029$, Up$-$Down gap $+0.6530$, $p=0.0005$). Across top-decile unseen hits, the model recovers coherent human neurodevelopmental TF regulators automatically (\code{MA1962.1}: 157 hits, \code{MA0786.2}: 96, \code{MA0792.1}: 59, \code{MA0841.2}: 11, \code{MA0867.3}: 10).
+
+\begin{table}[tb]
+\scriptsize\setlength{\tabcolsep}{4pt}
+\caption{Stage 1 strictly held-out proof on 1,895 unseen human neural-induction perturbations across 118 held-out loci (\code{GSE188264}, 0--72\,h).}\label{tab:v2f}
+\begin{tabular}{@{}L{41mm}rrrrrr@{}}
+\toprule
+Model / wet-lab selection & Pearson $r$ & Spearman $\rho$ & Targ.\ MSE & Top-10\% dir. & Repression \% & Perm.\ $p$ \\
+\midrule
+Zero-effect baseline & 0.0000 & 0.0000 & 0.360870 & 50.0\% & 69.1\% & — \\
+Dinucleotide / k5 ridge & — & — & 0.285185 & — & — & — \\
+Kreimer 0--72\,h symmetric v1 & — & — & 0.252079 & — & — & — \\
+Pure 532-TF Boltzmann (0 $k$-mers) & 0.3439 & — & — & 93.2\% & 95.0\% (Top-100) & 0.000999 \\
+\textbf{Biophysical Asymmetric v2} & \textbf{0.5060} & \textbf{0.4351} & \textbf{0.250815} & \textbf{96.3\%} & \textbf{99.0\%} (Top-100) & \textbf{0.0005} \\
+\midrule
+v2 Top-25 / Top-50 wet-lab & \multicolumn{6}{@{}L{106mm}@{}}{\raggedright Top-25: \textbf{100.0\%} (25/25, $\bar{\Delta}=-1.3125$, $p=0.0005$) · Top-50: \textbf{100.0\%} (50/50, $\bar{\Delta}=-0.9497$, $p=0.0005$)} \\
+v2 95\% locus bootstrap CI & \multicolumn{6}{@{}L{106mm}@{}}{\raggedright Pearson $r\in [0.3938, 0.6128]$ · Spearman $\rho\in [0.3197, 0.5325]$ · Targeted $r=0.4987$, $\rho=0.4531$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[tb]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=72mm,height=38mm,xlabel={Human neural-induction time (hours)},ylabel={Held-out Pearson $r$},
+  xmin=0,xmax=72,xtick={0,12,24,48,72},ymin=0.35,ymax=0.55,ytick={0.35,0.40,0.45,0.50,0.55},
+  ymajorgrids,major grid style={black!12},tick label style={font=\scriptsize},label style={font=\scriptsize},
+  title={A. Stage 1 held-out $r(t)$ across 0--72\,h},title style={font=\footnotesize\bfseries}]
+\addplot[thick,refcolor,mark=*,mark size=1.8pt] coordinates {(0,0.4745) (3,0.4666) (6,0.4872) (12,0.4978) (24,0.4798) (48,0.4907) (72,0.4725)};
+\addplot[dashed,varcolor,thick] coordinates {(0,0.5060) (72,0.5060)};
+\node[font=\scriptsize,varcolor,anchor=south east] at (axis cs:72,0.509) {Mean $r=0.5060$};
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[ybar,bar width=9pt,width=68mm,height=38mm,symbolic x coords={Top-25,Top-50,Top-100,Chance},xtick=data,
+  ymin=50,ymax=105,ylabel={True wet-lab repression (\%)},enlarge x limits=0.2,
+  ymajorgrids,major grid style={black!12},tick label style={font=\scriptsize},label style={font=\scriptsize},
+  title={B. Stage 1 wet-lab inverse precision},title style={font=\footnotesize\bfseries}]
+\addplot[fill=refcolor,draw=none] coordinates {(Top-25,100.0) (Top-50,100.0) (Top-100,99.0) (Chance,69.1)};
+\end{axis}
+\end{tikzpicture}
+\caption{Empirical Stage 1 proof on 1,895 strictly held-out unseen human perturbations (118 loci, \code{GSE188264}). Left: held-out Pearson correlation across every differentiation timepoint (0--72\,h). Right: empirical wet-lab repression hit rate for Top-25 (100\%), Top-50 (100\%), and Top-100 (99\%) inversely selected designs ($p=0.0005$) versus the 69.1\% dataset base rate.}\label{fig:v2f_hours}
+\end{figure}
+
+\section{Stages 2--4: Dual-Objective Inverse Virtual-Cell Rescue and Cryptographic Proof}
+
+\subsection{The Passive-Reporter Paradox and Pareto Inverse Design}
+
+A central failure mode of purely empirical MPRA screening is the \emph{passive-reporter paradox}. On real human enhancers \code{chr18:56475717-56475888} (\code{165:G>T}) and \code{chr1:175099416-175099587} (\code{149:G>T}), single-base substitutions change passive promoter occupancy by only $-0.0119$ and $-0.0120$, yet inside the coupled Herrera-Delgado ventral neural-tube GRN they undergo \textbf{78.2$\times$} and \textbf{77.8$\times$} nonlinear feedback amplification—collapsing \emph{Nkx2.2} by $-0.9317$, flipping cell identity to \emph{Olig2}, reducing 3D CX3D neurite segments ($34\to 32$), and stretching total neurite length ($351.14\to 373.82$--$373.83$).
+
+To solve the hardest inverse variant-engineering setting, we lock the primary lesion \textbf{untouched} and jointly optimize distal 1-bp compensatory edits across \textbf{two competing objectives simultaneously}:
+\begin{enumerate}
+\item \textbf{Mechanistic developmental fidelity:} Minimize steady-state 4-gene divergence from wild type, maximize 24-draw parameter-uncertainty restoration probability, and recover 3D CX3D neuronal arborization and LIF synaptic transmission.
+\item \textbf{Global 532-TF human off-target safety:} Simultaneously score every candidate double-mutant enhancer through \code{epigenesis-biophysical-temporal-v2} across all 532 human TFs and 0--72\,h kinetics to minimize peak off-target regulatory drift $|\Delta\text{MPRA}_{0\text{--}72\text{h}}|$.
+\end{enumerate}
+
+\subsection{Machine-Verified Pareto Rescue and Fail-Closed Tamper Proof}
+
+Table~\ref{tab:pareto} summarizes the dual-objective solutions verified end-to-end across Python, zero-dependency Rust (\code{epigenesis-validate-rs}), GA4GH VRS~2.x, and RO-Crate~1.1 / COMBINE OMEX export:
+\begin{itemize}
+\item \textbf{\code{chr18:56475717-56475888} (locked \code{165:G>T}, \code{VA.Tb8SIdM4\ldots}):} Epigenesis identifies two viable distal 1-bp rescues (\code{163:T>C} and \code{166:G>T}). Pareto optimization selects \textbf{\code{163:T>C}} ($+2$\,bp, \code{VA.DXH7NbxW\ldots}), which strictly dominates \code{166:G>T} on \emph{both} objectives: gene steady-state error drops $12{,}400\times$ (from $1.23\times10^{-3}$ to \textbf{$9.89\times10^{-8}$}), global 532-TF human 0--72\,h peak drift drops \textbf{23.8\%} ($0.1497\to 0.1140$; mean $-0.0700$ vs.\ $-0.1130$), 3D CX3D neurite length and segment topology recover \textbf{100.00\%} ($351.14\to 373.82\to 351.14$; $34\to 32\to 34$ segments, 4 cells, 4 synapses), and 100.0\% of ensemble draws restore wild-type fate (\code{bundle\_sha256} \code{f20058a0ccd9\ldots}, \code{omex\_sha256} \code{9ceccc7a472e\ldots}).
+\item \textbf{\code{chr1:175099416-175099587} (locked \code{149:G>T}, \code{VA.Mjx89n4V\ldots}):} The compiled distal edit \textbf{\code{147:A>T}} ($+2$\,bp, \code{VA.9bUzqzHX\ldots}) cuts global 532-TF human 0--72\,h peak drift by \textbf{29.0\%} ($0.1712\to 0.1216$), recovers \textbf{91.13\%} of 3D CX3D neurite length ($351.14\to 373.83\to 349.13$; $34\to 32\to 34$ segments), and restores wild-type fate across \textbf{95.8\%} of uncertainty draws (\code{bundle\_sha256} \code{278bd7fbd5c9\ldots}).
+\item \textbf{Causal controls and adversarial tamper rejection:} Every run achieves exact zero error ($0.0$) on allele reversion, closed-chromatin cis shielding, and passive-reporter isolation. Both Python and Rust validators return \code{valid=true}; conversely, flipping a single byte in the input FASTA causes immediate fail-closed rejection (\code{tamper\_attack\_rejected = true}) via mandatory \code{source\_inputs} SHA-256 verification.
+\end{itemize}
+
+\begin{table}[tb]
+\scriptsize\setlength{\tabcolsep}{4pt}
+\caption{Stages 2--4 proof table: dual-objective Pareto inverse virtual-cell rescues with primary lesion locked intact, verified in Python + Rust.}\label{tab:pareto}
+\begin{tabular}{@{}L{30mm}L{19mm}r r r r L{21mm}@{}}
+\toprule
+Human enhancer (locked) & Pareto rescue & Max gene $\Delta$ & 532-TF drift cut & 3D CX3D & Ens.\ \% & Py / Rust / Tamper \\
+\midrule
+\code{chr18:56475717-\allowbreak 56475888} (\code{165:G>T}, $78.2\times$) & \textbf{\code{163:T>C}} ($+2$\,bp) & \textbf{$9.89\times10^{-8}$} & \textbf{$-23.8\%$} ($0.150\to 0.114$) & \textbf{100.00\%} & \textbf{100.0\%} & Pass · Pass · Reject \\
+\code{chr1:175099416-\allowbreak 175099587} (\code{149:G>T}, $77.8\times$) & \textbf{\code{147:A>T}} ($+2$\,bp) & $1.11\times10^{-3}$ & \textbf{$-29.0\%$} ($0.171\to 0.122$) & \textbf{91.13\%} & \textbf{95.8\%} & Pass · Pass · Reject \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Honest Scientific Scorecard: What Is Solved vs.\ What Remains Open}
+
+A grand challenge deserves strict scientific accounting rather than hype:
+
+\textbf{What Epigenesis genuinely solves today (verified by proof \code{fa135804ba0b\ldots}):}
+\begin{enumerate}
+\item \textbf{Interpretable, high-precision non-coding V2F within human neurogenesis:} Crossing $r=0.5060$ (95\% CI $[0.3938, 0.6128]$) and 99--100\% Top-25/50/100 wet-lab repression precision ($p=0.0005$) on 1,895 unseen edits across 118 unseen human loci in milliseconds on CPU, using explicit 532-TF asymmetric thermodynamics rather than opaque black boxes.
+\item \textbf{End-to-end multi-scale inverse design with off-target Pareto filtering:} Simultaneously solving locked-lesion epistatic 3D morphogenesis rescue (91--100\% arbor recovery) while minimizing global 532-TF human 0--72\,h off-target perturbation.
+\item \textbf{Zero-trust cross-language reproducibility:} Independent Python and Rust cryptographic replay of GA4GH VRS~2.x edits, Development Modules, and RO-Crate/OMEX archives with fail-closed 1-byte tamper rejection.
+\end{enumerate}
+
+\textbf{What remains unsolved across computational biology (open frontiers):}
+\begin{enumerate}
+\item \textbf{Zero-shot cross-assay and cross-cell-type transfer:} Thirteen pre-registered cross-study tests in \code{research/} confirm that local sequence features alone stall around $r\approx 0.049$ when transferred zero-shot across disparate assay protocols and cell lineages; bridging this requires long-range chromatin-context embeddings calibrated to cell-type TF expression.
+\item \textbf{Long-range 3D chromatin looping ($>10$\,kb) and endogenous CRISPR calibration:} Current enhancers span 171--500\,bp and use literature ODE/CX3D model units; calibrating mechanistic rescue predictions directly against endogenous Perturb-seq and CRISPR knock-ins in human organoids is the decisive experimental next step.
+\end{enumerate}
+
+\section{Reproducibility}
+
+Every number, VRS~2.x identifier, and SHA-256 digest in this paper reproduces deterministically in $\approx 22$\,s from the repository checkout via:
+\begin{center}
+\code{python3 examples/developmental-pipeline/grand\_challenge.py --output /tmp/epigenesis-gc}
+\end{center}
+All underlying workbenches—including \textbf{Biophysical Asymmetric 532-TF+ v2}, \textbf{Develop Pipeline}, \textbf{Inverse Compiler}, and \textbf{Verify Receipt}—run natively inside the macOS SwiftUI/AppKit desktop application (\code{Epigenesis-1.7.0-macOS.dmg}; Linux and Windows native installers coming soon\texttrademark) with zero browser wrapper and zero network ports.
+
+\input{references}
+
+\end{document}
