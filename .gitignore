@@ -1,13 +1,46 @@
+# Python caches & packaging
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .venv/
 build/
-output/
 dist/
+studio/build/
+studio/dist/
+
+# Epigenesis local runs & generated bundles
+epigenesis-out/
+output/
+*.dmg
+*.app/
+
+# LaTeX intermediate artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Local test fixtures fetched on demand
 tests/data/CP032762.1.gb
 tests/data/CP032762.1.brainc.json
 tests/data/CP032762.1.validation.json
-.DS_Store
+
+# Rust build artifacts
 validators/rust/target/
+
+# OS & editor files
+.DS_Store
+.AppleDouble
+.LSOverride
+.vscode/
+.idea/
+*.swp
+.env

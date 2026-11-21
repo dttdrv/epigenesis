@@ -1,90 +1,123 @@
-# Epigenesis
+<p align="center">
+  <img src="desktop/macos/AppIcon.png" alt="Epigenesis macOS App Icon" width="112" height="112" />
+</p>
 
-Epigenesis is a **native macOS desktop application (`.dmg`)** and **DNA-to-development simulation and compiler platform**. It compiles DNA sources and reference-bound genetic edits under explicit biological interpretations into sealed Development Modules, composes them into multi-layer developmental simulations (chromatin-gated transcription-factor regulation, multi-gene dynamics with parameter uncertainty, inverse DNA synthesis, and 3D neural morphogenesis), and lets independent Python and Rust validators replay every compilation byte for byte.
+<h1 align="center">Epigenesis</h1>
 
-> **Desktop Application First:** Use the dedicated native **macOS `.dmg` application** (`Epigenesis-1.7.0-macOS.dmg` → drag `Epigenesis.app` into `Applications`) for all everyday laboratory simulation, inverse DNA synthesis, enhancer circuit analysis, and cryptographic receipt verification. **Linux and Windows native installers are coming soon™.** Command-line tools (`epigenesis`, `brainc`) remain available below for scripting, batch pipelines, and CI verification.
+<p align="center">
+  <strong>Native macOS Desktop Workbench &amp; Proof-Carrying DNA-to-Development Compiler</strong><br />
+  Simulate regulatory DNA, compile minimal epistatic rescues and cell-fate edits, and replay every result cryptographically in Python and Rust.
+</p>
 
-To keep biological ambition honest and core software rock-solid, Epigenesis separates three strict layers ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
+<p align="center">
+  <a href="desktop/README.md"><strong>Download / Build macOS <code>.dmg</code></strong></a> &middot;
+  <a href="docs/paper/epigenesis-technical-paper.pdf">Technical Paper (EN PDF)</a> &middot;
+  <a href="docs/paper/epigenesis-technical-paper.bg.pdf">Технически доклад (BG PDF)</a> &middot;
+  <a href="docs/ARCHITECTURE.md">Architecture</a> &middot;
+  <a href="SPEC.md">Compiler Spec</a>
+</p>
 
-1. **Provenance Compiler Core (`brainc/`, `SPEC.md`, `validators/rust/`, `brainc/schemas/`):** Zero-dependency universal DNA translation compiler, GA4GH VRS 2.x reference-bound variant collections, RFC 8785 canonical seals, RO-Crate 1.1 / COMBINE OMEX export, and independent Python + Rust replay validators.
-2. **Desktop Application & Unified Developmental Engine (`desktop/`, `studio/`, `examples/developmental-pipeline/`, `neural-circuit`, `neural-construction`):** Native macOS desktop app (`Epigenesis.app` / `.dmg`, Studio `0.3.0`) driving the end-to-end multi-locus **DNA + VRS edits → chromatin-gated TF binding & coding translation → N-gene GRN dynamics with parameter-uncertainty ensembles → inverse DNA compilation → 3D CX3D morphogenesis & LIF spiking**, with built-in causal controls (exact allele reversion, closed-chromatin cis null, passive reporter isolation) and empirical falsification hooks.
-3. **Exploratory Research & Honest Negative-Result Ledger (`research/`, `neural-v2f`, `mpra-replay`, `neural-predictor`, `neural-regulation`):** Clearly quarantined research prototypes (`biological_acceptance = false`) and thirteen frozen cross-study predictive tests that report null and negative results verbatim.
+---
 
-In the works reviewed in [Prior art](docs/reference/PRIOR_ART.md), no other system combines these boundaries; that is a scoped comparison of the cited corpus, not a benchmark against other simulators.
+## Epigenesis for macOS (`.dmg`)
 
-**Status.** Version 1.7 ships the native **macOS desktop application (`.dmg`)** powered by Epigenesis Studio `0.3.0`, backed by the universal DNA translation compiler (GA4GH VRS 2.x variant collections, independent Rust replay validation, RO-Crate/OMEX export), the **Unified Composable Developmental Pipeline** (`develop`), the **Inverse Developmental DNA Compiler** (`synthesize`), and out-of-sample 532-TF biophysical discovery (`discover`). Software provenance, determinism, and mechanistic causal controls pass; *in vivo* biological phenotype and cross-study sequence prediction remain unestablished (`biological_acceptance = false`): thirteen frozen cross-study sequence tests (Siraj SK-N-SH, 19–20 October 2026) measured mean external correlation `0.049`, and the exploratory V2F radar's frozen held-out test (`1,885` unseen `GSE188264` alleles) measured `Pearson r = 0.012`. [The architecture guide](docs/ARCHITECTURE.md), [technical paper](docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)), and [1.7 release notes](docs/releases/RELEASE-1.7.md) state what is and is not established.
+Epigenesis is built first and foremost as a **dedicated native macOS desktop program** (`Epigenesis.app`, distributed as **`Epigenesis-1.7.0-macOS.dmg`**) — a quiet, utilitarian laboratory workbench using native Swift, AppKit, and WKWebView with zero Electron overhead, automatic Light/Dark mode, and full English & Bulgarian UI.
 
-## Contents
-
-| Path | Layer | What it holds |
+| Platform | Status | How to run |
 |---|---|---|
-| [`desktop/`](desktop/README.md) | App | **Native macOS desktop application** (`EpigenesisApp.swift`, `build_desktop.py` → `Epigenesis-1.7.0-macOS.dmg` & `Epigenesis.app`; Linux & Windows coming soon™) |
-| [`studio/`](studio/README.md) | App | Epigenesis Studio `0.3.0`: local laboratory workbench engine (English and Bulgarian) powering Develop Pipeline, Inverse Compiler, Simulate, Enhancer Circuit, Scan, Edits, and Receipt Verification |
-| [`examples/developmental-pipeline/`](examples/developmental-pipeline/README.md) | Engine | Unified composable multi-locus DNA → VRS → chromatin/coding → GRN uncertainty → inverse DNA compiler (`synthesize`) → 532-TF discovery (`discover`) → 3D CX3D + LIF |
-| `brainc/`, [`SPEC.md`](SPEC.md), `validators/rust/` | Core | Universal DNA compiler, GA4GH VRS 2.x variant layer, Draft 2020-12 schemas, RO-Crate/OMEX export, and independent Python + Rust replay validators |
-| [`epigenesis_cli.py`](epigenesis_cli.py) | CLI | Optional standard-library CLI (`epigenesis`) for scripting, batch runs, and automated verification |
-| [`docs/`](docs/README.md), [`docs/paper/`](docs/paper/) | Docs | [Architecture & roadmap](docs/ARCHITECTURE.md), standards trace, prior art, release contracts, and technical papers (English, Bulgarian) |
-| [`research/`](research/README.md), [`examples/`](examples/) | Exploratory | Frozen negative-result ledger (13 tests + hash checker) and individual mechanistic/exploratory examples (each with its own README and scope) |
-| `tests/`, `studio/tests/` | Verification | Compiler, Rust replay, desktop `.app`/`.dmg`, developmental pipeline, experiment, and Studio (`33`) tests; release gates in `tests/verify.py` |
+| **macOS 12+ (Apple Silicon & Intel)** | **Available now** | Native **`Epigenesis-1.7.0-macOS.dmg`** — mount & drag `Epigenesis.app` into `Applications` |
+| **Linux** | **Coming soon™** | Native installer planned (local `epigenesis-studio` workbench available today) |
+| **Windows** | **Coming soon™** | Native installer planned (local `epigenesis-studio` workbench available today) |
 
-## Quick start — Epigenesis Desktop App (macOS `.dmg`)
+### Install & Open on macOS
 
-The native macOS desktop program is the primary way to use Epigenesis. It runs **100% locally** (`127.0.0.1`), has standard macOS menus and native file open/save panels, and exposes every simulation, inverse-compiler, and verification workflow in a clean office/laboratory interface (English & Bulgarian, automatic Light/Dark mode).
+Download `Epigenesis-1.7.0-macOS.dmg` from the [GitHub Releases](https://github.com/dttdrv/epigenesis/releases) page — or build it directly from this repository in seconds with Xcode Command Line Tools (`swiftc`, `iconutil`, `hdiutil`) and [uv](https://docs.astral.sh/uv/):
 
 ```sh
-# 1. Install the local Studio runtime once (requires Python 3.11+ and uv)
+# 1. Install the local Studio runtime once (Python 3.11+)
 uv tool install --editable studio --with-editable .
 
-# 2. Build the native macOS installer disk image (dist/Epigenesis-1.7.0-macOS.dmg)
+# 2. Build the native macOS .dmg installer (dist/Epigenesis-1.7.0-macOS.dmg)
 python3 desktop/build_desktop.py
 
-# 3. Open the .dmg and drag Epigenesis.app into Applications
+# 3. Open the disk image and drag Epigenesis.app into Applications
 open dist/Epigenesis-1.7.0-macOS.dmg
 ```
 
-To install directly to `~/Applications` without mounting the `.dmg`:
+Prefer installing straight to `~/Applications` without mounting the `.dmg`?
 
 ```sh
 python3 desktop/build_desktop.py --install
 open -a ~/Applications/Epigenesis.app
 ```
 
-- **macOS 12+ (Apple Silicon & Intel):** Native `.dmg` available now — see [`desktop/README.md`](desktop/README.md).
-- **Linux & Windows:** Native desktop installers are **coming soon™**. Until then, Linux and Windows users can run the same workbench locally via `epigenesis-studio` ([Studio guide](studio/README.md)).
+Everything runs **100% locally** on loopback (`127.0.0.1`), with standard macOS menus (`⌘O` Open, `⌘C`/`⌘V`, native `NSSavePanel` exports, Finder "Open With") and clean engine shutdown on `⌘Q`. See [`desktop/README.md`](desktop/README.md) and [`studio/README.md`](studio/README.md).
 
-Inside the app:
-- **Develop Pipeline** — Run composable multi-locus DNA + VRS 2.x simulations with chromatin gating, coding truncation, GRN uncertainty ensembles, causal controls, and optional 3D CX3D + LIF.
-- **Inverse Compiler** — Synthesize minimal epistatic rescue edits, fate-reprogramming edits, or run out-of-sample 532-TF biophysical discovery on `GSE188264`.
-- **Simulate & Enhancer Circuit** — Explore the 9-bp GLI binding site and arbitrary enhancers (`9–500` bp) across `neural-tube`, `mutual-toggle`, and `tri-lineage-switch` with GLI2/GLI3 or any of 532 JASPAR 2024 motifs.
-- **Scan, Edits & Verify** — Score variants with Siraj Huber-linear or Kreimer 0–72h prototypes and cryptographically replay any saved receipt.
+### Seven Integrated Laboratory Workbenches
 
-<details>
-<summary>Advanced: Command-Line Interface (for scripting, batch jobs, and CI)</summary>
+| Tab | What you can do in the macOS app |
+|---|---|
+| **Develop Pipeline** | Compose multi-locus DNA + GA4GH VRS 2.x edits → chromatin accessibility & coding translation → N-gene GRN dynamics with 90% parameter-uncertainty intervals → optional 3D CX3D morphogenesis & LIF spiking, verified by Python + Rust. |
+| **Inverse Compiler** | Synthesize minimal 1-bp epistatic rescues (keeping the primary lesion intact), compile single-base fate-reprogramming edits, or run out-of-sample 532-TF biophysical discovery on real human `GSE188264` enhancers. |
+| **Simulate** | Perturb the 9-bp *Nkx2.2* GLI binding site with Hallikas GLI2/GLI3 profiles, inspect reporter-vs-endogenous divergence, and verify exact reversion controls. |
+| **Enhancer Circuit** | Scan arbitrary enhancers (`9–500` bp) through Boltzmann partition physics across GLI2/GLI3 or 532 JASPAR 2024 motifs into `neural-tube`, `mutual-toggle`, or `tri-lineage-switch` ODEs to expose cryptic bifurcations. |
+| **Scan & Edits** | Score all single-base substitutions or up to 5,000 arbitrary SNV/MNV/indel edit pairs with the Siraj Huber-linear or Kreimer 0–72 h temporal checkpoints and export family-diverse panels. |
+| **Verify** | Drop any exported `.json` receipt to verify its RFC 8785 SHA-256 seal, model identity, and bit-exact deterministic replay. |
 
-Python 3.11+ standard library only (add Java 21 for 3D CX3D morphogenesis + LIF spiking; NumPy for `discover` and `predict`):
+---
 
-```sh
-# Launch the desktop app from terminal
-python3.11 epigenesis_cli.py app
+## Hard Problems Made Routine (Verified Showcases)
 
-# Unified composable developmental pipeline (fast pure-Python or full 3D CX3D + RO-Crate/OMEX)
-python3.11 epigenesis_cli.py develop --skip-cx3d --output /tmp/epigenesis-dev-fast
-python3.11 epigenesis_cli.py develop --export-bundles --output /tmp/epigenesis-dev-full
+Traditional wet-lab screening and ad-hoc scripts struggle when regulatory edits interact nonlinearly across enhancers, chromatin state, gene-regulatory feedback, and 3D tissue growth — or when results cannot be independently reproduced. Every showcase below runs in seconds inside Epigenesis, emits GA4GH VRS 2.x + `brainc` canonical proofs, and is reproduced in full in the [English](docs/paper/epigenesis-technical-paper.pdf) and [Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf) technical papers.
 
-# Inverse developmental compiler & 532-TF biophysical discovery
-python3.11 epigenesis_cli.py synthesize benchmark --output /tmp/epigenesis-headline
-python3.11 epigenesis_cli.py discover --output /tmp/epigenesis-discover
+### 1. Epistatic 3D Morphogenesis Rescue — With the Primary Mutation Left Intact
+When a single-base enhancer lesion looks nearly silent in a passive reporter (`|Δreporter| ≈ 0.012`) yet collapses endogenous `Nkx2.2` (`-0.932`), flips ventral cell identity (`Nkx2.2+ → Olig2+`), and perturbs 3D neuronal outgrowth (`+22.68` neurite-length drift), reverting the original base is often blocked by PAM/structural constraints. Epigenesis locks the broken base untouched and synthesizes a single 1-bp distal compensatory edit that restores both gene-regulatory fate and 3D CX3D morphology:
 
-# Enhancer circuits, predictors, and verification
-python3.11 epigenesis_cli.py circuit --list-circuits
-python3.11 epigenesis_cli.py scan examples/neural-patterning/reference.fasta --protein MA0069.1
-python3.11 epigenesis_cli.py predict --kreimer --input studio/epigenesis_studio/example-edits.json --output /tmp/kreimer.json
-python3.11 epigenesis_cli.py check --full
-```
+| Human Enhancer (`GSE188264`) | Broken Edit (Kept Intact) | Synthesized 1-bp Rescue | Double-Mutant $q$ | Max Gene $\Delta$ vs WT | 3D CX3D Neurite Recovery | Python + Rust Replay |
+|---|---|---|---:|---:|---:|---|
+| `chr18:56475717-56475888` | `165:G>T` (`ga4gh:VA.Tb8SIdM4...`) | **`163:T>C`** (`+2 bp`, `ga4gh:VA.DXH7NbxW...`) | **`1.000125`** | **`9.89 × 10⁻⁸`** | **`100.00%`** (`351.14 → 373.82 → 351.14`) | `valid = true` |
+| `chr1:175099416-175099587` | `149:G>T` (`ga4gh:VA.Mjx89n4V...`) | **`147:A>T`** (`+2 bp`, `ga4gh:VA.9bUzqzHX...`) | **`0.412254`** | **`0.00111`** | **`91.13%`** (`351.14 → 373.83 → 349.13`) | `valid = true` |
 
-</details>
+### 2. Zero-K-mer 532-TF Human Enhancer Discovery & Wet-Lab Inverse Design (`GSE188264`)
+Local sequence regressions trained on hundreds of thousands of reporter measurements stall near `r = 0.049` across studies, and guessing a single transcription factor (`GLI2`) scores `r = 0.0123`. Using pure strand-symmetric **532-TF JASPAR 2024 Boltzmann thermodynamics** (`Δln(Z_m + Z_ns)`, zero k-mers) evaluated strictly out-of-sample on **`1,895` unseen human neural-induction edits** across `118–119` held-out loci:
 
-## The compiler
+- **Out-of-sample correlation:** **`r = 0.3439`** (`95%` family CI `[0.2016, 0.4949]`) vs label-permutation null (`0.0279`) and single-TF GLI2 (`0.0123`).
+- **Top-decile direction accuracy:** **`93.2%`** (`0.9316`) vs `50.0%` chance.
+- **Wet-lab inverse selection (Top-100 repressing designs):** **`95.0%` empirical wet-lab repression** (mean `Δasinh = -0.446`, Up − Down gap `+0.366`, exact permutation **`p = 0.000999`**; Top-25 achieves `88.0%`, `p = 0.0040`), with top corroborated unseen edit `chr10:100206539-100206710` (`ga4gh:VA.hgnZPbJR...`) compiled end-to-end through CX3D + LIF and verified in Python and Rust.
+
+### 3. Non-Coding Single-Base Cell-Fate Reprogramming & Multi-Locus Chromatin Gating
+- **Single-base fate switch without editing coding genes:** On human enhancer `chr15:90936956-90937127` (`513` SNVs scanned), Epigenesis compiles **`61:C>G`** (`ga4gh:VA.RR2HJSiG...`, `q = 0.00030`) switching ventral neural-tube `Nkx2.2` → `Olig2` with **`100%` target-fate ensemble concordance** (`24` parameter draws), shifting 3D CX3D arbor length (`351.14 → 377.41`), while exact reversion, closed-chromatin shielding, and passive-reporter isolation all hold to `0.0` error and pass Rust replay + RO-Crate 1.1 / COMBINE OMEX export (`12,262` B).
+- **Multi-locus chromatin shielding (`tri-lineage-chromatin`):** Couples PAX6/BCL6 cis-enhancers through an explicit chromatin accessibility gate into a 3-lineage `Excitatory / Inhibitory / Progenitor` GRN (`Excitatory → Progenitor`, `66.7%` ensemble flip probability), where closing chromatin (`accessibility = 0.0`) completely silences the cis variant (`max_state_diff = 0.0`).
+
+> **Honest Scientific Scope (`biological_acceptance = false`).** Software provenance, determinism, cross-language Python/Rust replay, and mechanistic causal controls pass; out-of-sample `GSE188264` wet-lab inverse selection validates strictly within the human neural-induction MPRA assay. *In vivo* embryonic phenotypes and cross-study sequence transfer remain unestablished (thirteen frozen cross-study tests in [`research/`](research/README.md) measured mean external correlation `0.049` and are preserved verbatim).
+
+---
+
+## Three-Layer Architecture
+
+To keep biological ambition honest and core software rock-solid, Epigenesis separates three strict layers ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
+
+1. **Provenance Compiler Core (`brainc/`, `SPEC.md`, `validators/rust/`, `brainc/schemas/`):** Zero-dependency universal DNA translation compiler, GA4GH VRS 2.x reference-bound variant collections, RFC 8785 canonical seals, RO-Crate 1.1 / COMBINE OMEX export, and independent Python + Rust replay validators.
+2. **Desktop Application & Unified Developmental Engine (`desktop/`, `studio/`, `examples/developmental-pipeline/`, `neural-circuit`, `neural-construction`):** Native macOS `.dmg` desktop app (`Studio 0.3.0`) driving multi-locus DNA + VRS → chromatin/coding → GRN uncertainty → inverse DNA compilation → 3D CX3D morphogenesis & LIF spiking.
+3. **Exploratory Research & Honest Negative-Result Ledger (`research/`, `neural-v2f`, `mpra-replay`, `neural-predictor`, `neural-regulation`):** Clearly quarantined prototypes (`biological_acceptance = false`) and thirteen frozen cross-study predictive tests verified by `research/check_freeze.py`.
+
+In the works reviewed in [Prior art](docs/reference/PRIOR_ART.md), no other system combines these boundaries; that is a scoped comparison of the cited corpus, not a benchmark against other simulators.
+
+### Repository Map
+
+| Path | Layer | Contents |
+|---|---|---|
+| [`desktop/`](desktop/README.md) | App | **Native macOS desktop app** (`EpigenesisApp.swift`, macOS HIG `AppIcon.png`, `build_desktop.py` → `Epigenesis-1.7.0-macOS.dmg`; Linux & Windows coming soon™) |
+| [`studio/`](studio/README.md) | App | Epigenesis Studio `0.3.0` (English & Bulgarian) powering all seven desktop workbench modes and receipt replay |
+| [`examples/developmental-pipeline/`](examples/developmental-pipeline/README.md) | Engine | Unified composable pipeline (`develop`), inverse DNA compiler (`synthesize`), and 532-TF biophysical discovery (`discover`) |
+| `brainc/`, [`SPEC.md`](SPEC.md), `validators/rust/` | Core | Universal DNA compiler (`1.7.0`), GA4GH VRS 2.x variant layer, Draft 2020-12 schemas, RO-Crate/OMEX export, and Python + Rust replay validators |
+| [`docs/`](docs/README.md), [`docs/paper/`](docs/paper/) | Docs | [Architecture](docs/ARCHITECTURE.md), standards trace, prior art, release contracts, and technical papers ([English](docs/paper/epigenesis-technical-paper.pdf), [Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf)) |
+| [`research/`](research/README.md), [`examples/`](examples/) | Exploratory | Frozen negative-result ledger (13 tests + hash checker) and mechanistic/exploratory building blocks |
+| [`epigenesis_cli.py`](epigenesis_cli.py), `tests/`, `studio/tests/` | CLI & QA | Optional standard-library scripting CLI, compiler/Rust/desktop/pipeline tests, Studio (`33`) tests, and `tests/verify.py` release gates |
+
+---
+
+## The Compiler Foundation
 
 Epigenesis preserves exact DNA source identity, validates a caller-supplied interpretation and lowers it against a target contract:
 
@@ -92,9 +125,41 @@ Epigenesis preserves exact DNA source identity, validates a caller-supplied inte
 DNA source → typed source bundle → explicit interpretation → Development Module
 ```
 
-The interpretation supplies the biological or computational meaning. The compiler checks types, shapes, coordinates, references and budgets, then seals the compilation with content hashes (SHA-256 over RFC 8785 canonical JSON). A separate validator replays the chain without importing the producer.
+The interpretation supplies the biological or computational meaning. The compiler checks types, shapes, coordinates, references and budgets, then seals the compilation with content hashes (SHA-256 over RFC 8785 canonical JSON). A separate validator (in Python and zero-dependency Rust) replays the chain without importing the producer.
 
 Raw IUPAC, FASTA, streaming reference FASTA, GenBank and GFF3 are built in. Other grammars use a version-2 executable external frontend and a separate executable validator. Both are digest-pinned and explicitly selected by the caller. The [FASTQ example](examples/external-fastq/README.md) implements this extension without changing the compiler. [SPEC.md](SPEC.md) defines the contracts; [Standards](docs/reference/STANDARDS.md) maps formats and identities to their specifications; [Prior art](docs/reference/PRIOR_ART.md) places the design among existing systems.
+
+---
+
+<details>
+<summary><strong>Advanced: Command-Line Workflows &amp; Automated Verification (Scripting / CI)</strong></summary>
+
+For headless pipelines, batch sweeps, and CI automation (Python 3.11+ stdlib; add Java 21 for 3D CX3D morphogenesis and NumPy for `discover` / `predict`):
+
+```sh
+# Launch the native macOS desktop app from terminal
+python3.11 epigenesis_cli.py app
+
+# Reproduce the verified showcases from this README & the technical papers
+python3.11 epigenesis_cli.py synthesize benchmark --output /tmp/epigenesis-headline
+python3.11 epigenesis_cli.py synthesize rescue --locus chr18:56475717-56475888 --breaking-edit 165:G>T
+python3.11 epigenesis_cli.py synthesize reprogram --locus chr15:90936956-90937127 --target-fate Olig2
+python3.11 epigenesis_cli.py discover --output /tmp/epigenesis-discover
+python3.11 epigenesis_cli.py develop --preset tri-lineage-chromatin --skip-cx3d --output /tmp/epigenesis-tri
+
+# Full verification & release gates
+python3.11 epigenesis_cli.py check --full
+cargo test --offline --manifest-path validators/rust/Cargo.toml
+python3.11 -m unittest discover -s tests -v
+python3.11 tests/verify.py developmental-pipeline
+PIP_NO_INDEX=1 python3.11 tests/verify.py wheel
+PIP_NO_INDEX=1 python3.11 tests/verify.py sdist
+python3.11 research/check_freeze.py
+```
+
+The [CI workflow](.github/workflows/ci.yml) runs all release checks, independent source replay, contract attacks, resource/path safety, real-DNA compilation, macOS `.app`/`.dmg` packaging tests, and the Studio suite (`33` tests in `studio/tests/`).
+
+</details>
 
 ## Complete source-to-module example
 
@@ -124,7 +189,7 @@ brainc-validate-development "$demo_dir/source" "$demo_dir/development" \
   --output "$demo_dir/validation.json"
 ```
 
-The validation report has `valid: true`. This small example compiles an explicit base-count interpretation. The wheel installs the compiler and validators; the checkout and source archive also contain the examples, data and tests.
+The validation report has `valid: true`. This small example compiles an explicit base-count interpretation. The wheel installs the compiler and validators; the checkout and source archive also contain the desktop app, Studio, examples, data, and tests.
 
 <details>
 <summary>Stable example identities</summary>
@@ -140,121 +205,31 @@ These identities are recorded in [expected.json](examples/minimal-development/ex
 
 </details>
 
-## Executable workflows & experiments
+## Executable workflows & research record
 
-### Layer 2 — Unified Developmental Engine & Mechanistic Building Blocks
+### Layer 2 — Developmental Engine & Mechanistic Building Blocks
 
 | Module | What runs | Main source |
 |---|---|---|
-| [**Developmental pipeline**](examples/developmental-pipeline/README.md) (`epigenesis develop`) | Composes multi-locus DNA FASTA + GA4GH VRS 2.x edits → chromatin-gated multi-TF enhancer binding & NCBI coding translation → sealed `brainc` Development Module → `N`-gene GRN dynamics + deterministic parameter-uncertainty ensemble + empirical falsification → 3D CX3D morphogenesis & LIF spiking + RO-Crate/OMEX export | `brainc`; Hallikas (2006); JASPAR 2024; Herrera-Delgado (2020); Zubler et al. (2011, 2013) |
-| [Coding consequences](examples/coding-consequences/README.md) | Reconstructs *Sox2* edits from genomic sequence, applies the declared coding annotation and checks the resulting peptides against independent reference sequences | Gong et al. (2020) |
-| [Neural patterning](examples/neural-patterning/README.md) | Connects an *Nkx2.2* enhancer substitution and measured GLI binding profiles to a four-gene model; tests signal history, rescue and phenocopy under an explicit affinity-transfer assumption | Peterson et al. (2012); Cohen et al. (2014) |
-| [Neural circuit](examples/neural-circuit/README.md) | Scans arbitrary enhancers via Boltzmann TF partition physics (Hallikas `GLI2`/`GLI3`, `532` JASPAR 2024 motifs, or custom PWMs) into arbitrary $N$-gene ODEs (`neural-tube`, `mutual-toggle`, `tri-lineage-switch`, or custom JSON `CircuitSpec`s), compares SNV/MNV/indel alleles in sealed `brainc` v2/v3 modules, finds epistatic second-site rescues, and bridges steady states into CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020); JASPAR 2024 |
-| [Neural construction](examples/neural-construction/README.md) | Grows cells, neurites and contacts from one founder and a shared artificial DNA recipe; tests signal transmission and contact lesions on the developed network | Zubler et al. (2011, 2013) |
-| [Neural evidence](examples/neural-evidence/README.md) | Reconstructs 109 published CHE-1 depletion observations, traces them to workbook cells and intended DNA edits, and compares competing explanations | Traets et al. (2021) |
-| [Neural fate](examples/neural-fate/README.md) | An artificial DNA parameter recipe driving published regulatory dynamics | Balaskas et al. (2012) |
+| [**Developmental pipeline & inverse compiler**](examples/developmental-pipeline/README.md) | Composes multi-locus DNA FASTA + GA4GH VRS 2.x edits → chromatin-gated TF binding & coding translation → `N`-gene GRN + uncertainty ensembles → inverse DNA synthesis (`rescue`/`reprogram`) & 532-TF discovery → 3D CX3D + LIF + RO-Crate/OMEX | `brainc`; Hallikas (2006); JASPAR 2024; Herrera-Delgado (2020); Zubler et al. (2011, 2013) |
+| [Coding consequences](examples/coding-consequences/README.md) | Reconstructs *Sox2* edits from genomic sequence, applies the declared coding annotation and checks peptides against independent references | Gong et al. (2020) |
+| [Neural patterning](examples/neural-patterning/README.md) | Connects an *Nkx2.2* enhancer substitution and measured GLI binding profiles to a four-gene model with signal history, rescue, and phenocopy controls | Peterson et al. (2012); Cohen et al. (2014) |
+| [Neural circuit](examples/neural-circuit/README.md) | Scans arbitrary enhancers via Boltzmann TF partition physics (GLI2/GLI3, 532 JASPAR 2024 motifs, or custom PWMs) into $N$-gene ODEs (`neural-tube`, `mutual-toggle`, `tri-lineage-switch`), finds second-site rescues, and bridges to CX3D + LIF | Hallikas et al. (2006); Herrera-Delgado et al. (2020); JASPAR 2024 |
+| [Neural construction](examples/neural-construction/README.md) | Grows 3D cells, neurites, and synaptic contacts from one founder and an artificial DNA recipe; tests LIF signal transmission and contact lesions | Zubler et al. (2011, 2013) |
+| [Neural evidence](examples/neural-evidence/README.md) | Reconstructs 109 published CHE-1 depletion observations, traced to workbook cells and intended DNA edits | Traets et al. (2021) |
+| [Neural fate](examples/neural-fate/README.md) | Artificial DNA parameter recipe driving published regulatory dynamics | Balaskas et al. (2012) |
 
-### Layer 3 — Exploratory Research & Provenance Demos (`biological_acceptance = false`)
+### Layer 3 — Exploratory Research & Honest Negative-Result Ledger (`biological_acceptance = false`)
 
-| Experiment | What runs & honest status | Main source |
+| Module | Scope & recorded result | Main source |
 |---|---|---|
-| [V2F tipping-point & rescue radar](examples/neural-v2f/README.md) *(exploratory)* | Sweeps full morphogen regimes ($S \in [0, 1]$) with tipping-point bisection, cis/trans rescues, and 1,000-shuffle dinucleotide + scrambled-PWM controls. Frozen held-out test (`1,885` unseen `GSE188264` alleles) measured `Pearson r = 0.012` (`0 / 7` predicted cryptic alleles empirically silent). | Altschul & Erickson (1985); Kreimer et al. (2022); JASPAR 2024 |
-| [MPRA variant-effect replay](examples/mpra-replay/README.md) *(provenance demo)* | Seals bundled `GSE188264` summary `alphas.csv.gz` under two declared calling thresholds with VRS 2.x IDs and RO-Crate/OMEX export; demonstrates parameter-sensitivity sealing (not raw IGVF barcode ingestion). | Kreimer et al. (2022); Rosen et al. (2026) |
-| [Neural measurement](examples/neural-measurement/README.md), [forecast](examples/neural-forecast/README.md) | Replay of repeat-forecast comparisons on neuronal reporter assays (measurement: BIRD model) | Majoros et al. (2020) |
-| [Neural regulation](examples/neural-regulation/README.md) | H1 neural-induction 0–72h reporter data (Kreimer et al. 2022): frozen k-mer negative baseline (`regulation.py`) and retrospective motif-temporal prototype (`motif_temporal.py`) | Kreimer et al. (2022); JASPAR 2024 |
-| [Neural binding](examples/neural-binding/README.md) | Genomic *Nkx2-2* sequence, a designed substitution and a failed binding benchmark | Liu et al. (2025) |
-| [DNA-edit predictor](examples/neural-predictor/README.md) | Huber-linear and Kreimer 0–72h prototypes for reference and edited DNA; cross-study transfer remains unestablished (`r = 0.049`) | Siraj et al. (2026); Kreimer et al. (2022); Salomon et al. (2026) |
+| [**Frozen transfer ledger (`research/`)**](research/README.md) | 13 pre-registered, hash-verified cross-study sequence tests (Siraj Huber-linear external mean `r = 0.049`, MSE `+9.52%` vs zero-effect; nearest-TSS `0.460` beats all models on credible sets). Verified via `research/check_freeze.py`. | Siraj et al. (2026); Lee (2025); McAfee (2023); Matoba (2026); Guo (2023); Weiss (2021) |
+| [V2F radar](examples/neural-v2f/README.md) *(exploratory)* | Morphogen tipping-point sweep with 1,000-shuffle controls; frozen held-out test (`1,885` unseen `GSE188264` alleles) measured `r = 0.012`. | Altschul & Erickson (1985); Kreimer et al. (2022) |
+| [MPRA replay](examples/mpra-replay/README.md) *(provenance demo)* | Seals bundled `GSE188264` `alphas.csv.gz` under two calling thresholds with VRS 2.x IDs and RO-Crate/OMEX export. | Kreimer et al. (2022); Rosen et al. (2026) |
+| [Neural regulation](examples/neural-regulation/README.md), [predictor](examples/neural-predictor/README.md), [measurement](examples/neural-measurement/README.md), [forecast](examples/neural-forecast/README.md), [binding](examples/neural-binding/README.md) | Kreimer 0–72 h motif-temporal checkpoint (`test MSE 0.252079` vs `k5 0.285185` across 118 families), Siraj Huber-linear checkpoint, BIRD repeat forecast (`-11.7%` CRPS), and failed FamilyCode *Nkx2-2* binding check. | Kreimer et al. (2022); Siraj et al. (2026); Majoros et al. (2020); Liu et al. (2025) |
 
-Each example documents its inputs, runtime, scientific scope and reproduction commands. Neural construction needs a JDK and `patch` (tested with Java 21).
-
-## Case study: predicting variant effects
-
-The question is whether sequence alone predicts what an unseen DNA alteration does in neural cells. We tested it with a frozen-protocol procedure: a plan with its decision gates is written and hashed before any outcome is read; the scorer is qualified on a synthetic positive and a synthetic null; each test is scored once; a label is earned only if every gate passes.
-
-| Group | Tests | Result |
-|---|---|---|
-| Cross-study reporter effects (six neural studies) | 1–8 | Cross-study correlation of the Siraj-trained reference model about 0.047 (r² near 0.002). Models trained on other studies, a Sei ridge, a quadratic context head, an activity-transfer model, a convolutional network and a zero-shot binding model do not improve on it. The delivered Huber-linear model reaches 0.0490 against 0.0465, with a gain interval that includes zero. |
-| Direction of eQTL effects (fetal and neural-derived cells) | 9–11 | Direction accuracy of the best model is 0.52–0.65 across six held-out sets, against 0.50–0.60 for the best baselines. The largest gain did not repeat in the next set. |
-| Causal variant in a credible set | 12–13 | The nearest-TSS rule (0.460) beats every model. |
-
-The records, with a script that verifies their hashes, are in [`research/`](research/README.md). Limits of the protocol, including that the hashes are local and that the tests were not corrected for multiplicity, are in Section 5 of the paper.
-
-### Delivered predictors
-
-Studio and `epigenesis predict` expose two deterministic CPU checkpoints:
-
-1. **Siraj Huber-linear (`epigenesis-siraj-huber-linear-v1`, default):** On 16,986 internal-tuning edits in 1,759 families, equal-family mean squared error falls from 0.29661 (k5) to 0.28767, a 3.02% reduction, and ten-edit signed utility rises from 0.857 to 1.483. Six of seven original requirements pass; the ten-edit gain lower bound against k5 is −0.150. These data were used throughout development. On five external neural reporter studies its correlation is 0.0490, and its mean squared error is 9.52% above predicting no effect. It is a research prototype for prioritizing edits in the Siraj assay, not a validated predictor.
-2. **Kreimer 0–72h motif-temporal (`epigenesis-kreimer-motif-temporal-v1`, `--kreimer`):** Combines canonical 5-mers and 532 JASPAR 2024 motifs across `[0, 3, 6, 12, 24, 48, 72]` hours on Kreimer et al. (2022) GSE188264. Hyperparameters were selected on train → validation families before refitting train+validation. Across `1,415` targeted edits in `118` held-out families, family-weighted MSE is `0.252079` vs `k5` (`0.285185`, 95% bootstrap gain `[0.007810, 0.061363]`), dinucleotide (`0.319358`), and zero-effect (`0.360870`), and temporal-contrast MSE beats time-averaging (`0.031285` vs `0.032108`, `[0.000220, 0.001528]`). Results remain retrospective and conditional on published MPRAnalyze preprocessing (`biological_development_accepted: false`).
-
-See [the predictor README](examples/neural-predictor/README.md) and [the 1.7 release notes](docs/releases/RELEASE-1.7.md). To use both interactively alongside the **Enhancer Circuit** bifurcation scanner, install [Epigenesis Studio](studio/README.md) and run `epigenesis studio` or `epigenesis-studio`.
-
-## Measurement result
-
-Before learning DNA effects, the effects need reliable measurements. A [BIRD-based forecast](https://doi.org/10.1093/bioinformatics/btz545) predicts an omitted RNA repeat from the other repeats in a fixed neuronal-assay pilot:
-
-| Twelve omissions across four TRAIN components | Mean CRPS loss, lower is better |
-|---|---:|
-| Pooled Beta-binomial | 0.06219211 |
-| BIRD repeat model | 0.05490724 |
-| Relative loss reduction | 11.7% |
-
-The conditional 99% simulation interval for the gain is [0.00436489, 0.00975665]. All four component means improve; one omission favors pooling and remains included. The interval describes numerical integration uncertainty for this selected cohort, and BIRD and pooling also differ in priors and DNA use, so the comparison does not isolate repeat variation as the cause. [Replay the archived calculation](examples/neural-measurement/README.md) without training, new random draws or private paths.
-
-Two follow-ups use different targets. A [temporal experiment](docs/research/NEURAL_PREDICTOR_ROADMAP.md#new-experiments-18-october-2026) forecasts later enhancer responses from four early measurements: across 351 excluded families, full-history ridge cuts error by 24% against persistence but matches a simpler averaging control. A [raw-count experiment](examples/neural-forecast/README.md) holds out sequence families and infection cultures and finds a 0.26% mean-squared-error improvement over zero change, with all four gain intervals including zero. Neither establishes transferable forecasting superiority.
-
-## Verification
-
-```sh
-python3.11 epigenesis_cli.py check --full
-python3.11 -m unittest discover -s tests -v
-cargo test --offline --manifest-path validators/rust/Cargo.toml
-python3.11 tests/verify.py minimal-example
-python3.11 tests/verify.py universal-translation
-python3.11 tests/verify.py boundary
-python3.11 tests/verify.py variant-layer
-python3.11 tests/verify.py developmental-pipeline
-python3.11 tests/verify.py neural-circuit
-python3.11 tests/verify.py neural-v2f
-python3.11 tests/verify.py neural-regulation-motif   # requires NumPy
-PIP_NO_INDEX=1 python3.11 tests/verify.py wheel
-PIP_NO_INDEX=1 python3.11 tests/verify.py sdist
-python3.11 research/check_freeze.py
-```
-
-The [CI workflow](.github/workflows/ci.yml) defines the complete release checks, including independent source replay, contract attacks, resource and path safety, real-DNA compilation, macOS `.app`/`.dmg` desktop packaging, all release gates, and the Studio suite (`33` tests in `studio/tests/`). Package checks need the declared build tooling. The predictors and their feature extractors need NumPy and, for some archived models, PyTorch; each example README lists its requirements.
-
-## Foundations and sources
-
-The platform builds on established models and methods. Its own contribution is the executable connection between exact source records, reconstructed experimental inputs, interventions and independent verification. Full citations for every work cited are in the [technical paper](docs/paper/epigenesis-technical-paper.pdf); the main ones follow.
-
-**Compiling biological descriptions.**
-[Cai et al. (2009)](https://doi.org/10.1371/journal.pcbi.1000529) compile synthetic DNA with an attribute grammar, the closest direct precedent.
-[Bilitchenko et al. (2011)](https://doi.org/10.1371/journal.pone.0018882) (Eugene), [Beal et al. (2011)](https://doi.org/10.1371/journal.pone.0022490), [Nielsen et al. (2016)](https://doi.org/10.1126/science.aac7341) (Cello) and [Wilson et al. (2016)](https://doi.org/10.1021/acssynbio.5b00194) compile from design languages to DNA or networks.
-[Bergmann et al. (2014)](https://doi.org/10.1186/s12859-014-0369-z) package models and data for reproduction (COMBINE).
-Identities use [SHA-256](https://csrc.nist.gov/pubs/fips/180-4/upd1/final) over [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical JSON.
-
-**Simulated neural development.**
-[Zubler and Douglas (2009)](https://doi.org/10.3389/neuro.10.025.2009), [Zubler et al. (2011)](https://doi.org/10.3389/fncom.2011.00057) and [Zubler et al. (2013)](https://doi.org/10.1371/journal.pcbi.1003173) build the CX3D substrate and the instruction language that neural construction uses.
-
-**Neural-tube patterning and binding.**
-[Balaskas et al. (2012)](https://doi.org/10.1016/j.cell.2011.10.047), [Cohen et al. (2014)](https://doi.org/10.1242/dev.112573) and [Herrera-Delgado et al. (2020)](https://doi.org/10.1103/PhysRevResearch.2.043069) give the Sonic Hedgehog readout models. [Peterson et al. (2012)](https://doi.org/10.1101/gad.207142.112) supply the *Nkx2.2* enhancer evidence and [Hallikas et al. (2006)](https://doi.org/10.1016/j.cell.2005.10.042) the binding affinities. [Traets et al. (2021)](https://doi.org/10.7554/eLife.66955) provide the CHE-1 observations, and [Gong et al. (2020)](https://doi.org/10.3389/fnmol.2020.00034) the *Sox2* mutant used for coding consequences.
-
-**Reporter assays and their statistics.**
-[Melnikov et al. (2012)](https://doi.org/10.1038/nbt.2137), [Tewhey et al. (2016)](https://doi.org/10.1016/j.cell.2016.04.027), [Kircher et al. (2019)](https://doi.org/10.1038/s41467-019-11526-w), [Kreimer et al. (2022)](https://doi.org/10.1038/s41467-022-28659-0), [Deng et al. (2024)](https://doi.org/10.1126/science.adh0559) and [Agarwal et al. (2025)](https://doi.org/10.1038/s41586-024-08430-9) established and extended massively parallel reporter assays.
-[Ashuach et al. (2019)](https://doi.org/10.1186/s13059-019-1787-z), [Myint et al. (2019)](https://doi.org/10.1186/s12864-019-5556-x) and [Majoros et al. (2020)](https://doi.org/10.1093/bioinformatics/btz545) supply the statistical models.
-[Gneiting and Raftery (2007)](https://doi.org/10.1198/016214506000001437) justify the proper scoring rules (CRPS).
-
-**Data used in the predictive tests.**
-Training: [Siraj et al. (2026)](https://doi.org/10.1038/s41586-026-10121-6) and [Salomon et al. (2026)](https://doi.org/10.64898/2026.07.16.738760).
-Evaluation: [Lee et al. (2025)](https://doi.org/10.1016/j.cell.2024.12.022) (GSE244011), [McAfee et al. (2023)](https://doi.org/10.1016/j.xgen.2023.100404) (GSE211045), [Matoba et al. (2026)](https://doi.org/10.1038/s41593-026-02454-2), [Rummel et al. (2023)](https://doi.org/10.1016/j.cell.2023.09.015) (GSE225815), [Guo et al. (2023)](https://doi.org/10.1038/s41588-023-01533-5) (GSE221384) and [Weiss et al. (2021)](https://doi.org/10.7554/eLife.63713) (GSE152404).
-Motifs: [JASPAR 2024](https://doi.org/10.1093/nar/gkad1059).
-
-**Sequence-to-function models.**
-[Zhou and Troyanskaya (2015)](https://doi.org/10.1038/nmeth.3547), [Kelley et al. (2016)](https://doi.org/10.1101/gr.200535.115), [Kelley et al. (2018)](https://doi.org/10.1101/gr.227819.117), [Avsec et al. (2021)](https://doi.org/10.1038/s41592-021-01252-x), [Vaishnav et al. (2022)](https://doi.org/10.1038/s41586-022-04506-6) and [Chen et al. (2022)](https://doi.org/10.1038/s41588-022-01102-2) (Sei) are background for the sequence-model tests; Sei supplied the chromatin-profile features used in tests 3 and 9–13. [Seitz et al. (2024)](https://doi.org/10.1038/s42256-024-00851-5) and [Tareen et al. (2022)](https://doi.org/10.1186/s13059-022-02661-7) motivated the latent-activity model.
-
-**Natural variation in brain.**
-[GTEx Consortium (2020)](https://doi.org/10.1126/science.aaz1776), [Kerimov et al. (2021)](https://doi.org/10.1038/s41588-021-00924-w) (eQTL Catalogue), [Wang et al. (2020)](https://doi.org/10.1111/rssb.12388) (SuSiE), [Walker et al. (2019)](https://doi.org/10.1016/j.cell.2019.09.021), [Aygün et al. (2021)](https://doi.org/10.1016/j.ajhg.2021.07.011), [Jerber et al. (2021)](https://doi.org/10.1038/s41588-021-00801-6), [Schwartzentruber et al. (2018)](https://doi.org/10.1038/s41588-017-0005-8) and [Young et al. (2021)](https://doi.org/10.1038/s41588-021-00875-2) supply fine-mapped eQTL sets for the direction and credible-set tests. Expression and chromatin context come from [Kang et al. (2011)](https://doi.org/10.1038/nature10523), [Miller et al. (2014)](https://doi.org/10.1038/nature13185), [Roadmap Epigenomics (2015)](https://doi.org/10.1038/nature14248) and [Pollard et al. (2010)](https://doi.org/10.1101/gr.097857.109) (phyloP).
+---
 
 ## License and attribution
 
-Compiler code is [Apache-2.0](LICENSE). Bundled scientific data and third-party runtimes keep their documented licenses and attributions (see each example's NOTICE). The author is responsible for the content; the [paper](docs/paper/epigenesis-technical-paper.pdf) lists code, data and licenses in its availability section.
+Compiler, desktop app, and Studio code are [Apache-2.0](LICENSE). Bundled scientific data and third-party components keep their documented licenses and attributions (JASPAR 2024 CC BY 4.0; CX3D 0.03; see each example's `NOTICE`). Full citations and availability statements are in the [English](docs/paper/epigenesis-technical-paper.pdf) and [Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf) technical papers.

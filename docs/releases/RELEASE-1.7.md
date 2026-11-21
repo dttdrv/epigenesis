@@ -1,18 +1,24 @@
 # Epigenesis 1.7
 
-Version **1.7.0** integrates two major experimental capabilities cleanly across
-[`examples/`](../../examples/), [`studio/`](../../studio/README.md),
-[`tools/release/epigenesis.py`](../../tools/release/epigenesis.py), and
-[`tests/verify.py`](../../tests/verify.py):
+Version **1.7.0** ships the native **macOS desktop application (`Epigenesis-1.7.0-macOS.dmg`)** powered by **Epigenesis Studio `0.3.0`** (Linux and Windows native installers coming soon™), backed by the unified composable developmental pipeline (`develop`), the inverse developmental DNA compiler (`synthesize`), out-of-sample 532-TF biophysical discovery (`discover`), GA4GH VRS 2.x + independent Python/Rust replay validation, and RO-Crate 1.1 / COMBINE OMEX export — alongside the Kreimer 0–72 h motif-temporal predictor and Variant-to-Circuit enhancer scanner across
+[`desktop/`](../../desktop/README.md), [`studio/`](../../studio/README.md), [`examples/`](../../examples/), [`tools/release/epigenesis.py`](../../tools/release/epigenesis.py), and [`tests/verify.py`](../../tests/verify.py).
 
-1. **Kreimer H1 Neural-Induction 0–72h Motif-Temporal Predictor (`epigenesis-kreimer-motif-temporal-v1`)**
-2. **Variant-to-Circuit Enhancer Scanner (`epigenesis-neural-circuit-v1`)**
-
-Compiler version bumps cleanly to `1.7.0` while preserving all serialized
+Compiler version stays `1.7.0` while preserving all serialized
 `brainc` v1/v2 contracts, producer identities (`1.0.0`, compiler `0.4.0` / `0.5.0`),
 and zero runtime dependencies (`dependencies = []`) for the `epigenesis-compiler` wheel.
 
 ## What changed in 1.7.0
+
+### 0. Native macOS Desktop App (`.dmg`), Studio `0.3.0`, Unified Pipeline & Inverse Compiler
+
+- **Native macOS `.dmg` & `.app` (`desktop/`):** Native Swift + AppKit + WKWebView macOS application with a macOS HIG-compliant minimalistic icon (`1024×1024` / `824×824` continuous squircle, full 10-size `.icns`), standard macOS menus (`⌘O`, `Edit`, `View`, `Window`), native `NSSavePanel` exports, and verified drag-to-`Applications` `Epigenesis-1.7.0-macOS.dmg`. Native Linux and Windows desktop installers are coming soon™.
+- **Studio `0.3.0` (`studio/`):** Adds **Develop Pipeline** and **Inverse Compiler** tabs (English & Bulgarian, automatic Light/Dark mode, `33` passing Studio tests) with deterministic, tamper-evident `epigenesis-studio-receipt-v1` replay.
+- **Unified Composable Pipeline (`examples/developmental-pipeline/pipeline.py`):** Composes multi-locus DNA + GA4GH VRS 2.x edits → chromatin accessibility/methylation gating & coding translation → `N`-gene GRN dynamics with parameter-uncertainty ensembles → 3D CX3D morphogenesis & LIF spiking + RO-Crate 1.1 / COMBINE OMEX export, independently verified in Python and zero-dependency Rust (`epigenesis-validate-rs`). Fixed `source_inputs` SHA-256/byte-length verification in `brainc/validator_variant.py`.
+- **Inverse Developmental DNA Compiler & 532-TF Discovery (`synthesize.py`, `discover.py`):**
+  - Proof-carrying epistatic 3D rescue keeping the primary lesion intact: `chr18:56475717-56475888` (`165:G>T` + synthesized `163:T>C`, `100.00%` 3D CX3D neurite recovery, max gene Δ `9.89×10⁻⁸`) and `chr1:175099416-175099587` (`149:G>T` + `147:A>T`, `91.13%` recovery).
+  - Non-coding single-base fate reprogramming (`chr15:90936956-90937127` `61:C>G`, `Nkx2.2 → Olig2`, `100%` ensemble concordance, exact reversion & closed-chromatin controls).
+  - Pure 532-TF Boltzmann discovery on `1,895` unseen `GSE188264` edits: out-of-sample `r = 0.3439` (`95%` CI `[0.2016, 0.4949]`), `93.2%` top-decile direction accuracy, and Top-100 wet-lab inverse repression **`95.0%`** (`p = 0.000999`).
+- **Updated technical papers (`docs/paper/`):** Draft 4 English and Bulgarian PDFs covering all four hard-problem showcases, verified proofs, 3-layer architecture, and the native macOS desktop app.
 
 ### 1. Kreimer 0–72h motif-temporal neural-induction predictor
 
