@@ -573,6 +573,17 @@ class PipelineAndInverseStudioTests(unittest.TestCase):
         self.assertEqual(esc['restored_nominal_fate'], 'Nkx2.2')
         self.assertTrue(server.verify(syn_receipt)['ok'])
 
+    def test_biophys_v2_scan_and_pairs_replay(self):
+        scan_r = server.score(dict(mode='scan', model='biophys', sequence=REFERENCE[:60]))
+        self.assertEqual(scan_r['model'], 'epigenesis-biophysical-temporal-v2')
+        self.assertEqual(len(scan_r['result']['predictions']), 180)
+        self.assertEqual(len(scan_r['result']['predictions'][0]['temporal']), 7)
+        self.assertTrue(server.verify(scan_r)['ok'])
+
+        pair_r = server.score(dict(mode='pairs', model='biophys', rows=EXAMPLE[:6], budget=2))
+        self.assertEqual(len(pair_r['result']['selection']), 2)
+        self.assertTrue(server.verify(pair_r)['ok'])
+
 
 if __name__ == '__main__':
     unittest.main()

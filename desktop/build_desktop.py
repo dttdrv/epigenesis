@@ -299,19 +299,19 @@ def build_macos_app(dist_dir: Path, *, install_dir: Path | None = None) -> Path:
     macos_dir.mkdir(parents=True)
     res_dir.mkdir(parents=True)
 
-    swift_src = REPO / "desktop" / "macos" / "EpigenesisApp.swift"
+    swift_sources = sorted((REPO / "desktop" / "macos").glob("*.swift"))
     bin_path = macos_dir / "Epigenesis"
     subprocess.run(
         [
             swiftc,
             "-O",
-            str(swift_src),
+            *[str(src) for src in swift_sources],
             "-o",
             str(bin_path),
             "-framework",
-            "AppKit",
+            "SwiftUI",
             "-framework",
-            "WebKit",
+            "AppKit",
         ],
         check=True,
     )
@@ -374,7 +374,7 @@ def build_macos_app(dist_dir: Path, *, install_dir: Path | None = None) -> Path:
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>NSHighResolutionCapable</key><true/>
-  <key>LSMinimumSystemVersion</key><string>12.0</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>

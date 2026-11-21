@@ -23,7 +23,7 @@ sys.path.insert(0, str(HERE/'model'))
 import predict  # frozen inference code; model/model.json pins its digest
 from brainc import _canonical as canonical  # the compiler's RFC 8785 digests
 
-from . import circuit, kreimer, pipeline_api, simulate
+from . import biophys, circuit, kreimer, pipeline_api, simulate
 from .refusal import Refusal
 
 MANIFEST_BYTES = (HERE/'model/model.json').read_bytes()
@@ -83,10 +83,21 @@ def scan_rows(reference):
     return rows
 
 
+def full_scan_rows(reference):
+    return [
+        dict(id=f'{i+1}:{base}>{alt}', reference=reference, sequence=reference[:i]+alt+reference[i+1:])
+        for i, base in enumerate(reference)
+        for alt in 'ACGT'
+        if alt != base
+    ]
+
+
 def _model_choice(request):
     choice = request.get('model')
-    if choice not in ('siraj', 'kreimer'):
-        raise Refusal('bad_model', 'choose siraj or kreimer')
+    if choice not in ('siraj', 'kreimer', 'biophys'):
+        raise Refusal('bad_model', 'choose biophys, kreimer, or siraj')
+    if choice == 'biophys' and not biophys.available():
+        raise Refusal('bad_model', 'biophys model checkpoint not available')
     return choice
 
 
@@ -148,17 +159,23 @@ def run(request):
         return pipeline_api.run_synthesize(request)
     if request['mode'] == 'discover':
         return pipeline_api.run_discover(request)
-    engine = kreimer if request.get('model') == 'kreimer' else predict
+    choice = request.get('model')
+    engine = biophys if choice == 'biophys' else (kreimer if choice == 'kreimer' else predict)
     if request['mode'] == 'scan':
         reference = request['sequence']
-        result = dict(mode='scan', length=len(reference), predictions=engine.predict(scan_rows(reference)))
+        rows = full_scan_rows(reference) if engine is biophys else scan_rows(reference)
+        result = dict(mode='scan', length=len(reference), predictions=engine.predict(rows))
         if engine is kreimer:
             result['times_hours'] = kreimer.MANIFEST['times_hours']
+        elif engine is biophys:
+            result['times_hours'] = biophys.load()[0]['times_hours']
         return result
     predictions = engine.predict(request['rows'])
     result = dict(mode='pairs', predictions=predictions)
     if engine is kreimer:
         result['times_hours'] = kreimer.MANIFEST['times_hours']
+    elif engine is biophys:
+        result['times_hours'] = biophys.load()[0]['times_hours']
     if request['budget'] is not None:
         result['selection'] = engine.select(predictions, request['rows'], request['budget'])
     return result
@@ -175,6 +192,8 @@ def identity(mode, model=None):
         return pipeline_api.SYNTH_IDENTITY
     if mode == 'discover':
         return pipeline_api.DISCOVER_IDENTITY
+    if model == 'biophys':
+        return biophys.identity()
     if model == 'kreimer':
         return kreimer.IDENTITY
     return dict(model=MANIFEST['format'], manifest_sha256=MANIFEST_SHA256, endpoint=MANIFEST['endpoint'])
@@ -281,7 +300,8 @@ def model_info():
                 max_rows=MAX_ROWS, max_bases=MAX_BASES,
                 kreimer=dict(format=kreimer.MANIFEST['format'], endpoint=kreimer.MANIFEST['endpoint'],
                              scope=kreimer.MANIFEST['biological_scope'], status=kreimer.MANIFEST['status'],
-                             manifest_sha256=kreimer.MANIFEST_SHA256, times_hours=kreimer.MANIFEST['times_hours']))
+                             manifest_sha256=kreimer.MANIFEST_SHA256, times_hours=kreimer.MANIFEST['times_hours']),
+                biophys=biophys.identity())
 
 
 class Handler(BaseHTTPRequestHandler):

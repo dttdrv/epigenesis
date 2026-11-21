@@ -36,6 +36,13 @@ tests/data/CP032762.1.validation.json
 # Rust build artifacts
 validators/rust/target/
 
+# Local development notes & generated dumps (kept locally, not tracked in repo)
+docs/research/
+docs/releases/RELEASE-1.0.md
+docs/releases/RELEASE-1.5.md
+docs/releases/RELEASE-1.6.md
+examples/neural-v2f/heldout-freeze/predictions.json
+
 # OS & editor files
 .DS_Store
 .AppleDouble
