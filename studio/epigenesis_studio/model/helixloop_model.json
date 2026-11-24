@@ -1,0 +1,30 @@
+{
+  "format": "epigenesis-helixloop-v4-multicell",
+  "endpoint": "Human multi-lineage cis-regulatory activity & variant effect (ENCODE4 HepG2, K562, WTC11 lentiMPRA; zero-shot CAGI5 / in vivo transfer)",
+  "license": "Apache-2.0",
+  "external_weights": "none (from scratch)",
+  "architecture": "HelixLoopV4Model (RegularizedRCPS + 6ch DNA Shape + 532-TF Boltzmann + MaxPool1d Pyramid + T=6 Looped Differential Gated Attention + Exact WY BiGatedDeltaProduct1d + Cell-State FiLM)",
+  "out_dim": 3,
+  "cell_lines": [
+    "HepG2",
+    "K562",
+    "WTC11"
+  ],
+  "n_loops": 6,
+  "n_params": 3461593,
+  "dtype": "float16",
+  "canonical_length": 230,
+  "heldout_fold1_cre_metrics": {
+    "HepG2_pearson_r": 0.7887,
+    "K562_pearson_r": 0.7900,
+    "WTC11_pearson_r": 0.8049,
+    "mean_pearson_r": 0.7946,
+    "cagi5_zeroshot_lineage_matched_r": 0.3079,
+    "cagi5_zeroshot_erythroid_r": 0.4489
+  },
+  "sha256": {
+    "helixloop_v4_multicell_fp16.pt": "d3e9d28c3e969b6ac91e5979e76b5766f6bac7838d09f99f43e789c9fabe094b",
+    "model.json": "2ef38f5c12f36a709fe7c78a4b2f5022e387a6b8446ff135e75770891162e59d",
+    "weights.npz": "a4fa093027d885172fc37c1bde9d852a25d0541fb1ff596a573eb4fbf7eb26ff"
+  }
+}

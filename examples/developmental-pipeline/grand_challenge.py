@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Epigenesis Grand Challenge Solver: Variant-to-Function & Inverse Virtual Developing Cell.
+"""Epigenesis Multi-Scale Provenance & In-Silico Pipeline Verification Runner.
 
-Tackles the post-AlphaFold Grand Challenge of computational biology — decoding and
-inversely engineering non-coding human cis-regulatory DNA across four coupled scales:
-  1. Molecular biophysics (532 JASPAR 2024 human TFs, asymmetric Boltzmann thermodynamics)
-  2. Empirical human neural-induction kinetics (0-72h GSE188264, 1,895 strictly unseen edits)
-  3. Nonlinear N-gene regulatory dynamics & cryptic cell-fate bifurcations (24-draw ensemble)
-  4. 3D neuronal morphogenesis & LIF spiking transmission (CX3D) under dual-objective
-     Pareto optimization (100% 3D rescue + minimal global 532-TF human off-target drift),
-     sealed in GA4GH VRS 2.x + brainc and independently verified by Python + Rust plus an
-     adversarial 1-byte source-tampering proof.
+Exercises four coupled computational layers in one deterministic, SHA-256 sealed run:
+  1. Retrospective GSE188264 neural-induction perturbation evaluation (biophys v2 linear
+     532-TF+ ridge on 1,895 multi-base motif ablations; note: 0 SNVs in GSE188264 and
+     the 118 test loci were previously exposed across earlier model iterations).
+  2. In-silico passive-reporter vs endogenous ODE amplification (Herrera-Delgado neural-tube
+     model; biological_acceptance = False; human GSE188264 loci are testbeds, not validated
+     endogenous Nkx2.2 enhancers).
+  3. Dual-objective Pareto candidate ranking over the deterministic ODE + CX3D pipeline
+     (note: restoring scalar affinity ratio q -> ~1.0 reproduces deterministic ODE/CX3D
+     output by construction; off-target drift is evaluated on the GSE188264 linear head).
+  4. Zero-trust GA4GH VRS 2.x + brainc compilation verified independently by Python + Rust
+     plus an adversarial 1-byte source-FASTA tamper rejection check.
 """
 
 from __future__ import annotations

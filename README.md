@@ -29,6 +29,7 @@ Epigenesis is a **cross-platform scientific workbench and universal DNA translat
 
 - **Multi-Locus Developmental Simulation (`Develop Pipeline`):** Couple cis-regulatory enhancers, chromatin accessibility gates, and coding-sequence translation into N-gene ordinary differential equation (ODE) networks with 90% parameter-uncertainty ensembles, exact reversion and closed-chromatin controls, and 3D CX3D + LIF neuronal morphogenesis.
 - **Inverse Regulatory Compiler (`Inverse Compiler`):** Synthesize minimal 1-bp distal compensatory edits that rescue 3D morphogenesis while leaving an uneditable primary lesion intact, or compile single-base non-coding edits that switch cell fate without touching coding exons.
+- **HelixLoop v4 Neural Regulatory Engine (`helixloop_engine` & `studio/epigenesis_studio/helixloop.py`):** 6.9 MB fp16 SHA-256-sealed Apache-2.0 looped biophysical DNA model (zero external weights) combining regularized RCPS, 6-channel DNA shape, 532 JASPAR 2024 TFs, and a shared-weight $T=6$ iterative core with exact parallel WY Householder state tracking (`BiGatedDeltaProduct1d`) and cell-state FiLM — guaranteeing bit-for-bit `0.0` reversion, antisymmetry, and reverse-complement invariants with calibrated uncertainty and per-TF attributions.
 - **Asymmetric Biophysical 532-TF+ Variant Predictor (`Positional Scan` & `Batch Edits`):** Score saturation mutagenesis landscapes and arbitrary SNV/MNV/indel panels on CPU in milliseconds using dual-scale strand-symmetric Boltzmann thermodynamics across all 532 JASPAR 2024 human transcription factors, peak-site disruption, and reference-context gating — predicting 0–72 h human neural-induction kinetics with per-TF attributions.
 - **Enhancer Circuit & Regulatory Site Analysis:** Scan arbitrary enhancers (`9–500` bp) for cryptic cell-fate bifurcations where passive reporters barely shift (`|Δ| < 0.02`) yet endogenous feedback flips lineage identity.
 - **Cryptographic Provenance & Audit (`Verify Receipt`):** Every run exports an RFC 8785 SHA-256 sealed receipt (plus RO-Crate 1.1 and COMBINE OMEX archives) verified independently by producer-isolated Python and zero-dependency Rust validators (`epigenesis-validate-rs`).
@@ -63,29 +64,67 @@ See [`desktop/README.md`](desktop/README.md) for workspace setup and shortcuts (
 
 ## Verified Scientific Benchmarks & Showcases
 
-Every result below reproduces deterministically from bundled human datasets (`GSE188264`, Hallikas GLI profiles, Herrera-Delgado neural-tube ODE, CX3D 3D morphogenesis) and is documented in full in the [English](docs/paper/epigenesis-technical-paper.pdf) and [Bulgarian](docs/paper/epigenesis-technical-paper.bg.pdf) technical papers.
+Every result below reproduces from bundled datasets (`ENCODE4` lentiMPRA, `CAGI5`, `ADASTRA`/`UDACHA`, `GSE188264`, Hallikas GLI profiles, Herrera-Delgado neural-tube ODE, CX3D 3D morphogenesis) with exact two-sided finite-sample Phipson–Smyth (2010) bootstrap tests ($B=2{,}000$) and Borzoi/Flashzoi `fold3+fold4` pretraining-leakage audits. Full details appear in [`docs/paper/epigenesis-helixloop.tex`](docs/paper/epigenesis-helixloop.tex) and [`examples/thermosyntax-benchmark/README.md`](examples/thermosyntax-benchmark/README.md).
 
-### 1. Out-of-Sample Human Neural-Induction Prediction (`GSE188264`, `1,895` Unseen Edits)
-Trained strictly on `train + validation` families (hyperparameters selected exclusively on `validation`) and evaluated once on `118` strictly held-out human genomic loci (`1,895` total / `1,415` targeted edits across `[0, 3, 6, 12, 24, 48, 72]` h):
+### 1. Epigenesis HelixLoop v4 — Tier 1 (From Scratch, 6.9 MB fp16, Apache-2.0)
 
-| Model | Held-Out Pearson $r$ (All `1,895`) | Targeted Pearson $r$ (`1,415`) | Targeted Family MSE (Lower Better) | Top-10% Direction Accuracy | Top-100 Wet-Lab Repression |
+Trained strictly from scratch (`0` external weights) on `281,170` scrubbed ENCODE4 lentiMPRA CREs (`HepG2 + K562 + WTC11`, `0%` 31-mer overlap with Fold 1 or CAGI5). Bundled SHA-256-verified checkpoint: [`studio/epigenesis_studio/model/helixloop_v4_multicell_fp16.pt`](studio/epigenesis_studio/model/helixloop_v4_multicell_fp16.pt).
+
+<p align="center">
+  <img src="docs/figures/card1_tier1_from_scratch.png" alt="HelixLoop v4 Tier 1 From-Scratch Benchmark" width="960" />
+</p>
+
+| Model (From Scratch, Apache-2.0) | Params | HepG2 Fold-1 $r$ | K562 Fold-1 $r$ | WTC11 Fold-1 $r$ | 3-Lineage Mean | Zero-Shot CAGI5 (Match / Eryth) | Zero-Shot In Vivo Pooled (`n=1,974`) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `OfficialMPRALegNet` (3-head) | `1.32M` | `0.7592` | `0.7620` | `0.7949` | `0.7721` | `0.2994` / `0.3907` | `r = 0.3700` / `AUC 0.7312` |
+| **`HelixLoop v4` (FiLM, `6.9 MB` fp16)** | **`3.46M`** | **`0.7888`** (`p = 0.001`) | **`0.7900`** (`p = 0.001`) | **`0.8049`** (`p = 0.061` n.s.) | **`0.7946`** (`+0.0225`) | **`0.3079` / `0.4489`** (`+0.0582`) | **`r = 0.3792` / `AUC 0.7336`** (`+0.0260`, `p = 0.016`) |
+
+- **Monotonic test-time loop scaling ($T=1 \to 6$):** HepG2 single-cell MSE drops `0.2808 → 0.2323 → 0.1795 → 0.1720` (`r: 0.8122 → 0.8191`, beating `OfficialDREAMRNN` `0.7361` by `+0.0830`, `p = 0.001`); multi-lineage mean improves monotonically `0.7859 → 0.7909 → 0.7938 → 0.7946`.
+- **Causal ablation (`BiGatedDeltaProduct1d`):** Removing only the parallel WY Householder state tracker (`n_h = 2`) under identical seed/data drops zero-shot CAGI5 overall `-0.0175`, liver `-0.0487`, and neural `-0.0436`.
+- **Exact invariants:** Bit-for-bit `0.0` reversion, antisymmetry, and reverse-complement invariance verified across CPU/GPU.
+
+### 2. Tier 2 Open MIT/Apache-2.0 Foundation-Hybrid vs. Non-Commercial AlphaGenome
+
+Coupling MIT-licensed `Flashzoi` (`johahi/flashzoi-replicate-0..3`; upstream Borzoi is Apache-2.0) with `HelixLoop v4` clears published non-commercial `AlphaGenome-Encoder-FT` (`CC-BY-NC 4.0`). **Zero cross-fold leakage audit:** all four Flashzoi replicates share the identical Borzoi hg38 pretraining split (`borzoi_sequences_human.bed.gz`: 75% train, 25% `fold3+fold4` strictly unseen; 0 MPRA/CAGI5/ADASTRA/UDACHA/GSE188264 labels).
+
+<p align="center">
+  <img src="docs/figures/card2_tier2_open_vs_alphagenome.png" alt="Tier 2 Open MIT/Apache-2.0 Flashzoi + HelixLoop v4 vs AlphaGenome" width="960" />
+</p>
+
+| Model | License | HepG2 $r$ | K562 $r$ | WTC11 $r$ | 3-Lineage Mean | CAGI5 Match / Liver / Eryth | In Vivo Unseen `fold3+4` (`n=453`) |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `AlphaGenome-Encoder-FT` (published) | *CC-BY-NC 4.0* | **`0.888`** | `0.879` | `0.834` | `0.8670` | — | — |
+| `Flashzoi-Linear-FT` (4-rep ablation) | **MIT** | `0.8789` | `0.8816` | **`0.8516`** | `0.8707` | **`0.3998`** / `0.5615` / **`0.5919`** | `r = 0.5521` / `AUC 0.8139` |
+| **`Flashzoi + HelixLoop v4` (4-rep)** | **MIT + Apache-2.0** | `0.8796` | **`0.8822`** | `0.8505` | **`0.8708`** | `0.3966` / **`0.5624`** / `0.5877` | `r = 0.5466` / **`AUC 0.8250`** |
+
+*Controlled ablation transparency:* On raw ENCODE4 Fold-1 CREs, 4-rep `Flashzoi + HelixLoop v4` (`0.8708`) and `Flashzoi-Linear-FT` (`0.8707`) are statistically tied (all per-lineage `p > 0.22`): MIT Flashzoi drives the primary `0.795 → 0.871` CRE jump, while `HelixLoop v4` preserves that frontier accuracy and adds calibrated uncertainty ($\sigma$), 532-TF Boltzmann attribution, `+0.0111` unseen-fold *in vivo* AUROC (`0.8250` vs `0.8139`), and `+0.1052` non-additive double-mutant epistasis (`0.7513` vs `0.6461`).
+
+### 3. Zero-Shot In Vivo Genetics (`ADASTRA`/`UDACHA`), `GSE188264` & 51 Test-Only Epistasis Triplets
+
+<p align="center">
+  <img src="docs/figures/card3_zeroshot_invivo_epistasis.png" alt="Zero-Shot In Vivo Genetics, CAGI5 and Non-Additive Epistasis" width="960" />
+</p>
+
+Evaluated on `GSE188264` (`1,895` held-out 0–72 h human neural-induction perturbations across `118` loci; **note:** retrospective loci, 0 SNVs, multi-base motif ablations) plus **`51` strictly test-only double-mutant epistasis triplets** ($\varepsilon = \Delta_{AB} - \Delta_A - \Delta_B$, `0%` train/val locus overlap) and the `424` perturbations in strictly Borzoi-unseen `fold3+fold4`:
+
+| Model | All `1,895` Edits $r$ | Targeted MSE (vs. 0) | Borzoi-Unseen `fold3+4` (`n=424`) | 51 Double-Mutants $r$ | **51 Non-Additive Epistasis $r$** |
 |---|---:|---:|---:|---:|---:|
-| Zero-effect baseline | `0.0000` | `0.0000` | `0.360870` | `50.0%` | `69.1%` |
-| Dinucleotide baseline | — | — | `0.319358` | — | — |
-| Canonical 5-mer ridge (`k5`) | — | — | `0.285185` | — | — |
-| Kreimer 0–72 h Motif-Temporal (v1) | — | — | `0.252079` | — | — |
-| Pure 532-TF Boltzmann (zero $k$-mers) | `0.3439` | `0.3366` | — | `93.2%` | `95.0%` (`p = 0.000999`) |
-| **Biophysical Asymmetric 532-TF+ (v2, default)** | **`0.5060`** | **`0.4987`** | **`0.250815`** | **`96.3%`** | **`99.0%`** |
+| Zero-effect / `k5` ridge | `0.0000` / — | `0.36087` / `0.28519` | — | — | `0.0000` |
+| `Biophys Asymmetric 532-TF+ v2` (linear) | `0.5060` | `0.25082` (`-30.5%`) | `0.5276` | `0.7375` | `0.1509` |
+| `OfficialMPRALegNet` (scratch / T1 xfer) | `0.3628` / `0.5536` | `0.30598` / `0.25422` | `0.3036` / `0.5196` | `0.2821` / `0.5162` | `0.1988` / `-0.2141` |
+| **`HelixLoop v4` (scratch / T1 xfer)** | `0.3537` / **`0.6086`** | `0.29503` / **`0.24323`** (`-32.6%`) | `0.1858` / **`0.6646`** | `0.5625` / **`0.6619`** | `0.4283` / **`0.5645`** (`p = 0.017` vs LegNet) |
+| `Flashzoi-Linear-FT` (T2 xfer) | **`0.7626`** | **`0.18013`** (`-50.1%`) | `0.7778` | **`0.8825`** | `0.6461` |
+| **`Flashzoi + HelixLoop v4` (T2 xfer)** | `0.7553` | `0.18144` (`-49.7%`) | **`0.7985`** | `0.8194` | **`0.7513`** (`+0.1052`, `p = 0.053` vs Lin; `p = 0.001` vs v2) |
 
-### 2. Proof-Carrying Epistatic 3D Morphogenesis Rescue (Primary Mutation Kept Intact)
-When a single-base enhancer mutation barely moves a passive reporter (`|Δreporter| ≈ 0.012`) yet collapses endogenous *Nkx2.2* (`-0.932`), flips ventral lineage identity (`Nkx2.2+ → Olig2+`), and distorts 3D CX3D neurite outgrowth (`+22.68` length drift), Epigenesis locks the primary lesion untouched and compiles a single 1-bp distal compensatory edit verified in both Python and Rust:
+### 4. In-Silico Dynamical Rescue & Cross-Language Provenance Verification (`biological_acceptance = False`)
+Inside the published Herrera-Delgado ventral neural-tube ODE coupled to 3D CX3D, single-base GLI2 motif perturbations can shift a passive promoter readout by $|\Delta| \approx 0.012$ while crossing an endogenous saddle-node bifurcation. Locking the primary substitution intact, Epigenesis compiles a 1-bp second-site substitution whose scalar GLI2 partition ratio $q \approx 1.0$ restores the deterministic ODE and CX3D trajectory and verifies the entire compilation byte-for-byte in Python and Rust (**note:** restoring scalar $q \to 1.0$ recovers deterministic ODE/CX3D output by construction, and neither human `GSE188264` testbed locus is a validated endogenous *Nkx2.2* enhancer *in vivo*):
 
 | Human Enhancer (`GSE188264`) | Locked Primary Lesion | Synthesized 1-bp Rescue | Double-Mutant $q$ | Max Gene $\Delta$ vs WT | 3D CX3D Neurite Recovery | Python + Rust Replay |
 |---|---|---|---:|---:|---:|---|
 | `chr18:56475717-56475888` | `165:G>T` (`ga4gh:VA.Tb8SIdM4...`) | **`163:T>C`** (`+2 bp`) | **`1.000125`** | **`9.89 × 10⁻⁸`** | **`100.00%`** (`351.14 → 373.82 → 351.14`) | Verified |
 | `chr1:175099416-175099587` | `149:G>T` (`ga4gh:VA.Mjx89n4V...`) | **`147:A>T`** (`+2 bp`) | **`0.412254`** | **`0.00111`** | **`91.13%`** (`351.14 → 373.83 → 349.13`) | Verified |
 
-### 3. Single-Base Non-Coding Fate Reprogramming & Multi-Locus Chromatin Shielding
+### 5. Single-Base Non-Coding Fate Reprogramming & Multi-Locus Chromatin Shielding
 - **Non-coding fate switch (`chr15:90936956-90937127`):** Compiles **`61:C>G`** (`ga4gh:VA.RR2HJSiG...`, `q = 0.00030`), switching ventral `Nkx2.2 → Olig2` with **`100%` ensemble stability** (`n = 24`) and verified 3D CX3D arbor geometry (`351.14 → 377.41`, exact reversion & closed-chromatin shielding `Δ = 0.0`, OMEX archive `12,262` B).
 - **Multi-locus chromatin gating (`tri-lineage-chromatin`):** Couples PAX6/BCL6 cis-enhancers through an explicit chromatin accessibility gate into an `Excitatory / Inhibitory / Progenitor` GRN (`Excitatory → Progenitor`, `66.7%` flip probability in open chromatin; `0.0` perturbation when chromatin closes), with mandatory `source_inputs` SHA-256 tamper rejection across Python and Rust.
 

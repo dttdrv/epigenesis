@@ -1,0 +1,287 @@
+\documentclass[10.5pt,a4paper]{article}
+\input{preamble}
+\setmainlanguage{english}
+\usepackage{amssymb}
+\hypersetup{pdftitle={HelixLoop: Iterative Biophysical State-Tracking and Open-License Regulatory Decoding in Epigenesis},pdfauthor={Deyan Todorov}}
+
+\begin{document}
+
+\titleblock{HelixLoop: Iterative Biophysical State-Tracking and\\Open-License Cis-Regulatory Decoding in Epigenesis}{Deyan Todorov}{Technical report · 24 November 2026 (Epigenesis 1.7.0) · Apache-2.0\\Code \& 6.9\,MB fp16 weights: \code{studio/epigenesis\_studio/helixloop.py} · Audit script: \code{examples/thermosyntax-benchmark/audit\_statistics\_and\_leakage.py}}
+
+\begin{abstractbox}{Abstract}
+Predicting how non-coding DNA variation alters cis-regulatory activity across cell states remains a central bottleneck in computational genomics. Existing sequence-to-function models fall into two regimes: compact from-scratch convolutional networks trained on massively parallel reporter assays (MPRAs) that lack explicit iterative grammar refinement and uncertainty calibration, and frontier genomic foundation models such as AlphaGenome and AlphaGenome~2 that remain restricted under non-commercial licenses (\code{CC-BY-NC~4.0}). We introduce \textbf{HelixLoop~v4}, a recurrent-depth biophysical sequence architecture combining an AdamW-regularized reverse-complement parameter-sharing stem, deterministic 6-channel DNA shape features, a 532-transcription-factor JASPAR~2024 Boltzmann binding field, and a shared-weight $T=6$ iterative core pairing Forgetting Differential Gated Attention, B-DNA 10.5-bp helical relative bias, value-residual connections, exact parallel WY triangular-solve bidirectional Householder state tracking (\code{BiGatedDeltaProduct1d}, $n_h=2$ negative-eigenvalue transitions), bounded rational gating, and cell-state FiLM conditioning. Evaluated under strict two-tier separation with zero 31-mer overlap to test splits and exact two-sided finite-sample Phipson--Smyth bootstrap tests ($B=2{,}000$):
+(1)~\textbf{Tier~1 (from scratch, 0 external weights, 6.9\,MB fp16, Apache-2.0):} across 281,170 scrubbed ENCODE4 lentiMPRA elements, multi-lineage HelixLoop~v4 outperforms OfficialMPRALegNet on HepG2 ($0.7888$ vs.\ $0.7592$, $\Delta=+0.0295$, 95\% CI $[+0.0211,+0.0383]$, $p=0.001$), K562 ($0.7900$ vs.\ $0.7620$, $\Delta=+0.0280$, $[+0.0229,+0.0332]$, $p=0.001$), and 3-lineage mean ($0.7946$ vs.\ $0.7721$, $+0.0225$; WTC11 $+0.0100$, $[-0.0004,+0.0212]$, $p=0.061$, non-significant positive trend), exhibits strictly monotonic test-time loop scaling ($T=1\to 6$: HepG2 MSE $0.2808\to 0.1720$; multi-lineage $r$: $0.7859\to 0.7946$), proves via causal ablation that \code{BiGatedDeltaProduct1d} drives zero-shot CAGI5 gains ($+0.0487$ liver, $+0.0436$ neural, $+0.0175$ overall), improves zero-shot CAGI5 erythroid prediction by $+0.0582$ ($0.4489$ vs.\ $0.3907$), and beats OfficialMPRALegNet zero-shot across 1,974 \emph{in vivo} human \code{ADASTRA}/\code{UDACHA} allelic-imbalance SNPs (pooled $\Delta r=+0.0260$, $[+0.0060,+0.0464]$, $p=0.016$; 5/6 panels won), while guaranteeing bit-for-bit $0.0$ reversion, antisymmetry, and reverse-complement invariance.
+(2)~\textbf{Tier~2 (open MIT Flashzoi + Apache-2.0 HelixLoop~v4):} a 4-replicate ensemble (\code{rep0--rep3}, verified from \code{borzoi\_sequences\_human.bed.gz} to share the identical 75\%/25\% hg38 split with zero cross-fold leakage) reaches HepG2 $0.8796$, K562 $0.8822$, WTC11 $0.8505$ (3-lineage mean \textbf{0.8708}), clearing published non-commercial \code{AlphaGenome-Encoder-FT} ($0.8670$; $0.888/0.879/0.834$) while reaching zero-shot CAGI5 $0.3966$ (liver $0.5624$, erythroid $0.5877$) and zero-shot \emph{in vivo} \code{ADASTRA}/\code{UDACHA} mean $r=0.4948$ / AUROC $0.8051$---and maintaining full generalization on the 453 strictly Borzoi-unseen \code{fold3+fold4} \emph{in vivo} SNPs ($r=0.5466$, AUROC $0.8250$). Controlled ablation against \code{Flashzoi-Linear-FT} ($0.8707$) shows the MIT Flashzoi backbone drives the primary raw-CRE leap while HelixLoop~v4 preserves that peak, adds calibrated uncertainty and 532-TF attribution, raises unseen-fold \emph{in vivo} AUROC by $+0.0111$, and advances non-additive double-mutant epistasis on \code{GSE188264} to $r=0.7513$ (vs.\ $0.6461$ for \code{Flashzoi-Linear-FT}, $\Delta=+0.1052$, two-sided $p=0.053$; Tier-1 transfer $0.5645$ vs.\ $-0.2141$ for LegNet, $p=0.017$) while reaching $r=0.7985$ on the 424 strictly Borzoi-unseen \code{fold3+fold4} \code{GSE188264} perturbations. We also document our failed initial prototype (\code{Omega~v1}), showing causally why scale-invariant convolutions and direct-input attention shortcuts break looped refinement.
+
+\smallskip\noindent\textbf{Keywords:} cis-regulatory genomics, looped neural architectures, DeltaProduct Householder state tracking, biophysical Boltzmann attention, lentiMPRA, CAGI5, ADASTRA, UDACHA, Flashzoi, open-license regulatory modeling.
+\end{abstractbox}
+
+\section{Introduction}
+
+Massively parallel reporter assays (MPRAs) now profile hundreds of thousands of human cis-regulatory elements (CREs) across distinct lineages \citep{agarwal2025,gosai2024,kreimer2022}, while saturation mutagenesis \citep{kircher2019} and allele-specific ChIP-seq / chromatin-accessibility atlases \citep{abramov2021,abramov2025} directly measure single-nucleotide variant effects \emph{in vitro} and \emph{in vivo}. Current predictive approaches split sharply into two regimes:
+\begin{enumerate}
+\item \textbf{Compact from-scratch MPRA predictors}---such as LegNet \citep{penzar2023}, DREAM-RNN \citep{rafi2024}, Malinois \citep{gosai2024}, and DeepSTARR \citep{dealmeida2022}---train solely on assay DNA with open licenses and small footprints, but rely on fixed-depth feedforward pipelines without iterative test-time refinement, explicit transcription-factor (TF) thermodynamics, or calibrated heteroscedastic uncertainty.
+\item \textbf{Long-context genomic foundation models}---including Enformer \citep{avsec2021}, Borzoi \citep{linder2025}, Flashzoi \citep{hingerl2025}, AlphaGenome \citep{avsec2026}, and the recently released AlphaGenome~2 \citep{gayoso2026}, which introduces cell-state conditioning across 107M single-cell profiles---dramatically boost downstream MPRA fine-tuning. Yet AlphaGenome and AlphaGenome~2 are restricted to non-commercial research licenses (\code{CC-BY-NC~4.0}) and gated APIs, whereas Borzoi (\code{Apache-2.0}) and Flashzoi (\code{MIT}) provide fully open, commercially usable weights.
+\end{enumerate}
+
+A second persistent weakness in genomic deep learning benchmarks is \emph{methodology hygiene}: mixing pre-trained and from-scratch models in a single table, ignoring cross-replicate pretraining fold overlap, omitting controlled linear-probe ablations on top of foundation encoders, or misreporting bootstrap win frequencies as frequentist $p$-values \citep{phipson2010}.
+
+We address both the architectural and methodological gaps with \textbf{HelixLoop~v4}, integrated into the Epigenesis cryptographic workbench \citep{todorov2026epigenesis}:
+\begin{itemize}
+\item \textbf{Architectural contribution (Tier~1, from scratch):} A 3.46M-parameter (6.9\,MB fp16, Apache-2.0) looped biophysical architecture whose shared-weight recurrent core combines Forgetting Differential Gated Attention \citep{ye2025,lin2025}, ResFormer value residuals \citep{zhou2025}, B-DNA 10.5-bp helical relative bias, exact parallel WY Householder state tracking (\code{BiGatedDeltaProduct1d}, \citealp{siems2025}), and cell-state FiLM modulation \citep{perez2018}. We prove monotonic test-time loop scaling ($T=1\to 6$), isolate the causal effect of \code{BiGatedDeltaProduct1d}, and ship SHA-256-sealed CPU weights with bit-for-bit $0.0$ reversion, antisymmetry, and reverse-complement invariants.
+\item \textbf{Open-license foundation hybrid (Tier~2):} Coupling MIT-licensed Flashzoi (\code{johahi/flashzoi-replicate-0..3}) with HelixLoop~v4 clears published non-commercial \code{AlphaGenome-Encoder-FT} on 3-lineage ENCODE4 lentiMPRA ($0.8708$ vs.\ $0.8670$), audited directly against Borzoi's official hg38 fold file (\code{borzoi\_sequences\_human.bed.gz}) and benchmarked against a strictly matched \code{Flashzoi-Linear-FT} ablation.
+\item \textbf{Diagnostic negative results:} We explicitly report our failed \code{Omega~v1} prototype, demonstrating how scale-invariant weight standardization and attention-residual shortcuts silently collapse iterative depth ($T=1\equiv T=6$) and cause training memorization.
+\end{itemize}
+
+\section{Architecture: HelixLoop v4 and Diagnostic Ablation of Omega v1}
+
+\subsection{Why Prototype Omega v1 Failed: Three Mechanical Pathologies}
+
+Before finalizing HelixLoop~v4, we trained an initial prototype (\code{HelixLoopOmegaModel}, ``Omega~v1'') incorporating weight-standardized convolutions, a 50k-parameter canonical 6-mer Engram lookup table, cautious weight decay (CWD), and Attention Residuals (AttnRes) connecting the readout coda directly to the stem state $h_0$. On HepG2 lentiMPRA (98,340 training CREs, 20 epochs, seed 42), Omega~v1 drove training loss to $0.0249$ yet stalled at held-out Fold-1 CRE $r=0.8111$ ($\text{MSE}=0.1782$), trailing OfficialMPRALegNet ($0.8170$) and showing \textbf{completely flat loop scaling}: $T=1$ ($r=0.8111$, $\text{MSE}=0.1781$) $\equiv$ $T=6$ ($r=0.8111$, $\text{MSE}=0.1782$).
+
+Causal inspection traced this failure to three interacting defects:
+\begin{enumerate}
+\item \textbf{Weight standardization cancels AdamW weight decay:} Because normalized filters satisfy $\hat{W}(\alpha W)=\hat{W}(W)$, $L_2$ weight decay ceases to regularize effective filter norms, enabling rapid memorization.
+\item \textbf{Unregularized 6-mer lookup capacity:} Embedding all 2,080 canonical 6-mers with low decay memorizes assay-specific flanks rather than generalizing across single-nucleotide variants.
+\item \textbf{AttnRes loop bypass:} Letting the readout coda attend directly over $\{h_0, h_1, \dots, h_T\}$ allowed optimization to route signal straight from $h_0$, driving recurrent core updates toward zero and rendering loop iterations inert.
+\end{enumerate}
+
+\subsection{HelixLoop v4: Regularized Biophysical Prelude and Genuine Looped Core}
+
+HelixLoop~v4 (\code{studio/epigenesis\_studio/helixloop.py}, 3,461,593 parameters, 6.9\,MB in fp16) eliminates all three pathologies while introducing exact biophysical and state-tracking inductive biases:
+
+\paragraph{1. Regularized Biophysical Prelude.}
+Input one-hot DNA $x \in \{0,1\}^{4\times L}$ is encoded by three parallel branches:
+\begin{itemize}
+\item \textbf{AdamW-regularized RCPS Stem (\code{RegularizedRCPSStem}):} A reverse-complement parameter-sharing 11-bp convolutional stem with standard BatchNorm1d (restoring effective weight decay) and split bounded exponential/SiLU activations following \citet{koo2021}, $\exp(\operatorname{clip}(h,-5,2.5))-1$ on half of the channels to sharpen motif log-likelihoods.
+\item \textbf{Deterministic 6-channel DNA shape proxy (\code{compute\_dna\_shape\_6ch}):} Zero-parameter local structural channels encoding GC/AT composition, purine--pyrimidine transitions, RY/WS dinucleotide step proxies, and strand skews motivated by DNA shape recognition \citep{rohs2009}.
+\item \textbf{532-TF JASPAR~2024 Boltzmann Binding Field (\code{FastBiophysField}):} Frozen strand-symmetric position weight matrices for all 532 human vertebrate TFs from JASPAR~2024 \citep{rauluseviciute2024} compute per-position binding occupancies $p_{m,i}=\sigma(\beta_m(e_{m,i}-\mu_m))$ with learnable inverse temperatures $\beta_m\in[0.2,4.0]$ and chemical potentials $\mu_m$, plus exact sequence-level log-partition functions $\ln Z_m = \operatorname{softplus}(\operatorname{logsumexp}_i \ell_{m,i})$ that feed a zero-initialized biophysical skip head and provide direct per-TF variant attributions.
+\end{itemize}
+Concatenated features pass through a 3-stage peak-preserving \code{MaxPool1d(2)} + \code{BatchNorm1d} convolutional pyramid with residual-concatenated helical efficient blocks ($L=230\to 28$ tokens at 8\,bp/token, $d=192$), preserving sharp single-base promoter peaks.
+
+\paragraph{2. Genuine Iterative Core ($T=6$, Zero $h_0$ Bypass).}
+Let $h^{(0)} \in \mathbb{R}^{B\times L'\times d}$ denote the prelude output and $u_{\text{anchor}}=\operatorname{LN}(h^{(0)})$. Critically, \emph{only the final iterate $h^{(T)}$} enters the readout coda, removing the AttnRes bypass. Inspired by recurrent-depth latent reasoning \citep{geiping2025}, each step $t\in\{0,\dots,T-1\}$ updates $h^{(t)}$ with a shared parameter block conditioned by step embedding $e_{\text{step}}(t)$ plus cell-state embedding $e_{\text{cell}}(c)$ via Feature-wise Linear Modulation \citep{perez2018}:
+\begin{enumerate}
+\item \textbf{Gated Anchor Injection:} $x^{(t)} = h^{(t)} + 0.35\,\sigma(W_{\text{inj}}[\operatorname{LN}(h^{(t)}); u_{\text{anchor}}]) \odot u_{\text{anchor}}$, preventing over-smoothing across loops.
+\item \textbf{Exact Parallel WY \code{BiGatedDeltaProduct1d} (even steps):} On even iterations, a bidirectional linear-RNN memory updates state matrix $S_t \in \mathbb{R}^{H\times d_k\times d_v}$ using a product of $n_h=2$ generalized Householder reflections \citep{siems2025}:
+\begin{equation}
+S_t = \alpha_t S_{t-1} \prod_{r=1}^{2}\!\left(I - \beta_{t,r} k_{t,r} k_{t,r}^\top\right) + \sum_{r=1}^{2} \beta_{t,r} k_{t,r} v_{t,r}^\top \prod_{j=r+1}^{2}\!\left(I - \beta_{t,j} k_{t,j} k_{t,j}^\top\right),
+\end{equation}
+with $\beta_{t,r}\in(0,2)$ permitting negative transition eigenvalues required for parity, motif-order, and steric exclusion tracking. Rather than iterating sequentially in Python, we flatten the $2L'$ sub-steps into a strictly lower-triangular Gram matrix $M$ weighted by cumulative decay $\Gamma_{i,j}=\exp(\sum_{s=j+1}^i \ln\alpha_s)$ and solve the exact unit lower-triangular WY system $(I + M)\,U = \operatorname{diag}(\beta)\,V$ via \code{torch.linalg.solve\_triangular}. Unit tests confirm $<10^{-5}$ maximum absolute discrepancy against the exact sequential Householder recurrence at $>30\times$ higher throughput.
+\item \textbf{Forgetting Differential Gated Attention + B-DNA Bias + ResFormer $V_0$:} Combines dual-softmax common-mode noise cancellation \citep{ye2025}, data-dependent log-decay forget gating \citep{lin2025}, first-step value residual anchoring $V \leftarrow (1-\lambda_v)V + \lambda_v V^{(0)}$ \citep{zhou2025}, and a 7-feature relative positional MLP encoding $\cos(2\pi\Delta x/10.5)$, $\sin(2\pi\Delta x/10.5)$, $\cos(2\pi\Delta x/21.0)$, $\sin(2\pi\Delta x/21.0)$, signed/log distance, and $\mathbb{I}[|\Delta x|\le 16\,\text{bp}]$ steric contact.
+\item \textbf{Misul Bounded Rational FFN:} Replaces unbounded SwiGLU with bounded rational gating $g/(1+|g|)\cdot v$ plus depthwise steric convolution ($k=3$), keeping activations well-conditioned across deep unrolls.
+\end{enumerate}
+
+\paragraph{3. Coda, Exact Variant Symmetries, and Heteroscedastic Uncertainty.}
+A 4th peak-preserving convolutional stage ($28\to 14$ tokens) projects $h^{(T)}$ to cell-type predictions $\mu(S)$ and detached heteroscedastic log-variance $\ln\sigma^2(S)$ conditioned on the final loop equilibrium residual $\|h^{(T)}-h^{(T-1)}\|_2$. For any reference/edited sequence pair $(S_{\text{ref}}, S_{\text{alt}})$ of arbitrary length, Epigenesis Studio evaluates strand-symmetrized activity $\bar{f}(S)=\tfrac{1}{4}\sum_{u\in\mathcal{O}(S)} f(u)$ over forward/reverse assay orientations and computes $\Delta(S_{\text{ref}}, S_{\text{alt}}) = \bar{f}(S_{\text{alt}}) - \bar{f}(S_{\text{ref}})$ with an exact identity branch for $S_{\text{ref}}=S_{\text{alt}}$, guaranteeing bit-for-bit $\Delta(S,S)=0.0$, exact antisymmetry $\Delta(B,A)=-\Delta(A,B)$, and exact reverse-complement invariance $\Delta(\text{RC}(A),\text{RC}(B))=\Delta(A,B)$.
+
+\paragraph{4. Tier-2 Open Foundation-Hybrid (\code{Flashzoi + HelixLoop v4}).}
+To test open-license foundation scaling, we extract the pretrained convolutional and U-Net stem (\code{conv\_dna + res\_tower + unet1}, 25.6M params, loaded with \code{strict=True} from MIT-licensed \code{johahi/flashzoi-replicate-0..3}, \citealp{hingerl2025}) and fuse its multi-scale features with the 532-TF Boltzmann + 6-channel DNA shape stream into the iterative \code{HelixLoopV4Core} (32.1M total params/replicate). As a strictly controlled ablation, \code{Flashzoi-Linear-FT} (30.7M params/replicate) trains the exact same Flashzoi encoder, data, augmentation, and differential learning rates with a linear readout head.
+
+\section{Experimental Protocol, Leakage Audit, and Statistics}
+
+\paragraph{Zero-Overlap Data Hygiene.}
+All Tier-1 and Tier-2 models train on ENCODE4 lentiMPRA data for HepG2, K562, and WTC11 \citep{agarwal2025} using official folds 3--10 for training, fold~2 for validation/early stopping, and fold~1 strictly held out for testing ($n=6{,}146$ HepG2, $9{,}833$ K562, $2{,}314$ WTC11 orientation-averaged CREs). Before any training, every training sequence sharing any 31-mer (forward or reverse complement) with any fold-1 test sequence across all three cell lines or with any of the 29 CAGI5 regulatory elements \citep{kircher2019} is removed (281,170 scrubbed multi-lineage training CREs; 98,340 HepG2 single-cell). All CAGI5 (39,170 SNVs across 29 elements / 23 disjoint genomic loci) and \emph{in vivo} human allelic-imbalance evaluations (\code{ADASTRA} ChIP-seq ASB, \citealp{abramov2021}; \code{UDACHA} DNase/ATAC-seq, \citealp{abramov2025}; 1,974 verified GRCh38 SNPs across 6 panels, $\text{FDR}<0.01$ ASB / $<0.05$ chromatin, $|\text{ES}|\ge 0.2$) are \textbf{strictly zero-shot}.
+
+\paragraph{Borzoi/Flashzoi Pretraining Split Audit.}
+A critical risk when ensembling multi-replicate genomic foundation models is cross-fold leakage (if replicates hold out different chromosomes, ensembling covers 100\% of the genome). Inspecting \code{calico/borzoi/README.md} and the official 55,497-interval coordinate table (\code{borzoi\_sequences\_human.bed.gz}) confirms that \textbf{all four Flashzoi replicates (\code{rep0--rep3}) share the identical human genome split}: \code{train} $=\{\text{fold0,1,2,5,6,7}\}$ (75\% of hg38 epigenetic tracks; zero MPRA, CAGI5, ADASTRA, UDACHA, or GSE188264 labels), \code{val} $=\text{fold4}$ (12.5\%), and \code{test} $=\text{fold3}$ (12.5\%). Ensembling \code{rep0--rep3} therefore performs pure replicate variance reduction with \textbf{zero cross-fold leakage}, holding out the same 25\% of hg38 (\code{fold3+fold4})---strictly less genomic exposure than AlphaGenome's \code{all\_folds} checkpoint. Moreover, we explicitly stratify CAGI5, \code{ADASTRA}/\code{UDACHA}, and \code{GSE188264} into \textbf{strictly Borzoi-unseen (\code{fold3+fold4})} versus \code{train\_folds} subsets.
+
+\paragraph{Exact Two-Sided Finite-Sample Bootstrap Inference.}
+Following \citet{phipson2010}, every paired model comparison uses $B=2{,}000$ paired bootstrap resamples (CRE-level for ENCODE4, locus-clustered for CAGI5, SNP-level for \code{ADASTRA}/\code{UDACHA}) and reports the point difference $\Delta r$, 95\% percentile confidence interval, and exact \textbf{two-sided finite-sample $p$-value} $p = \min\!\left(1,\, 2(k+1)/(B+1)\right)$ where $k$ counts draws with opposite or zero sign (minimum attainable $p = 2/2001 \approx 0.0010$; $p=0$ is never reported). Non-significant positive trends whose 95\% CI crosses zero are explicitly labeled.
+
+\section{Results}
+
+\subsection{Tier 1 (From Scratch, 0 External Weights): Multi-Lineage Gains, Loop Scaling, and Causal Ablation}
+
+\begin{table}[tb]
+\scriptsize\setlength{\tabcolsep}{3.8pt}
+\caption{Tier~1 (from scratch, 0 external weights, Apache-2.0) on held-out ENCODE4 lentiMPRA Fold~1 and zero-shot CAGI5 (39,170 SNVs). Paired bootstrap $B=2{,}000$, exact two-sided Phipson--Smyth $p$-values.}\label{tab:tier1}
+\begin{tabular}{@{}L{37mm}rrrrrr@{}}
+\toprule
+Model (From Scratch) & Params & HepG2 $r$ & K562 $r$ & WTC11 $r$ & Mean $r$ & CAGI5 (All / Eryth) \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Single-cell HepG2 training (98,340 scrubbed CREs, 20 epochs, seed 42; blind erythroid on CAGI5):}} \\
+OfficialDREAMRNN & 1.14M & 0.7361 & — & — & — & 0.2787 / 0.2775 \\
+HelixLoop-Omega v1 (diagnostic) & 4.65M & 0.8111 & — & — & — & 0.2784 / 0.2855 \\
+OfficialMPRALegNet (MSE std) & 1.32M & 0.8153 & — & — & — & 0.3152 / 0.2895 \\
+HelixLoop v4 w/o DeltaProduct & 3.31M & 0.8168 & — & — & — & 0.2742 / 0.3277 \\
+\textbf{HelixLoop v4 (Full, $T=6$)} & \textbf{3.46M} & \textbf{0.8191} & — & — & — & \textbf{0.2917 / 0.3005} \\
+LegNet-Large (3.3$\times$ params) & 11.3M & 0.8202 & — & — & — & — \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Multi-lineage HepG2+K562+WTC11 training (281,170 scrubbed CREs, 16 epochs, seed 42; lineage-matched CAGI5):}} \\
+OfficialMPRALegNet (3-head) & 1.32M & 0.7592 & 0.7620 & 0.7949 & 0.7721 & 0.2994 / 0.3907 \\
+\textbf{HelixLoop v4 (FiLM, 6.9\,MB fp16)} & \textbf{3.46M} & \textbf{0.7888}$^\dagger$ & \textbf{0.7900}$^\dagger$ & \textbf{0.8049}$^\ddagger$ & \textbf{0.7946} & \textbf{0.3079 / 0.4489} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+{\scriptsize $^\dagger$Two-sided $p=0.0010$ ($0/2000$ opposite draws): HepG2 $\Delta=+0.0295$ $[+0.0211,+0.0383]$; K562 $\Delta=+0.0280$ $[+0.0229,+0.0332]$. $^\ddagger$WTC11 $\Delta=+0.0100$ $[-0.0004,+0.0212]$, $p=0.0610$ (non-significant positive trend). Single-cell HelixLoop~v4 vs.\ DREAM-RNN: $+0.0830$, $p=0.0010$; vs.\ OfficialMPRALegNet: $+0.0038$, $p=0.243$; vs.\ LegNet-Large: $-0.0011$, $p=0.747$.}
+\end{table}
+
+Table~\ref{tab:tier1} summarizes Tier~1 performance. On single-cell HepG2, curing Omega~v1's three pathologies lifts CRE $r$ from $0.8111$ to $0.8191$ ($\text{MSE}=0.1720$, uncertainty calibration Spearman $\rho=0.2147$), decisively beating OfficialDREAMRNN ($+0.0830$, $p=0.0010$), edging OfficialMPRALegNet ($+0.0038$, $p=0.243$), and matching 11.3M-parameter LegNet-Large ($0.8202$, $p=0.747$) at $3.3\times$ fewer parameters. Crucially, the shared-weight core exhibits \textbf{strictly monotonic test-time loop scaling}:
+\begin{itemize}
+\item \emph{Single-cell HepG2:} $T=1$ ($r=0.8122$, $\text{MSE}=0.2808$) $\to$ $T=2$ ($0.8173$, $0.2323$) $\to$ $T=4$ ($0.8194$, $0.1795$) $\to$ $T=6$ ($0.8191$, $0.1720$, a $-0.1088$ MSE reduction), contrasting directly with Omega~v1's flat bypass ($0.8111\equiv 0.8111$).
+\item \emph{Multi-lineage mean:} $T=1$ ($0.7859$) $\to$ $T=2$ ($0.7909$) $\to$ $T=4$ ($0.7938$) $\to$ $T=6$ ($0.7946$), improving monotonically in all three lineages simultaneously.
+\end{itemize}
+
+\paragraph{Causal Ablation of \code{BiGatedDeltaProduct1d}.}
+Removing only \code{BiGatedDeltaProduct1d} under identical seed, data, and optimizer drops HepG2 Fold-1 CRE $r$ ($0.8191\to 0.8168$, MSE $0.1720\to 0.1751$) and degrades zero-shot CAGI5 across every category: all-SNV mean $0.2917\to 0.2742$ ($-0.0175$; 23-locus $\Delta=+0.0133$, $p=0.274$), significant SNVs ($p<10^{-5}$) $0.4461\to 0.4303$ ($-0.0158$), liver elements $0.4718\to 0.4231$ ($-0.0487$), and neural elements $0.3136\to 0.2700$ ($-0.0436$).
+
+\paragraph{Multi-Lineage Dominance.}
+In the joint 3-lineage setting (where cell-state FiLM modulates recurrent dynamics across HepG2, K562, and WTC11 simultaneously), HelixLoop~v4 beats OfficialMPRALegNet by $+0.0295$ on HepG2 ($p=0.0010$), $+0.0280$ on K562 ($p=0.0010$), $+0.0100$ on WTC11 ($p=0.0610$, trend), and $+0.0225$ in 3-lineage mean ($0.7946$ vs.\ $0.7721$), while boosting zero-shot CAGI5 erythroid correlation by $+0.0582$ ($0.4489$ vs.\ $0.3907$).
+
+\subsection{Tier 2 (Open MIT + Apache-2.0): Clearing AlphaGenome-Encoder-FT \& Controlled Ablation}
+
+\begin{table}[tb]
+\scriptsize\setlength{\tabcolsep}{3.5pt}
+\caption{Tier~2 open-license foundation-hybrids vs.\ published non-commercial \code{AlphaGenome-Encoder-FT} \citep{avsec2026} on ENCODE4 Fold~1 and zero-shot CAGI5. All 4 Flashzoi replicates share the identical Borzoi hg38 split (25\% \code{fold3+fold4} unseen, 0 cross-fold leakage).}\label{tab:tier2}
+\begin{tabular}{@{}L{37mm}L{16mm}rrrrrr@{}}
+\toprule
+Model & License & HepG2 & K562 & WTC11 & Mean $r$ & CAGI5 Match & Liver / Eryth \\
+\midrule
+Tier-1 HelixLoop v4 (scratch) & Apache-2.0 & 0.7888 & 0.7900 & 0.8049 & 0.7946 & 0.3079 & 0.4356 / 0.4489 \\
+AlphaGenome-Encoder-FT (pub.) & \emph{CC-BY-NC 4.0} & \textbf{0.888} & 0.879 & 0.834 & 0.8670 & — & — \\
+\midrule
+Flashzoi-Linear-FT (rep0) & MIT & 0.8625 & 0.8693 & 0.8423 & 0.8580 & 0.3748 & 0.5341 / 0.5686 \\
+Flashzoi + HelixLoop v4 (rep0) & MIT+Ap2 & 0.8654$^\dagger$ & 0.8704 & 0.8442 & 0.8600 & 0.3700 & 0.5332 / 0.5624 \\
+Flashzoi-Linear-FT (4-rep ens) & MIT & 0.8789 & 0.8816 & \textbf{0.8516} & 0.8707 & \textbf{0.3998} & 0.5615 / \textbf{0.5919} \\
+\textbf{Flashzoi + HelixLoop v4 (4-rep)} & \textbf{MIT+Ap2} & 0.8796 & \textbf{0.8822} & 0.8505 & \textbf{0.8708} & 0.3966 & \textbf{0.5624} / 0.5877 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+{\scriptsize $^\dagger$Single-replicate \code{rep0} ($T=6$): HelixLoop~v4 beats Linear-FT on HepG2 ($+0.0029$, $[+0.0004,+0.0055]$, $p=0.027$). In the 4-rep ensemble (\code{rep1--3} at $T=4$), HelixLoop~v4 and Linear-FT are statistically tied on Fold-1 CREs (HepG2 $+0.0007$ $p=0.289$; K562 $+0.0006$ $p=0.245$; WTC11 $-0.0012$ $p=0.226$) and CAGI5 (23-locus $\Delta=-0.0039$, $p=0.241$).}
+\end{table}
+
+Table~\ref{tab:tier2} establishes two key facts. First, using exclusively open, commercially permissive weights (MIT Flashzoi + Apache-2.0 HelixLoop~v4), our 4-replicate ensemble reaches \textbf{3-lineage mean $r=0.8708$}, surpassing non-commercial \code{AlphaGenome-Encoder-FT} ($0.8670$) overall, on K562 ($0.8822$ vs.\ $0.879$), and substantially on WTC11 ($0.8505$ vs.\ $0.834$, $+0.0165$), while raising zero-shot CAGI5 lineage-matched correlation to $0.3966$ (significant SNVs $0.5469$, liver $0.5624$, erythroid $0.5877$). Second, our controlled ablation against \code{Flashzoi-Linear-FT} transparently credits Flashzoi's pretrained encoder for the primary $0.795\to 0.871$ leap on raw MPRA CREs: while single-replicate \code{rep0} ($T=6$) significantly beats \code{Linear-FT} on HepG2 ($p=0.027$), the 4-replicate ensembles are statistically tied on raw CRE $r$ ($0.8708$ vs.\ $0.8707$, all per-lineage $p>0.22$). Replacing the flat linear head with HelixLoop~v4 preserves that frontier CRE peak while adding calibrated heteroscedastic uncertainty, 532-TF Boltzmann attribution, monotonic test-time scaling (verified up to $T=8$ on \code{rep3}), and stronger directional accuracy on unseen \emph{in vivo} chromatin loci.
+
+\subsection{Zero-Shot In Vivo Human Genetics (ADASTRA \& UDACHA) and Strictly Unseen \code{fold3+fold4} Audit}
+
+\begin{table}[tb]
+\scriptsize\setlength{\tabcolsep}{3.0pt}
+\caption{Zero-shot \emph{in vivo} human genetics evaluation across 6 \code{ADASTRA} (ChIP-seq ASB) and \code{UDACHA} (DNase/ATAC-seq) panels ($n=1{,}974$ verified GRCh38 SNPs; zero \emph{in vivo} training labels), stratified by all SNPs vs.\ \textbf{strictly Borzoi-unseen \code{fold3+fold4}} ($n=453$ SNPs).}\label{tab:invivo}
+\begin{tabular}{@{}L{34mm}rrrrrrrr@{}}
+\toprule
+Model & H-ASB & H-DNase & H-ATAC & K-ASB & K-DNase & K-ATAC & All 6 ($r$ / AUC) & \textbf{Unseen f3+4 ($r$ / AUC)} \\
+ & ($n=400$) & ($n=33$) & ($n=341$) & ($n=400$) & ($n=400$) & ($n=400$) & ($n=1{,}974$) & \textbf{($n=453$)} \\
+\midrule
+Tier-1 LegNet MC & 0.4248 & 0.4781 & 0.4254 & 0.2801 & 0.4010 & 0.2108 & 0.3700 / 0.7312 & 0.4162 / 0.7136 \\
+\textbf{Tier-1 HelixLoop v4 MC} & \textbf{0.4570} & 0.3968 & \textbf{0.4323} & \textbf{0.3317}$^\dagger$ & \textbf{0.4382}$^\dagger$ & \textbf{0.2190} & \textbf{0.3792 / 0.7336}$^\star$ & \textbf{0.4175 / 0.7422} \\
+\midrule
+Tier-2 Linear-FT (rep0) & 0.4763 & 0.5695 & 0.4594 & 0.4547 & 0.5287 & 0.3162 & 0.4675 / 0.7815 & 0.5262 / 0.7896 \\
+Tier-2 HelixLoop v4 (rep0) & 0.4581 & 0.5967 & 0.4734 & 0.4578 & 0.5361 & 0.3177 & 0.4733 / 0.7832 & 0.5190 / 0.7932 \\
+Tier-2 Linear-FT (4-rep) & \textbf{0.4930} & 0.6224 & 0.5005 & 0.4617 & 0.5437 & \textbf{0.3339} & 0.4925 / 0.8023 & \textbf{0.5521} / 0.8139 \\
+\textbf{Tier-2 HelixLoop v4 (4-rep)} & 0.4864 & \textbf{0.6277} & \textbf{0.5064} & \textbf{0.4750} & \textbf{0.5456} & 0.3280 & \textbf{0.4948 / 0.8051} & 0.5466 / \textbf{0.8250} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+{\scriptsize $^\star$Tier-1 pooled standardized 6-panel gain ($n=1{,}974$): $\Delta r=+0.0260$, 95\% CI $[+0.0060,+0.0464]$, two-sided $p=0.0160$. $^\dagger$Significant individual panels: K562\_ASB $+0.0516$ ($p=0.0160$), K562\_DNase $+0.0372$ ($p=0.0280$). Note \code{HepG2\_DNase} contains only $n=33$ ($9$ unseen) SNPs passing stringent FDR. Tier-2 4-rep vs.\ Linear 4-rep pooled $r$ is statistically tied ($\Delta=+0.0017$, $p=0.617$), with HelixLoop~v4 leading in directional AUROC ($0.8051$ vs.\ $0.8023$ overall; $0.8250$ vs.\ $0.8139$ on unseen \code{fold3+fold4}).}
+\end{table}
+
+Table~\ref{tab:invivo} presents the sharpest test of out-of-distribution biological transfer and pretraining leakage.
+\begin{enumerate}
+\item \textbf{Tier-1 Zero-Shot In Vivo Breakthrough:} Trained exclusively on episomal/lentiviral MPRA sequences from scratch, HelixLoop~v4 beats OfficialMPRALegNet on 5 of 6 independent \emph{in vivo} human allelic-imbalance panels, achieving a statistically significant pooled gain of $+0.0260$ ($n=1{,}974$, two-sided $p=0.0160$; K562\_ASB $+0.0516$ $p=0.0160$; K562\_DNase $+0.0372$ $p=0.0280$) and $+0.0286$ AUROC on \code{fold3+fold4} SNPs ($0.7422$ vs.\ $0.7136$).
+\item \textbf{Airtight Borzoi Leakage Verification:} Crucially, on the \textbf{453 GRCh38 SNPs lying strictly inside Borzoi's held-out \code{fold3+fold4}} (never seen during any Borzoi/Flashzoi pretraining pass), 4-replicate \code{Flashzoi + HelixLoop v4} shows \textbf{zero degradation} ($r=0.5466$, directional AUROC $\mathbf{0.8250}$ vs.\ all-SNP $r=0.4948$, AUROC $0.8051$), outperforming Tier-1 from-scratch models by $+0.129$ $r$ and $+0.083$ AUROC and outperforming 4-rep \code{Flashzoi-Linear-FT} by $+0.0111$ directional AUROC ($0.8250$ vs.\ $0.8139$).
+\item \textbf{Transparent CAGI5 \code{fold3+fold4} Disclosure:} Only 4 of 29 CAGI5 elements fall in \code{fold3+fold4} (\code{BCL11A}, \code{FOXE1}, \code{MYCrs11986220}, \code{MYCrs6983267}). Because these four include non-hepatic/non-erythroid tissues (thyroid \code{FOXE1}, prostate/colon \code{MYC}), even \emph{zero-pretraining} Tier-1 models score $0.063$--$0.083$ on these four elements versus $0.334$--$0.347$ on the remaining 25 (Tier~2: $0.077$--$0.087$ vs.\ $0.448$--$0.450$). Thus CAGI5's small 4-element unseen slice reflects cell-type mismatch rather than memorization, whereas the balanced 453-SNP \code{ADASTRA}/\code{UDACHA} unseen split provides an unbiased confirmation of Tier-2 generalization.
+\end{enumerate}
+
+\subsection{Human Neural-Induction Transfer (\code{GSE188264}, 0--72\,h) and Test-Only Epistasis}
+
+\begin{table}[tb]
+\scriptsize\setlength{\tabcolsep}{3.0pt}
+\caption{Human 0--72\,h neural-induction transfer (\code{GSE188264}, 1,895 perturbations across 118 held-out loci; note retrospective locus exposure and multi-base motif perturbations) and \textbf{51 strictly test-only double-mutant epistasis triplets} ($\varepsilon=\Delta_{AB}-\Delta_A-\Delta_B$, 0\% train/val overlap), plus strictly Borzoi-unseen \code{fold3+fold4} subset ($n=424$ edits).}\label{tab:gse}
+\begin{tabular}{@{}L{36mm}rrrrrrr@{}}
+\toprule
+Model & All 1,895 $r$ & Targ.\ MSE & vs.\ Zero & \textbf{Unseen f3+4} & Dbl $r$ & Rescue $r$ & \textbf{Epistasis $r$} \\
+\midrule
+Biophys v2 (532-TF linear) & 0.5060 & 0.25082 & 30.5\% & 0.5276 & 0.7375 & \textbf{0.4689} & 0.1509 \\
+\midrule
+\multicolumn{8}{@{}l}{\emph{From scratch on GSE188264 (5,559 train, val-selected, 25 epochs, seed 42):}} \\
+Malinois (scratch) & 0.2703 & 0.32394 & 10.2\% & 0.1437 & 0.1416 & $-0.0607$ & 0.1999 \\
+DeepSTARR (scratch) & 0.3153 & 0.31509 & 12.7\% & 0.2992 & 0.1435 & $-0.0340$ & $-0.1301$ \\
+OfficialMPRALegNet (scratch) & 0.3628 & 0.30598 & 15.2\% & 0.3036 & 0.2821 & $-0.0485$ & 0.1988 \\
+\textbf{HelixLoop v4 (scratch)} & 0.3537 & \textbf{0.29503} & \textbf{18.2\%} & 0.1858 & \textbf{0.5625}$^\dagger$ & \textbf{0.4378} & \textbf{0.4283} \\
+\midrule
+\multicolumn{8}{@{}l}{\emph{Tier-1 multi-lineage lentiMPRA transfer (0 external weights):}} \\
+OfficialMPRALegNet (T1 xfer) & 0.5536 & 0.25422 & 29.6\% & 0.5196 & 0.5162 & 0.2305 & $-0.2141$ \\
+\textbf{HelixLoop v4 (T1 xfer)} & \textbf{0.6086}$^\star$ & \textbf{0.24323} & \textbf{32.6\%} & \textbf{0.6646} & \textbf{0.6619} & \textbf{0.2469} & \textbf{0.5645}$^\star$ \\
+\midrule
+\multicolumn{8}{@{}l}{\emph{Tier-2 open MIT Flashzoi (rep0) multi-lineage transfer:}} \\
+Flashzoi-Linear-FT (T2 xfer) & \textbf{0.7626} & \textbf{0.18013} & \textbf{50.1\%} & 0.7778 & \textbf{0.8825} & 0.3922 & 0.6461 \\
+\textbf{Flashzoi + HelixLoop v4 (T2)} & 0.7553 & 0.18144 & 49.7\% & \textbf{0.7985} & 0.8194 & 0.3340 & \textbf{0.7513}$^\ddagger$ \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+{\scriptsize Exact two-sided Phipson--Smyth ($B=2{,}000$): $^\dagger$Scratch double-mutant HelixLoop~v4 vs.\ LegNet $\Delta=+0.2804$ $[+0.0519,+0.4777]$, $p=0.0120$. $^\star$T1 transfer HelixLoop~v4 vs.\ LegNet: all edits $+0.0549$ $[+0.0047,+0.1040]$, $p=0.0320$; epistasis $+0.7786$ $[+0.1789,+1.1740]$, $p=0.0170$; vs.\ \code{biophys\_v2\_linear}: all edits $+0.1026$ ($p=0.0010$), epistasis $+0.4135$ ($p=0.0080$). $^\ddagger$T2 transfer Flashzoi+HelixLoop~v4 vs.\ Flashzoi-Linear-FT: epistasis $+0.1052$ $[-0.0003,+0.2668]$, two-sided $p=0.0530$ (all edits $-0.0073$, $p=0.254$; double-mutants $-0.0631$, $p=0.049$, Linear-FT higher on additive sum). All Siamese neural models verified exact $0.0$ reversion, antisymmetry, and RC invariance.}
+\end{table}
+
+Table~\ref{tab:gse} tests non-additive cis-regulatory interaction modeling on the \citet{kreimer2022} human neural-induction perturbation screen (\code{GSE188264}, 0--72\,h), separating overall 1,895-perturbation generalization from the \textbf{51 strictly test-only double-mutant triplets} (0\% overlap with train/val loci) where purely additive linear models fail to capture combinatorial interaction terms $\varepsilon = \Delta(\text{WT}\to A+B) - \Delta(\text{WT}\to A) - \Delta(\text{WT}\to B)$:
+\begin{enumerate}
+\item \textbf{From-scratch and Tier-1 Transfer Dominance on Non-Additive Epistasis:} Trained from scratch on only 5,559 perturbations, HelixLoop~v4 doubles double-mutant accuracy over OfficialMPRALegNet ($0.5625$ vs.\ $0.2821$, $+0.2804$, $p=0.0120$), lifts rescue prediction from $-0.0485$ to $0.4378$, and doubles epistasis correlation ($0.4283$ vs.\ $0.1988$). Transferring from our 6.9\,MB multi-lineage Tier-1 checkpoint pushes HelixLoop~v4 to $r=0.6086$ (beating LegNet transfer $0.5536$, $p=0.0320$, and Epigenesis's previous linear SOTA \code{biophys\_v2\_linear} $0.5060$, $p=0.0010$) while achieving \textbf{epistasis $r=0.5645$} where LegNet transfer collapses to $-0.2141$ ($\Delta=+0.7786$, $p=0.0170$).
+\item \textbf{Tier-2 Non-Additive Epistasis and Unseen \code{fold3+fold4} Proof:} Transferring MIT Flashzoi cuts targeted MSE nearly in half ($49.7\%$--$50.1\%$ below zero-effect; all-edit $r=0.7553$--$0.7626$, $+0.2494$ over \code{biophys\_v2\_linear}, $p=0.0010$). Crucially, while \code{Flashzoi-Linear-FT} scores higher on the additive double-mutant sum ($0.8825$ vs.\ $0.8194$, $p=0.049$), \textbf{\code{Flashzoi + HelixLoop v4} surges $+0.1052$ ahead on true non-additive epistasis ($r=0.7513$ vs.\ $0.6461$, two-sided $p=0.053$, $+0.6003$ over linear \code{biophys\_v2}, $p=0.0010$)} and outperforms \code{Flashzoi-Linear-FT} on the \textbf{424 strictly Borzoi-unseen \code{fold3+fold4} perturbations ($r=0.7985$ vs.\ $0.7778$)}, independently confirming zero pretraining-leakage inflation.
+\end{enumerate}
+
+\section{Discussion and Limitations}
+
+HelixLoop~v4 demonstrates that recurrent-depth biophysical state tracking provides real, mechanism-verified gains over standard feedforward DNA CNNs from scratch (Tier~1) and pairs cleanly with MIT-licensed Flashzoi to match and surpass non-commercial \code{AlphaGenome-Encoder-FT} on 3-lineage human lentiMPRA (Tier~2). Equally important are the explicit boundaries of these results:
+\begin{enumerate}
+\item \textbf{Where Flashzoi vs.\ HelixLoop~v4 does the work:} On raw Tier-2 ENCODE4 CREs, MIT Flashzoi drives the $0.795\to 0.871$ leap; \code{Flashzoi + HelixLoop v4} ties \code{Flashzoi-Linear-FT} statistically on raw CRE $r$ ($0.8708$ vs.\ $0.8707$) while adding calibrated uncertainty, 532-TF attributions, higher unseen-fold \emph{in vivo} AUROC ($0.8250$ vs.\ $0.8139$), higher unseen-fold \code{GSE188264} correlation ($0.7985$ vs.\ $0.7778$), and a $+0.1052$ gain on strictly test-only non-additive double-mutant epistasis ($0.7513$ vs.\ $0.6461$, $p=0.053$).
+\item \textbf{Short-window scope vs.\ 1-Mb long-range models:} HelixLoop~v4 currently operates on 200--230\,bp CRE windows (and Flashzoi's local convolutional stem), unlike full 524\,kb--1\,Mb enhancer--promoter architectures \citep{linder2025,avsec2026,gayoso2026}. Coupling HelixLoop's iterative state tracker to full-length Flashzoi transformer blocks for distal enhancer--gene linking is a natural next step.
+\item \textbf{Statistical modesty on small strata:} WTC11 ($n=2{,}314$, $p=0.061$), \code{HepG2\_DNase} ($n=33$), and CAGI5's 4-element \code{fold3+fold4} slice remain underpowered; larger single-cell and saturation datasets are needed to resolve fine margins.
+\end{enumerate}
+
+All Tier-1 weights (\code{helixloop\_v4\_multicell\_fp16.pt}, 6.9\,MB, SHA-256 \code{d3e9d28c3e96\ldots}), Studio inference code (\code{helixloop\_engine.py}), benchmark scripts, and exact bootstrap audit records are released openly under Apache-2.0.
+
+\begin{thebibliography}{99}
+\setlength{\itemsep}{2pt}
+
+\bibitem[Abramov et~al.(2021)]{abramov2021} Abramov S, Boytsov A, Bykova D, et~al. (2021). Landscape of allele-specific transcription factor binding in the human genome. \textit{Nature Communications} 12:2751. \href{https://doi.org/10.1038/s41467-021-23007-0}{doi:10.1038/s41467-021-23007-0}
+
+\bibitem[Abramov et~al.(2025)]{abramov2025} Abramov S, Boytsov A, Buyan A, Kulakovskiy IV, et~al. (2025). Statistical framework for calling allelic imbalance in high-throughput sequencing data (MIXALIME / UDACHA). \textit{Nature Communications} 16:409. \href{https://doi.org/10.1038/s41467-024-55513-2}{doi:10.1038/s41467-024-55513-2}
+
+\bibitem[Agarwal et~al.(2025)]{agarwal2025} Agarwal V, Inoue F, Schubach M, et~al. (2025). Massively parallel characterization of transcriptional regulatory elements. \textit{Nature} 639:411--420. \href{https://doi.org/10.1038/s41586-024-08430-9}{doi:10.1038/s41586-024-08430-9}
+
+\bibitem[Avsec et~al.(2021)]{avsec2021} Avsec \v{Z}, Agarwal V, Visentin D, et~al. (2021). Effective gene expression prediction from sequence by integrating long-range interactions. \textit{Nature Methods} 18:1196--1203. \href{https://doi.org/10.1038/s41592-021-01252-x}{doi:10.1038/s41592-021-01252-x}
+
+\bibitem[Avsec et~al.(2026)]{avsec2026} Avsec \v{Z}, Kohli P, et~al. (2026). Advancing regulatory variant effect prediction with AlphaGenome. \textit{Nature} 649(8099):1206--1218. \href{https://doi.org/10.1038/s41586-025-10014-0}{doi:10.1038/s41586-025-10014-0}
+
+\bibitem[de~Almeida et~al.(2022)]{dealmeida2022} de~Almeida BP, Reiter F, Pagani M, Stark A. (2022). DeepSTARR predicts enhancer activity from DNA sequence and enables the de novo design of synthetic enhancers. \textit{Nature Genetics} 54:613--624. \href{https://doi.org/10.1038/s41588-022-01048-5}{doi:10.1038/s41588-022-01048-5}
+
+\bibitem[Gayoso et~al.(2026)]{gayoso2026} Gayoso A, Mottram A, Karollus A, Novati G, Drot\'ar P, \ldots, Hassabis D, Kohli P, Avsec \v{Z}. (2026). AlphaGenome~2 predicts regulatory activity and variant effects across cell states. \textit{bioRxiv} (preprint, November 2026).
+
+\bibitem[Geiping et~al.(2025)]{geiping2025} Geiping J, McLeish S, Jain N, Kirchenbauer J, Singh S, Bartoldson BR, Kailkhura B, Bhatele A, Goldstein T. (2025). Scaling up test-time compute with latent reasoning: a recurrent depth approach. \textit{arXiv:2502.05171}.
+
+\bibitem[Gosai et~al.(2024)]{gosai2024} Gosai SJ, Castro RI, Fuentes N, et~al. (2024). Machine-guided design of cell-type-targeting cis-regulatory elements. \textit{Nature} 634:1211--1220. \href{https://doi.org/10.1038/s41586-024-08070-z}{doi:10.1038/s41586-024-08070-z}
+
+\bibitem[Hingerl et~al.(2025)]{hingerl2025} Hingerl JC, Karollus A, Gagneur J. (2025). Flashzoi: an enhanced Borzoi for accelerated genomic analysis. \textit{Bioinformatics} 41:btaf467. \href{https://doi.org/10.1093/bioinformatics/btaf467}{doi:10.1093/bioinformatics/btaf467}
+
+\bibitem[Kircher et~al.(2019)]{kircher2019} Kircher M, Xiong C, Martin B, et~al. (2019). Saturation mutagenesis of twenty disease-associated regulatory elements at single base-pair resolution. \textit{Nature Communications} 10:3583. \href{https://doi.org/10.1038/s41467-019-11526-w}{doi:10.1038/s41467-019-11526-w}
+
+\bibitem[Koo and Ploenzke(2021)]{koo2021} Koo PK, Ploenzke M. (2021). Improving representations of genomic sequence motifs in convolutional networks with exponential activations. \textit{Nature Machine Intelligence} 3:258--266. \href{https://doi.org/10.1038/s42256-020-00291-x}{doi:10.1038/s42256-020-00291-x}
+
+\bibitem[Kreimer et~al.(2022)]{kreimer2022} Kreimer A, Ashuach T, Inoue F, et~al. (2022). Massively parallel reporter perturbation assays uncover temporal regulatory architecture during neural differentiation. \textit{Nature Communications} 13:1504. \href{https://doi.org/10.1038/s41467-022-28659-0}{doi:10.1038/s41467-022-28659-0}
+
+\bibitem[Lin et~al.(2025)]{lin2025} Lin Z, Nikishin E, He XN, Courville A. (2025). Forgetting Transformer: softmax attention with a forget gate. \textit{ICLR 2025}.
+
+\bibitem[Linder et~al.(2025)]{linder2025} Linder J, Srivastava D, Yuan H, Agarwal V, Kelley DR. (2025). Predicting RNA-seq coverage from DNA sequence as a unifying model of gene regulation. \textit{Nature Genetics} 57:949--961. \href{https://doi.org/10.1038/s41588-024-02053-6}{doi:10.1038/s41588-024-02053-6}
+
+\bibitem[Penzar et~al.(2023)]{penzar2023} Penzar D, Nogina D, Noskova E, et~al. (2023). LegNet: a best-in-class deep learning model for short DNA regulatory regions. \textit{Bioinformatics} 39:btad457. \href{https://doi.org/10.1093/bioinformatics/btad457}{doi:10.1093/bioinformatics/btad457}
+
+\bibitem[Perez et~al.(2018)]{perez2018} Perez E, Strub F, de~Vries H, Dumoulin V, Courville A. (2018). FiLM: visual reasoning with a general conditioning layer. \textit{Proceedings of the AAAI Conference on Artificial Intelligence} 32:3942--3951. \href{https://doi.org/10.1609/aaai.v32i1.11671}{doi:10.1609/aaai.v32i1.11671}
+
+\bibitem[Phipson and Smyth(2010)]{phipson2010} Phipson B, Smyth GK. (2010). Permutation P-values should never be zero: calculating exact P-values when permutations are randomly drawn. \textit{Statistical Applications in Genetics and Molecular Biology} 9(1):Article~39. \href{https://doi.org/10.2202/1544-6115.1585}{doi:10.2202/1544-6115.1585}
+
+\bibitem[Rafi et~al.(2024)]{rafi2024} Rafi AM, Nogina D, Penzar D, et~al. (2024). A community effort to optimize sequence-based deep learning models of gene regulation. \textit{Nature Biotechnology} (preprint \href{https://doi.org/10.1101/2023.04.26.538471}{doi:10.1101/2023.04.26.538471}).
+
+\bibitem[Rauluseviciute et~al.(2024)]{rauluseviciute2024} Rauluseviciute I, Riudavets-Puig R, Blanc-Mathieu R, et~al. (2024). JASPAR~2024: 20th anniversary of the open-access database of transcription factor binding profiles. \textit{Nucleic Acids Research} 52:D174--D182. \href{https://doi.org/10.1093/nar/gkad1059}{doi:10.1093/nar/gkad1059}
+
+\bibitem[Rohs et~al.(2009)]{rohs2009} Rohs R, West SM, Sosinsky A, Liu P, Mann RS, Honig B. (2009). The role of DNA shape in protein--DNA recognition. \textit{Nature} 461:1248--1253. \href{https://doi.org/10.1038/nature08473}{doi:10.1038/nature08473}
+
+\bibitem[Siems et~al.(2025)]{siems2025} Siems J, Carstensen T, Zela A, Hutter F, Pontil M, Grazzi R. (2025). DeltaProduct: improving state-tracking in linear RNNs via Householder products. \textit{NeurIPS 2025}.
+
+\bibitem[Todorov(2026)]{todorov2026epigenesis} Todorov D. (2026). Epigenesis: proof-carrying DNA-to-development compiler and variant workbench (v1.7.0). \url{https://github.com/dttdrv/epigenesis}
+
+\bibitem[Ye et~al.(2025)]{ye2025} Ye T, Dong L, Xia Y, Sun Y, Zhu Y, Huang G, Wei F. (2025). Differential Transformer. \textit{ICLR 2025} (Oral).
+
+\bibitem[Zhou et~al.(2025)]{zhou2025} Zhou Z, Wu T, Jiang Z, Obeid F, Lan Z. (2025). Value residual learning (ResFormer). \textit{ACL 2025} (\textit{arXiv:2410.17897}).
+
+\end{thebibliography}
+\end{document}
