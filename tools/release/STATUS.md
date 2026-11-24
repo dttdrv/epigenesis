@@ -1,47 +1,22 @@
 # Current delivery — Epigenesis 1.7.0
 
-The interactive entry point is [Epigenesis Studio](../../studio/README.md) (`0.2.0`),
-with English and Bulgarian interfaces. The compiler package is version **1.7.0**.
-
-## DNA-site simulation and Enhancer Circuit
-
-Simulate accepts a supported single substitution in the nine-base Nkx2.2 GLI
-binding site, compiles its nucleotides into a validated Development Module,
-and drives the Herrera-Delgado (2020) four-gene neural-tube ODE under a user
-signal history. **Enhancer Circuit** (1.7) generalizes this to arbitrary
-enhancers (`9` to `500` bp in Studio) via strand-symmetric Boltzmann GLI2/GLI3
-partition sums, uncovering 7 cryptic cell-fate bifurcations (`|Δreporter| < 0.02`
-with endogenous `Nkx2.2 -> Olig2` switch) across `chr15:90936956-90937127`.
-
-These are conditional mechanistic experiments. The broader
-genome → development → neural structure → activity → learning path remains
-the research objective; its separate examples are not one validated biological model.
+The local workbench is [Epigenesis Studio](../../studio/README.md) (`0.4.0`, English and Bulgarian). The zero-dependency compiler package (`epigenesis-compiler`) is version **1.7.0**.
 
 ## Delivered predictors
 
-Studio and `epigenesis.py predict` provide two NumPy CPU checkpoints (no
-training occurs during use):
+Studio ships four SHA-256-sealed checkpoints inside `studio/epigenesis_studio/model/`:
 
-- **Siraj Huber-linear (default, `epigenesis-siraj-huber-linear-v1`)**: SK-N-SH
-  24h reporter effect. On reused tuning data (`16,986` edits), equal-family MSE
-  is `0.28766713` vs k5 `0.29661090` (3.02% reduction); on five external neural
-  reporter studies, mean correlation is `0.0490` and MSE is 9.52% above zero.
-- **Kreimer 0–72h (`--kreimer`, `epigenesis-kreimer-motif-temporal-v1`, 1.7)**:
-  motif-temporal ridge model (5-mers + 532 JASPAR motifs) predicting H1 neural
-  induction across `[0, 3, 6, 12, 24, 48, 72]` hours. Across 118 held-out
-  GSE188264 families (`1,415` targeted edits), retrospective family-weighted MSE
-  is `0.252079` vs k5 `0.285185` (95% bootstrap gain `[0.007810, 0.061363]`), and
-  temporal-contrast MSE beats time-averaging (`0.031285` vs `0.032108`).
-  Conditional on published MPRAnalyze preprocessing (`biological_development_accepted: false`).
+- **HelixLoop v4 (`helixloop`, optional PyTorch, Apache-2.0):** 6.9 MB fp16 multi-lineage looped biophysical model (`HepG2`, `K562`, `WTC11`; zero external weights). Beats `OfficialMPRALegNet` from scratch (`0.7946` vs `0.7721` 3-cell ENCODE4 Fold-1 mean), generalizes zero-shot to *in vivo* `ADASTRA`/`UDACHA` SNPs (5/6 panels, pooled `+0.026`, $p=0.016$), and pairs with MIT Flashzoi in Tier 2 to clear non-commercial `AlphaGenome-Encoder-FT` (`0.8708` vs `0.8670`) and reach `0.7513` on non-additive `GSE188264` epistasis.
+- **Biophysical Asymmetric 532-TF+ v2 (`biophys`, NumPy CPU):** Dual-scale Boltzmann thermodynamics + multi-scale $k$-mers predicting 0–72 h `GSE188264` neural-induction kinetics (`r = 0.5060`, targeted MSE `0.250815`, Top-100 repression `99.0%`).
+- **Kreimer 0–72 h (`--kreimer`, NumPy CPU):** Symmetric 5-mer + 532-TF ridge (`GSE188264` targeted MSE `0.252079`).
+- **Siraj Huber-linear (`siraj`, NumPy CPU):** SK-N-SH 24 h reporter model (internal MSE `-3.02%` vs 5-mer; external 5-study mean `r = 0.0490`).
 
-The earlier activity-transfer and attention models remain available explicitly
-for reproducing the separate Salomon assay results. Their confirmation is spent;
-Siraj RESERVE remains sealed.
+## DNA-site simulation & Enhancer Circuit
+
+Simulate and Enhancer Circuit compile regulatory edits into validated `brainc` Development Modules and drive the Herrera-Delgado neural-tube ODE (plus optional 3D CX3D morphogenesis) with exact allele reversion and closed-chromatin controls (`biological_acceptance = false`).
 
 ## Evidence and reproduction
 
-- [1.7 release contract](../../docs/releases/RELEASE-1.7.md) and [Enhancer Circuit](../../examples/neural-circuit/README.md).
-- [Predictor guide](../../examples/neural-predictor/README.md): Siraj inputs, archived models, and input contract.
-- [Technical paper](../../docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](../../docs/paper/epigenesis-technical-paper.bg.pdf)): mechanisms, results and scientific qualifications.
-- [Frozen research](../../research/README.md): thirteen cross-study and variant-prioritization tests, with plans and hash verification.
-- [Roadmap](../../docs/research/NEURAL_PREDICTOR_ROADMAP.md): dated experiment history.
+- [HelixLoop v4 paper (.tex)](../../docs/paper/epigenesis-helixloop.tex) and [benchmark & audit suite](../../examples/helixloop-benchmark/README.md).
+- [1.7 release contract](../../docs/releases/RELEASE-1.7.md) and [Platform technical paper](../../docs/paper/epigenesis-technical-paper.pdf) ([Bulgarian](../../docs/paper/epigenesis-technical-paper.bg.pdf)).
+- [Frozen research ledger](../../research/README.md): 13 hash-verified cross-study checks (`research/check_freeze.py`).

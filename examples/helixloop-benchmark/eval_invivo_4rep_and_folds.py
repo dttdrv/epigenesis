@@ -30,7 +30,7 @@ from sklearn.metrics import roc_auc_score
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "studio"))
-sys.path.insert(0, str(REPO / "examples/thermosyntax-benchmark"))
+sys.path.insert(0, str(REPO / "examples/helixloop-benchmark"))
 
 import benchmark_flashzoi as bf  # noqa: E402
 import evaluate_invivo as ei  # noqa: E402

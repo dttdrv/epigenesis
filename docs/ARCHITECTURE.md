@@ -1,44 +1,39 @@
-# Epigenesis Architecture & Scientific Roadmap
+# Epigenesis Architecture & Roadmap
 
-Epigenesis is built around one clear objective: **general, honest, replayable DNA-to-development simulation software**—moving step by step from DNA sequence and genetic variation, through chromatin-gated gene regulation and multi-gene dynamics, to 3D neural morphogenesis and circuit activity.
-
-To prevent exploratory experiments from compromising core software trust—and to prevent compliance plumbing from hijacking the biological goal—Epigenesis is organized into **three strict layers**.
+Epigenesis is organized into three strict layers so exploratory ML experiments never compromise compiler provenance, and compliance plumbing never gets in the way of real biology.
 
 ## The Three Layers
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ Layer 3: Exploratory Research & Negative-Result Ledger                     │
-│   research/ (13 frozen predictor tests), examples/neural-v2f/ (V2F radar), │
-│   examples/mpra-replay/ (GSE188264 provenance demo), neural-predictor/     │
-│   Rule: biological_acceptance = false; negative results reported verbatim. │
+│ Layer 3: Benchmarks, Audits & Frozen Research Ledger                       │
+│   examples/helixloop-benchmark/ (ENCODE4, CAGI5, ADASTRA/UDACHA, GSE188264 │
+│   + Borzoi fold3+4 leakage audit), research/ (13 frozen predictor tests)   │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Layer 2: Native Desktop App & Unified Composable Developmental Engine      │
-│   desktop/ (macOS .dmg/.app; Linux & Windows coming soon™), studio/ 0.3.0, │
-│   examples/developmental-pipeline/ (develop/synthesize/discover),          │
-│   neural-circuit, coding-consequences, neural-construction (CX3D + LIF)    │
-│   Rule: Composes DNA + VRS edits → chromatin/TF/coding → GRN uncertainty   │
-│         → 3D neural morphogenesis & spiking through sealed brainc bundles. │
+│ Layer 2: HelixLoop v4 Engine, Studio (0.4.0) & Developmental Pipeline      │
+│   studio/ (helixloop.py, helixloop_engine.py, 6.9 MB fp16 weights,         │
+│   biophys/kreimer/siraj CPU models), desktop/ (native macOS .dmg),         │
+│   examples/developmental-pipeline/ (ODE + 3D CX3D + inverse synthesis)     │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Layer 1: Provenance Compiler Core (Zero-Dependency Foundation)             │
-│   brainc/ (sources, VRS 2.x variants, Development Module IR, RO-Crate/     │
-│   OMEX export), brainc/schemas/, SPEC.md, validators/rust/                 │
-│   Rule: Neutral, deterministic, independently replayed in Python & Rust.   │
+│ Layer 1: Zero-Dependency Provenance Compiler Core (1.7.0)                  │
+│   brainc/ (FASTA/GenBank/GFF3/VRS 2.x, RFC 8785 seals, RO-Crate/OMEX),     │
+│   SPEC.md, validators/rust/ (independent zero-dependency Rust validator)   │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Boundary Rules
-1. **If a change makes source/variant/module sealing or replay more exact**, it belongs in **Layer 1 (`brainc/`, `SPEC.md`, `validators/rust/`)**.
-2. **If a change composes biological mechanisms into a general developmental workflow**, it belongs in **Layer 2 (`examples/developmental-pipeline/`, `studio/`, `epigenesis_cli.py`)**, with explicit assumptions, parameter-uncertainty ensembles, and built-in causal/negative controls.
-3. **If a change tests an unproven scientific hypothesis or predictor prototype**, it belongs in **Layer 3 (`research/`, exploratory `examples/`)**, with `biological_acceptance = false` and pre-registered/frozen evaluation before any biological claim is made.
+1. **Layer 1 (`brainc/`, `SPEC.md`, `validators/rust/`):** Zero third-party Python dependencies. Everything stays deterministic and independently replayable in Python and Rust.
+2. **Layer 2 (`studio/`, `desktop/`, `examples/developmental-pipeline/`):** Composes biological predictors and mechanistic models with explicit controls, SHA-256 manifests, and graceful fallback when PyTorch is absent.
+3. **Layer 3 (`examples/helixloop-benchmark/`, `research/`):** Pre-registered or audited benchmarks with exact two-sided finite-sample Phipson–Smyth $p$-values, explicit leakage audits, and negative results kept on record (`Omega v1` bypass diagnostic, frozen linear-model wall in `research/`).
 
-## Honest Scientific Status (What Works vs. What Is Still Open)
+## Current Status & Next Milestones
 
-### Established Today (Software & Mechanistic Controls)
-- **Cryptographic provenance & cross-language replay:** Sealed DNA sources, GA4GH VRS 2.x reference-bound edits, RFC 8785 Development Modules, Draft 2020-12 schemas, RO-Crate 1.1 / COMBINE OMEX export, and independent Python + zero-dependency Rust replay validators.
-- **End-to-end composable developmental simulation (`epigenesis develop`):** Multi-locus cis-enhancer + coding ORF coupling through explicit chromatin accessibility/methylation gates into general `N`-gene GRNs (with deterministic parameter-uncertainty ensembles, data-to-mechanism falsification checks, exact allele reversion, and closed-chromatin null controls) and 3D CX3D morphogenesis + LIF spiking assays.
+### Completed
+- **Tier-1 HelixLoop v4 (Apache-2.0, `6.9 MB` fp16, zero external weights):** Beats `OfficialMPRALegNet` across multi-lineage ENCODE4 lentiMPRA (`0.7946` vs `0.7721`), scales monotonically with loop depth ($T=1\to 6$), transfers zero-shot to 1,974 *in vivo* `ADASTRA`/`UDACHA` SNPs (5/6 panels won, $p=0.016$), and improves `GSE188264` non-additive epistasis (`0.5645` vs `-0.2141`, $p=0.017$) with exact `0.0` symmetries.
+- **Tier-2 Open Foundation-Hybrid (`MIT` Flashzoi + `Apache-2.0` HelixLoop v4):** 4-replicate ensemble clears non-commercial `AlphaGenome-Encoder-FT` (`0.8708` vs `0.8670`), holds `0.8250` AUROC on 453 strictly Borzoi-unseen `fold3+fold4` *in vivo* SNPs, and reaches `r = 0.7513` on strictly test-only non-additive double-mutant epistasis (`vs 0.6461` linear head).
+- **Cryptographic provenance & replay:** Full Python + Rust validation across DNA sources, VRS 2.x edits, Development Modules, and Studio receipts.
 
-### Open Scientific Bottlenecks (Next Real Milestones)
-1. **Breaking past the linear DNA-effect predictor wall:** Thirteen frozen tests in [`research/`](../research/README.md) proved that local ±18 bp linear 5-mer/PWM models hit a cross-study wall (`r ≈ 0.049`, dominated by GC composition). Genuine progress requires pretrained long-range sequence/chromatin backbones (e.g., Enformer/Borzoi/ChromBPNet embeddings) paired with cell-type chromatin context and count-uncertainty modeling (BIRD)—while keeping `Siraj RESERVE` sealed until external transfer beats baselines.
-2. **Calibrating developmental mechanisms against endogenous perturbations:** Current GRN and CX3D parameters use uncalibrated literature/synthetic model units (`biological_acceptance = false`). The `evaluate_observations` falsification hook in `developmental-pipeline` is the entry point for fitting and falsifying regulatory networks directly against endogenous CRISPR/Perturb-seq or scMultiome differentiation trajectories.
-3. **Scaling from single-cell GRNs to multi-cell tissue & cortical connectivity:** Extending the composed DNA → GRN → CX3D coupling so cells dynamically re-read local morphogen fields and re-evaluate their compiled cis-regulatory programs during 3D division and wiring, rather than lowering a single steady-state snapshot.
+### Still Open
+1. **Long-range genomic context (524 kb–1 Mb):** HelixLoop v4 currently operates on 200–230 bp CRE windows (plus Flashzoi's convolutional stem). Extending the iterative state tracker across full-length Flashzoi transformer blocks for distal enhancer–gene linking is the next architectural step.
+2. **Calibrating developmental ODEs against real perturbations:** Mechanistic GRN and CX3D parameters still use published literature units (`biological_acceptance = false`). Fitting and falsifying circuits directly against endogenous CRISPR/Perturb-seq trajectories remains open.
+3. **Dynamic multi-cell morphogenesis:** Re-evaluating compiled cis-regulatory programs dynamically as cells divide and sense local morphogen gradients in 3D, rather than lowering a single steady-state snapshot.

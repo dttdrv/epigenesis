@@ -33,7 +33,7 @@ from scipy.stats import spearmanr
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "studio"))
-sys.path.insert(0, str(REPO / "examples/thermosyntax-benchmark"))
+sys.path.insert(0, str(REPO / "examples/helixloop-benchmark"))
 
 from benchmark_lentimpra import (  # noqa: E402
     _amp_ctx,

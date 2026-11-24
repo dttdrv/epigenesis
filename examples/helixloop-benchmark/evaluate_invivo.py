@@ -25,7 +25,7 @@ from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "examples/thermosyntax-benchmark"))
+sys.path.insert(0, str(REPO / "examples/helixloop-benchmark"))
 import benchmark_flashzoi as bf  # noqa: E402
 import benchmark_lentimpra as bl  # noqa: E402
 import benchmark_multicell as bm  # noqa: E402
